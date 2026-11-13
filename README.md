@@ -9,6 +9,13 @@ Helios Outpost es un juego 3D para navegador en el que diriges un puesto avanzad
 
 No hay una solución correcta. Hay disyuntivas de ingeniería reales —masa, energía, soporte vital, radiación, alimentos— convertidas en algo que se puede tocar.
 
+| | |
+| --- | --- |
+| ![Base lunar vista desde la consola de mando](docs/img/moon-base.jpg) | ![Mapa de luz solar del polo sur lunar](docs/img/moon-sunlight-map.jpg) |
+| *Cresta Shackleton: el Sol roza el horizonte y las sombras miden cientos de metros.* | *Mapa de luz solar: cada punto tiene su propio horizonte. En azul, la sombra permanente donde se esconde el hielo.* |
+| ![Caminata en Marte](docs/img/mars-eva.jpg) | ![Base marciana de noche](docs/img/mars-night.jpg) |
+| *EVA en Marte… con un apagón en curso: dos paneles no bastan cuando el Sol es débil.* | *Noche marciana: los reactores siguen dando energía y el invernadero brilla en magenta.* |
+
 *(English summary at the end.)*
 
 ---

@@ -50,7 +50,7 @@ const FinalShader = {
       vec2 c = vUv - 0.5;
       float r2 = dot(c * vec2(uAspect, 1.0), c * vec2(uAspect, 1.0));
       // very slight lens fringing toward the corners
-      vec2 off = c * r2 * 0.006;
+      vec2 off = c * r2 * 0.0028;
       vec3 col = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);
       col *= 1.0 - uVignette * smoothstep(0.12, 0.85, r2);
       // helmet visor: darker rim and a faint curved reflection band

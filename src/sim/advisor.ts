@@ -55,7 +55,7 @@ export function advise(s: SimState): Advice[] {
   if (p.blackout) add('blackout', 'bad', 98);
   else if (p.shed > 0 && s.powerSave === 0) add('brownout', 'warn', 70, { n: p.shed });
   const draw = p.servedKw - p.genKw;
-  if (draw > 0.2 && p.storedKwh > 0) {
+  if (draw > 0.2 && p.storedKwh > 4) {
     const hours = p.storedKwh / draw;
     if (hours < 14) add('batteryLow', hours < 5 ? 'bad' : 'warn', hours < 5 ? 92 : 72, { h: hours.toFixed(0) });
   }
