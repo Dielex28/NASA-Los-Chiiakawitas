@@ -154,6 +154,10 @@ export class Renderer {
       this.scale = Math.max(0.5, this.scale * 0.85);
       this.slowT = 0;
       this.resize(this.width, this.height);
+    } else if (this.slowT > 4 && this.ao?.enabled) {
+      // already at half resolution and still slow: ambient occlusion is the costliest extra, drop it
+      this.ao.enabled = false;
+      this.slowT = 0;
     } else if (this.fastT > 8 && this.scale < 1) {
       this.scale = Math.min(1, this.scale * 1.1);
       this.fastT = 0;
