@@ -38,8 +38,9 @@ vec3 terrainAlbedo(vec3 wp, vec3 wn) {
   float strata = 0.5 + 0.5 * sin(wp.y * 1.7 + nB.r * 5.0 + nA.g * 9.0);
   vec3 steep = mix(uColSteep, uColSteep * 0.58, uSurface.x * smoothstep(0.35, 0.7, strata));
   col = mix(col, steep, smoothstep(0.07, 0.34, slope));
-  // patchy tone variation at walking scale
-  col *= mix(1.0, 0.8 + 0.4 * nC.b, midFade * 0.9);
+  // patchy tone variation at walking scale (two unrelated scales so the tiling never lines up)
+  vec4 nE = texture2D(uNoise, p.yx * 0.061 + 0.53);
+  col *= mix(1.0, 0.82 + 0.2 * nC.b + 0.16 * nE.r, midFade * 0.9);
   col *= mix(1.0, 0.88 + 0.24 * nD.a, nearFade);
   // pebbles and clods
   float speck = smoothstep(0.7, 0.82, nD.r) * smoothstep(0.45, 0.6, nC.r) * nearFade;
@@ -49,10 +50,14 @@ vec3 terrainAlbedo(vec3 wp, vec3 wn) {
 
   // Fine relief as a world-space gradient (central differences on the noise), so it is
   // stable under grazing light and free of screen-space derivative blockiness.
-  float e1 = 0.4;
-  float gx = (texture2D(uNoise, (p + vec2(e1, 0.0)) * 0.17 + 0.11).b - texture2D(uNoise, (p - vec2(e1, 0.0)) * 0.17 + 0.11).b);
-  float gz = (texture2D(uNoise, (p + vec2(0.0, e1)) * 0.17 + 0.11).b - texture2D(uNoise, (p - vec2(0.0, e1)) * 0.17 + 0.11).b);
-  vec2 g = vec2(gx, gz) * (0.3 / (2.0 * e1)) * midFade;
+  float e1 = 0.45;
+  vec2 pa = p.yx * 0.061 + 0.53;
+  vec2 pb = p * 0.143 + 0.11;
+  float gx = 0.62 * (texture2D(uNoise, pa + vec2(0.0, e1 * 0.061)).g - texture2D(uNoise, pa - vec2(0.0, e1 * 0.061)).g)
+           + 0.38 * (texture2D(uNoise, pb + vec2(e1 * 0.143, 0.0)).b - texture2D(uNoise, pb - vec2(e1 * 0.143, 0.0)).b);
+  float gz = 0.62 * (texture2D(uNoise, pa + vec2(e1 * 0.061, 0.0)).g - texture2D(uNoise, pa - vec2(e1 * 0.061, 0.0)).g)
+           + 0.38 * (texture2D(uNoise, pb + vec2(0.0, e1 * 0.143)).b - texture2D(uNoise, pb - vec2(0.0, e1 * 0.143)).b);
+  vec2 g = vec2(gx, gz) * (0.55 / (2.0 * e1)) * midFade;
   if (nearFade > 0.01) {
     float e2 = 0.035;
     float fx = (texture2D(uNoise, (p + vec2(e2, 0.0)) * 1.31).a - texture2D(uNoise, (p - vec2(e2, 0.0)) * 1.31).a);
@@ -104,7 +109,7 @@ export function createTerrainMaterial(world: WorldId, u: WorldUniforms): THREE.M
     u.uColB.value.setRGB(0.17, 0.17, 0.175);
     u.uColSteep.value.setRGB(0.38, 0.37, 0.36);
     u.uSurface.value.set(0.0, 0.32, 1.0, 0.0);
-    u.uWrap.value.set(0.13, 0.7, 3.0);
+    u.uWrap.value.set(0.13, 0.7, 2.2);
   } else {
     u.uColA.value.setRGB(0.62, 0.33, 0.17);
     u.uColB.value.setRGB(0.3, 0.15, 0.09);

@@ -76,6 +76,7 @@ export class FollowCamera {
   private current = new THREE.Vector3();
   private look = new THREE.Vector3();
   private initialised = false;
+  private clearDist = 6.2;
   sensitivity = 0.0024;
 
   constructor(private ground: (x: number, z: number) => number) {}
@@ -86,18 +87,40 @@ export class FollowCamera {
     this.initialised = false;
   }
 
-  update(input: Input, dt: number, camera: THREE.PerspectiveCamera, subject: THREE.Vector3, allowInput: boolean): void {
+  update(
+    input: Input,
+    dt: number,
+    camera: THREE.PerspectiveCamera,
+    subject: THREE.Vector3,
+    allowInput: boolean,
+    colliders: Array<[number, number, number]> = [],
+  ): void {
     if (allowInput && (input.locked || input.button(0) || input.button(2))) {
       this.yaw -= input.dx * this.sensitivity;
       this.pitch = clamp(this.pitch + input.dy * this.sensitivity, -0.55, 1.25);
     }
     if (allowInput && input.wheel) this.distance = clamp(this.distance * Math.pow(1.12, input.wheel), 2.6, 16);
     const cp = Math.cos(this.pitch);
-    const want = new THREE.Vector3(
-      subject.x + Math.sin(this.yaw) * cp * this.distance,
-      subject.y + 1.75 + Math.sin(this.pitch) * this.distance,
-      subject.z + Math.cos(this.yaw) * cp * this.distance,
-    );
+    const sx = Math.sin(this.yaw) * cp;
+    const sz = Math.cos(this.yaw) * cp;
+    // pull the camera in rather than let it pass through a module or boulder
+    let dist = this.distance;
+    for (let step = 0; step < 14; step++) {
+      const cx = subject.x + sx * dist;
+      const cz = subject.z + sz * dist;
+      let blocked = false;
+      for (const c of colliders) {
+        if ((cx - c[0]) ** 2 + (cz - c[1]) ** 2 < (c[2] + 0.5) ** 2) {
+          blocked = true;
+          break;
+        }
+      }
+      if (!blocked) break;
+      dist = Math.max(1.1, dist - 0.45);
+    }
+    this.clearDist = damp(this.clearDist, dist, dist < this.clearDist ? 20 : 3, dt);
+    dist = Math.min(dist, this.clearDist);
+    const want = new THREE.Vector3(subject.x + sx * dist, subject.y + 1.75 + Math.sin(this.pitch) * dist, subject.z + sz * dist);
     // over-the-shoulder offset
     want.x += Math.cos(this.yaw) * 0.7;
     want.z -= Math.sin(this.yaw) * 0.7;

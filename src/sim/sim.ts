@@ -282,6 +282,8 @@ export function createMission(
   applyCargo(s, manifest);
   recomputeCaps(s);
   pushLog(s, 'log.landed', 'good');
+  // one short step so every gauge has a real reading on the first frame
+  stepOnce(s, 1 / 120);
   return s;
 }
 

@@ -46,10 +46,10 @@ void main() {
   col += uHalo * pow(max(cs, 0.0), 900.0);
   // faint band of the galaxy
   if (uMilky > 0.001) {
-    float band = exp(-pow(dot(d, uGalaxyAxis) * 3.2, 2.0));
-    float n = vnoise(d * 6.0) * 0.6 + vnoise(d * 17.0) * 0.4;
-    float dustLane = smoothstep(0.35, 0.7, vnoise(d * 9.0 + 4.0));
-    col += vec3(0.55, 0.62, 0.85) * band * (0.25 + n * n) * (1.0 - 0.6 * dustLane) * uMilky;
+    float band = exp(-pow(dot(d, uGalaxyAxis) * 4.2, 2.0));
+    float n = vnoise(d * 9.0) * 0.5 + vnoise(d * 23.0) * 0.3 + vnoise(d * 61.0) * 0.2;
+    float dustLane = smoothstep(0.38, 0.62, vnoise(d * 13.0 + 4.0)) * exp(-pow(dot(d, uGalaxyAxis) * 11.0, 2.0));
+    col += vec3(0.5, 0.58, 0.82) * band * (0.08 + 0.5 * n * n * n) * (1.0 - 0.8 * dustLane) * uMilky * 0.6;
   }
   float edge = (1.0 - uSunCos) * 0.25 + 1e-6;
   col += uSunColor * smoothstep(uSunCos - edge, uSunCos + edge, cs);
