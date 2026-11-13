@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { EffectComposer } from 'three/examples/jsm/postprocessing/EffectComposer.js';
 import { RenderPass } from 'three/examples/jsm/postprocessing/RenderPass.js';
 import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPass.js';
+import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
@@ -16,13 +17,15 @@ export interface QualitySettings {
   msaa: number;
   rocks: number;
   particles: number;
+  /** Screen-space ambient occlusion: soft contact shadows where surfaces meet. */
+  ao: boolean;
 }
 
 export const QUALITY: Record<QualityLevel, Omit<QualitySettings, 'level'>> = {
-  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4 },
-  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7 },
-  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1 },
-  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1.4, particles: 1.3 },
+  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false },
+  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false },
+  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true },
+  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 48, bloom: true, msaa: 4, rocks: 1.5, particles: 1.4, ao: true },
 };
 
 /** Final grade applied after tone mapping: vignette, grain, radiation speckle, dust tint. */
@@ -78,6 +81,7 @@ export class Renderer {
   readonly renderer: THREE.WebGLRenderer;
   readonly composer: EffectComposer;
   readonly bloom: UnrealBloomPass;
+  readonly ao: GTAOPass | null = null;
   readonly final: ShaderPass;
   private renderPass: RenderPass;
   quality: QualitySettings;
@@ -101,7 +105,23 @@ export class Renderer {
     this.composer = new EffectComposer(this.renderer, target);
     this.renderPass = new RenderPass(new THREE.Scene(), new THREE.PerspectiveCamera());
     this.composer.addPass(this.renderPass);
-    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.42, 0.62, 1.35);
+    if (this.quality.ao) {
+      const ao = new GTAOPass(new THREE.Scene(), new THREE.PerspectiveCamera(), 1, 1);
+      ao.updateGtaoMaterial({ radius: 0.55, distanceExponent: 1.4, thickness: 1.2, scale: 1.15, samples: 12, distanceFallOff: 1, screenSpaceRadius: false });
+      ao.updatePdMaterial({ lumaPhi: 10, depthPhi: 2, normalPhi: 3, radius: 6, radiusExponent: 1.5, rings: 2, samples: 12 });
+      ao.blendIntensity = 0.9;
+      // keep the sky, glows and holograms out of the occlusion pass: they are light, not surfaces
+      const base = ao.overrideVisibility.bind(ao);
+      ao.overrideVisibility = () => {
+        base();
+        ao.scene.traverse((o) => {
+          if (o.userData.skipAO) o.visible = false;
+        });
+      };
+      this.ao = ao;
+      this.composer.addPass(ao);
+    }
+    this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.3, 0.6, 1.75);
     this.bloom.enabled = this.quality.bloom;
     this.composer.addPass(this.bloom);
     this.composer.addPass(new OutputPass());
@@ -155,6 +175,10 @@ export class Renderer {
   render(scene: THREE.Scene, camera: THREE.Camera, exposure: number, time: number): void {
     this.renderPass.scene = scene;
     this.renderPass.camera = camera;
+    if (this.ao) {
+      this.ao.scene = scene;
+      this.ao.camera = camera;
+    }
     this.renderer.toneMappingExposure = exposure;
     this.final.uniforms.uTime.value = time;
     this.composer.render();

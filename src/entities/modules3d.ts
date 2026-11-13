@@ -91,6 +91,7 @@ export class ModuleView {
   /** Ghost preview used by the build cursor. */
   setGhost(valid: boolean): void {
     this.ghost = true;
+    this.group.userData.skipAO = true;
     const mat = valid ? this.kit.holo : this.kit.holoBad;
     for (const p of this.parts) {
       p.mesh.material = mat;
@@ -110,6 +111,7 @@ export class ModuleView {
       const real = i < shown;
       p.mesh.material = real ? p.mat : this.kit.holo;
       p.mesh.castShadow = real && p.mesh.userData.cast !== false;
+      p.mesh.userData.skipAO = !real || p.mesh.userData.glass === true;
     }
   }
 
@@ -484,6 +486,8 @@ const BUILDERS: Record<ModuleType, Builder> = {
     glass.rotation.y = Math.PI / 2;
     glass.position.y = 0.52;
     glass.userData.cast = false;
+    glass.userData.glass = true;
+    glass.userData.skipAO = true;
     v.add(glass);
     // grow lights: LEDs tuned to the red/blue that chlorophyll absorbs best, hence the magenta glow
     const ledMat = new THREE.MeshBasicMaterial({ color: new THREE.Color(0, 0, 0) });

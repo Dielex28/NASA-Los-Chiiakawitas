@@ -215,6 +215,7 @@ export class Sky {
     pixelRatio: number,
   ) {
     this.group.name = 'sky';
+    this.group.userData.skipAO = true; // the sky is light, not a surface
     this.domeMat = new THREE.ShaderMaterial({
       vertexShader: DOME_VERT,
       fragmentShader: DOME_FRAG,

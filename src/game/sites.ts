@@ -80,6 +80,7 @@ export class Sites {
       const beam = new THREE.Mesh(beamGeo, this.beamMat);
       beam.visible = false;
       beam.renderOrder = 6;
+      beam.userData.skipAO = true;
       g.add(beam);
       this.group.add(g);
       this.list.push({ poi, group: g, beam, y, scanned: false, collected: false });

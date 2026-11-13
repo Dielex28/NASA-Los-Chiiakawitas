@@ -1,7 +1,7 @@
 {
   "name": "helios-outpost",
   "private": true,
-  "version": "0.1.0",
+  "version": "0.2.0",
   "description": "Helios Outpost — simulador de misión para astronautas junior (NASA Space Apps Challenge 2026)",
   "type": "module",
   "scripts": {
@@ -10,7 +10,13 @@
     "build": "tsc --noEmit && vite build && node scripts/standalone.mjs",
     "preview": "vite preview",
     "typecheck": "tsc --noEmit",
-    "test": "vitest run"
+    "test": "vitest run",
+    "app": "npm run build && electron .",
+    "app:windowed": "npm run build && electron . --windowed",
+    "dist": "npm run build && electron-builder",
+    "dist:win": "npm run build && electron-builder --win",
+    "dist:mac": "npm run build && electron-builder --mac",
+    "dist:linux": "npm run build && electron-builder --linux"
   },
   "dependencies": {
     "@fontsource/b612": "^5.3.0",
@@ -19,9 +25,54 @@
   },
   "devDependencies": {
     "@types/three": "0.170.0",
+    "electron": "^33.4.11",
     "typescript": "~5.9.3",
     "vite": "^7.3.8",
     "vite-plugin-singlefile": "^2.3.4",
     "vitest": "^3.2.7"
+  },
+  "main": "electron/main.cjs",
+  "author": "Los Chiiakawitas",
+  "build": {
+    "appId": "org.loschiiakawitas.heliosoutpost",
+    "productName": "Helios Outpost",
+    "copyright": "Los Chiiakawitas — NASA Space Apps Challenge 2026",
+    "directories": {
+      "output": "release",
+      "buildResources": "build"
+    },
+    "files": [
+      "dist/index.html",
+      "electron/**",
+      "build/icon.png",
+      "package.json"
+    ],
+    "asar": true,
+    "win": {
+      "target": [
+        "portable",
+        "zip"
+      ],
+      "icon": "build/icon.png"
+    },
+    "portable": {
+      "artifactName": "HeliosOutpost-${version}-portable.exe"
+    },
+    "mac": {
+      "target": [
+        "dmg",
+        "zip"
+      ],
+      "category": "public.app-category.simulation-games",
+      "icon": "build/icon.png"
+    },
+    "linux": {
+      "target": [
+        "AppImage",
+        "tar.gz"
+      ],
+      "category": "Game",
+      "icon": "build/icon.png"
+    }
   }
 }

@@ -35,6 +35,8 @@ export class Atmosphere {
   readonly fill = new THREE.AmbientLight(0x6f7fa8, 0.05);
   readonly sunDir = new THREE.Vector3(0, 1, 0);
   readonly fog = new THREE.FogExp2(0x000000, 0);
+  /** What the surroundings look like to a reflective surface (feeds the image-based lighting). */
+  readonly env = { zenith: new THREE.Color(), horizon: new THREE.Color(), ground: new THREE.Color(), glow: new THREE.Color(), sunDir: this.sunDir, horizonPow: 3 };
   /** Smoothed tone-mapping exposure target. */
   exposure = 1;
   /** 0 = camera surroundings in full Sun · 1 = in terrain shadow / night. */
@@ -117,6 +119,12 @@ export class Atmosphere {
       this.fill.intensity = 0.13 + 0.09 * (1 - lit);
       this.darkness = 1 - lit;
       this.exposure = damp(this.exposure, lerp(0.92, 2.4, this.darkness), 1.2, dt);
+      // reflections: a black sky over bright, sunlit regolith
+      this.env.zenith.setRGB(0.002, 0.002, 0.003);
+      this.env.horizon.setRGB(0.004, 0.004, 0.005);
+      this.env.ground.setRGB(0.3, 0.295, 0.285).multiplyScalar(0.06 + 0.94 * lit);
+      this.env.glow.setRGB(1, 0.98, 0.94).multiplyScalar(1.6 * lit);
+      this.env.horizonPow = 3;
     } else {
       const mu = Math.sin(env.sunEl);
       const day = smoothstep(-0.1, 0.16, mu);
@@ -155,6 +163,12 @@ export class Atmosphere {
       this.fill.intensity = 0.05 + 0.03 * (1 - day);
       this.darkness = 1 - clamp01(day * (0.35 + 0.65 * Math.max(direct, 0.35)));
       this.exposure = damp(this.exposure, lerp(1.0, 2.6, 1 - day) * (1 + 0.25 * storm), 1.2, dt);
+
+      this.env.zenith.copy(p.zenith);
+      this.env.horizon.copy(p.horizon);
+      this.env.ground.setRGB(0.5, 0.27, 0.15).multiplyScalar(0.03 + day * (0.25 + 0.5 * Math.max(direct, 0.25)));
+      this.env.glow.copy(p.glow).multiplyScalar(1.4);
+      this.env.horizonPow = p.horizonPow;
 
       this.fog.color.copy(p.horizon).multiplyScalar(0.92);
       this.fog.density = 0.00016 + 0.0028 * storm * storm + 0.00012 * dusk;

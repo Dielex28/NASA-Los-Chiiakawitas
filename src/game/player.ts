@@ -16,6 +16,8 @@ export interface PlayerEnv {
   hasAir: boolean;
   limitRadius: number;
   onStep?: (strength: number) => void;
+  /** A boot came down at (x, z) heading `yaw`. */
+  onPrint?: (x: number, z: number, yaw: number) => void;
   onLand?: (strength: number) => void;
   onJet?: (on: boolean) => void;
 }
@@ -41,6 +43,7 @@ export class Player {
   private stepAcc = 0;
   private n = new THREE.Vector3();
   private jetting = false;
+  private stepSide = 1;
   outOfBounds = false;
 
   constructor(kit: Kit) {
@@ -174,6 +177,9 @@ export class Player {
       if (impact > 0.8) {
         env.onLand?.(clamp01(impact / 5));
         this.puff(env, Math.round(8 + impact * 5), 0.9 + impact * 0.35);
+        for (const side of [-1, 1]) {
+          env.onPrint?.(this.pos.x + Math.cos(this.yaw) * 0.13 * side, this.pos.z - Math.sin(this.yaw) * 0.13 * side, this.yaw);
+        }
       }
     }
 
@@ -191,6 +197,11 @@ export class Player {
         this.stepAcc = 0;
         env.onStep?.(clamp(speed / RUN, 0.3, 1));
         this.puff(env, 5, 0.7 + speed * 0.12);
+        // left, right, left… each print offset to its side of the line of travel
+        this.stepSide = -this.stepSide;
+        const ox = Math.cos(this.yaw) * 0.13 * this.stepSide;
+        const oz = -Math.sin(this.yaw) * 0.13 * this.stepSide;
+        env.onPrint?.(this.pos.x + ox, this.pos.z + oz, this.yaw);
       }
     }
     // jet wash

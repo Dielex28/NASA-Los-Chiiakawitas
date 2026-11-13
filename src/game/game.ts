@@ -5,6 +5,7 @@ import { clamp01, damp } from '../core/math';
 import { Orbi } from '../entities/astronaut';
 import { Kit } from '../entities/kit';
 import type { ViewContext } from '../entities/modules3d';
+import { EnvProbe } from '../render/envprobe';
 import { Particles } from '../render/particles';
 import { Renderer, type QualityLevel } from '../render/renderer';
 import type { OverlayKind } from '../render/shading';
@@ -25,6 +26,7 @@ import {
 } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { CargoItem, LogEntry, ModuleState, ModuleType, SimState, WorldId } from '../sim/types';
+import { Footprints } from '../world/footprints';
 import { World } from '../world/world';
 import { BaseView } from './base';
 import { BuildSystem, type ScanCircle } from './build';
@@ -90,6 +92,7 @@ interface Stage {
   sparks: Particles;
   build: BuildSystem;
   cargo: CargoLanders;
+  prints: Footprints;
 }
 
 interface SaveFile {
@@ -153,6 +156,8 @@ export class Game {
   private boundsWarned = 0;
   private alarmT = 0;
   private windAcc = 0;
+  private env: EnvProbe;
+  private envWorld: WorldId | null = null;
   private introActive = false;
   private ctx: ViewContext;
 
@@ -161,6 +166,7 @@ export class Game {
     quality: QualityLevel,
   ) {
     this.renderer = new Renderer(canvas, quality);
+    this.env = new EnvProbe(this.renderer.renderer);
     this.input = new Input(canvas);
     this.ctx = {
       dt: 0,
@@ -175,15 +181,8 @@ export class Game {
       ground: (x, z) => this.stage?.world.ground(x, z) ?? 0,
       simRate: 1,
     };
-    const resize = (): void => {
-      const w = window.innerWidth;
-      const h = window.innerHeight;
-      this.renderer.resize(w, h);
-      this.camera.aspect = w / Math.max(1, h);
-      this.camera.updateProjectionMatrix();
-    };
-    resize();
-    window.addEventListener('resize', resize);
+    this.fitViewport();
+    window.addEventListener('resize', () => this.fitViewport());
     document.addEventListener('visibilitychange', () => {
       if (document.hidden) this.save();
     });
@@ -222,6 +221,8 @@ export class Game {
       const player = new Player(kit);
       player.astronaut.group.visible = false;
       world.scene.add(player.astronaut.group);
+      const prints = new Footprints(id === 'moon' ? 0.5 : 0.34);
+      world.scene.add(prints.mesh);
       const orbi = new Orbi(kit);
       orbi.group.visible = false;
       world.scene.add(orbi.group);
@@ -236,6 +237,7 @@ export class Game {
         sparks,
         build: new BuildSystem(world, kit, () => this.scans),
         cargo: new CargoLanders(world, kit, dust, sparks),
+        prints,
       };
       this.stages[id] = st;
     }
@@ -325,6 +327,7 @@ export class Game {
     st.sites.restore(scannedSites, sim.discoveries);
     st.cargo.clear();
     st.cargo.sync(sim, false);
+    st.prints.clear();
     st.player.astronaut.group.visible = false;
     st.orbi.group.visible = false;
     sim.playerOutside = false;
@@ -580,6 +583,20 @@ export class Game {
 
   /* -------------------------------------------------------------- loop */
 
+  /**
+   * Match the drawing surface to the window. Also checked every frame, because a window that
+   * starts hidden or switches to full screen does not always announce its new size.
+   */
+  private fitViewport(): void {
+    const w = Math.max(2, window.innerWidth);
+    const h = Math.max(2, window.innerHeight);
+    const size = this.renderer.size;
+    if (size.width === w && size.height === h) return;
+    this.renderer.resize(w, h);
+    this.camera.aspect = w / h;
+    this.camera.updateProjectionMatrix();
+  }
+
   run(): void {
     const loop = (): void => {
       requestAnimationFrame(loop);
@@ -593,6 +610,7 @@ export class Game {
     const dt = Math.min(0.05, raw);
     this.time += dt;
     this.fps = damp(this.fps, 1 / Math.max(1e-3, raw), 2, dt);
+    this.fitViewport();
     if (this.adaptive && !document.hidden) this.renderer.adapt(this.fps, dt);
     const st = this.stage;
     if (!st || (this.phase !== 'playing' && this.phase !== 'menu' && this.phase !== 'ended')) {
@@ -637,6 +655,12 @@ export class Game {
     st.world.atmosphere.shadowRange = this.mode === 'eva' && playing ? 70 : Math.min(260, Math.max(70, (this.tactical?.distance ?? 80) * 1.15));
     st.world.update(dt, env, this.camera, this.focus, sim.timeH, this.time, this.phase === 'menu' ? 8 : 4.5);
     const atm = st.world.atmosphere;
+    // reflections follow the light: rebuild the environment map when the sky or the Sun has changed
+    const worldChanged = this.envWorld !== st.world.id;
+    if (this.env.update(dt, atm.env, worldChanged) || worldChanged) {
+      this.envWorld = st.world.id;
+      st.kit.setEnvironment(this.env.texture);
+    }
     const c = this.ctx;
     c.dt = dt;
     c.time = this.time;
@@ -688,7 +712,7 @@ export class Game {
     const fin = this.renderer.final.uniforms;
     fin.uRad.value = damp(fin.uRad.value, clamp01(env.speMsvH / 6) * (this.mode === 'eva' ? 1 : 0.45), 2, dt);
     fin.uVisor.value = damp(fin.uVisor.value, this.mode === 'eva' && playing ? 1 : 0, 3, dt);
-    this.renderer.bloom.strength = st.world.id === 'moon' ? 0.36 : 0.3;
+    this.renderer.bloom.strength = st.world.id === 'moon' ? 0.3 : 0.26;
 
     this.audio.update(dt, this.mode === 'eva' && playing, st.world.id === 'mars', env.storm, clamp01(st.player.vel.length() / 5) + st.player.working * 0.5, !playing);
     const emergency = playing && (env.speMsvH > 0.3 || sim.power.blackout);
@@ -832,6 +856,7 @@ export class Game {
         hasAir: world.id === 'mars',
         limitRadius: 1180,
         onStep: (s) => this.audio.step(s, world.id === 'mars'),
+        onPrint: (x, z, yaw) => st.prints.add(x, world.ground(x, z), z, yaw, world.mesh.normal(x, z, this.tmpN)),
         onLand: (s) => this.audio.land(s),
         onJet: (on) => this.audio.setJet(on),
       },
@@ -963,6 +988,7 @@ export class Game {
     }
   }
   private tmpV = new THREE.Vector3();
+  private tmpN = new THREE.Vector3();
 
   /** Project a world position to screen pixels; returns null when behind the camera. */
   project(x: number, y: number, z: number): { x: number; y: number; dist: number } | null {

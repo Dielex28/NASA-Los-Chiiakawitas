@@ -112,13 +112,13 @@ export function createTerrainMaterial(world: WorldId, u: WorldUniforms): THREE.M
     u.uColA.value.setRGB(0.3, 0.295, 0.29);
     u.uColB.value.setRGB(0.17, 0.17, 0.175);
     u.uColSteep.value.setRGB(0.38, 0.37, 0.36);
-    u.uSurface.value.set(0.0, 0.32, 1.0, 0.0);
+    u.uSurface.value.set(0.0, 0.36, 1.7, 0.0);
     u.uWrap.value.set(0.13, 0.7, 2.2);
   } else {
     u.uColA.value.setRGB(0.62, 0.33, 0.17);
     u.uColB.value.setRGB(0.3, 0.15, 0.09);
     u.uColSteep.value.setRGB(0.42, 0.2, 0.12);
-    u.uSurface.value.set(1.0, 0.38, 1.05, 0.5);
+    u.uSurface.value.set(1.0, 0.4, 1.5, 0.5);
     u.uWrap.value.set(0.05, 0.35, 1.6);
   }
   const mat = new THREE.MeshStandardMaterial({ color: 0xffffff, roughness: 0.96, metalness: 0 });

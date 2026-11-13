@@ -72,6 +72,7 @@ export class CargoLanders {
       flame.rotation.x = Math.PI;
       flame.position.y = -2.6;
       flame.visible = false;
+      flame.userData.skipAO = true;
       view.group.add(flame);
       view.group.position.set(x, groundY + (animate ? START_ALT : 0), z);
       this.world.scene.add(view.group);
