@@ -310,12 +310,16 @@ export class Hud {
     const isTut = this.game.mission!.tutorial;
     this.tabBody.append(goalsEl);
     if (isTut) this.tabBody.append(h('div.section', t('tut.title')), tutEl);
-    this.tabBody.append(h('div.section', t('hud.orbi')), tipsEl);
+    const tipsHead = h('div.section', t('hud.orbi'));
+    this.tabBody.append(tipsHead, tipsEl);
     let sig = '';
     this.tabUpdate = () => {
       const goals = this.goalsList();
       const steps = isTut ? this.tutorialSteps() : [];
-      const tips = advise(this.sim).slice(0, 4);
+      // the ORBI panel below already carries the most pressing tip: list only the others here
+      const tips = advise(this.sim)
+        .filter((x) => x.key !== this.orbiKey)
+        .slice(0, 3);
       const next = JSON.stringify([goals, steps, tips.map((x) => [x.key, x.params])]);
       if (next === sig) return;
       sig = next;
@@ -329,7 +333,7 @@ export class Hud {
         tutEl.append(h(`div.goal${cls}`, h('span.box', st.done ? icon('check', 12) : null), h('span', t(st.key))));
       }
       clear(tipsEl);
-      if (!tips.length) tipsEl.append(h('div.tipcard', icon('check', 16), h('span', t('hud.allGood'))));
+      tipsHead.style.display = tips.length ? '' : 'none';
       for (const tip of tips) tipsEl.append(this.tipCard(tip));
     };
   }
