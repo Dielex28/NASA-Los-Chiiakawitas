@@ -5,7 +5,7 @@ Reto: *Build a Junior Astronaut Mission Trainer* · Equipo **Los Chiiakawitas**
 
 > El Sol te da energía… y te pone a prueba.
 
-Helios Outpost es un juego 3D para navegador en el que diriges un puesto avanzado en el **polo sur de la Luna** o en un **cráter de Marte**. Decides qué carga llevas, dónde colocas cada módulo y cómo reparte su tiempo la tripulación, y vives las consecuencias: una noche lunar de casi tres días, una tormenta de polvo marciana, una tormenta solar que llega con horas de aviso.
+Helios Outpost es un juego 3D (programa de escritorio o navegador) en el que diriges un puesto avanzado en el **polo sur de la Luna** o en un **cráter de Marte**. Decides qué carga llevas, dónde colocas cada módulo y cómo reparte su tiempo la tripulación, y vives las consecuencias: una noche lunar de casi tres días, una tormenta de polvo marciana, una tormenta solar que llega con horas de aviso.
 
 No hay una solución correcta. Hay disyuntivas de ingeniería reales —masa, energía, soporte vital, radiación, alimentos— convertidas en algo que se puede tocar.
 
@@ -22,11 +22,24 @@ No hay una solución correcta. Hay disyuntivas de ingeniería reales —masa, en
 
 ## Jugar
 
-**Sin instalar nada:** descarga el repositorio y haz doble clic en **`helios-outpost.html`**. Es el juego completo en un solo archivo (código, estilos y tipografías incluidos); funciona sin conexión y se puede copiar a una memoria USB.
+Hay tres formas de abrirlo, de la más cómoda a la más técnica.
+
+**1 · Como programa de escritorio (recomendado).** Helios Outpost se empaqueta como una aplicación real para Windows, macOS y Linux: ventana propia a pantalla completa, sin barra de navegador, con opción *Salir* en el menú y `F11` para alternar la pantalla completa.
+
+- *Descargar ya compilado:* en GitHub, pestaña **Actions → Desktop app → última ejecución → Artifacts**. `HeliosOutpost-windows` trae un `.exe` portátil (no necesita instalación), `HeliosOutpost-macos` un `.dmg` y `HeliosOutpost-linux` un `.AppImage`. Los binarios no están firmados: Windows mostrará el aviso de SmartScreen (*Más información → Ejecutar de todas formas*) y macOS pedirá abrirlo con clic derecho → *Abrir*.
+- *Desde el código:*
+
+  ```bash
+  npm install
+  npm run app            # compila y abre el juego en su propia ventana
+  npm run dist           # genera el instalable de tu sistema en release/
+  ```
+
+**2 · Sin instalar nada:** descarga el repositorio y haz doble clic en **`helios-outpost.html`**. Es el juego completo en un solo archivo (código, estilos y tipografías incluidos); funciona sin conexión y se puede copiar a una memoria USB.
 
 > Si abres `index.html` directamente, la página te lleva sola a `helios-outpost.html`: el código fuente necesita el servidor de desarrollo y un navegador no puede ejecutarlo desde el disco.
 
-**Para desarrollar:**
+**3 · Para desarrollar:**
 
 ```bash
 npm install
@@ -41,8 +54,10 @@ Requiere un navegador con WebGL 2 (Chrome, Edge o Firefox recientes). Está pens
 | `npm run build` | Comprueba tipos, compila `dist/index.html` (un solo archivo) y actualiza `helios-outpost.html` |
 | `npm run preview` | Sirve la compilación de producción |
 | `npm test` | Pruebas unitarias de la simulación |
+| `npm run app` / `npm run app:windowed` | Programa de escritorio (pantalla completa / en ventana) |
+| `npm run dist` | Instalable de escritorio en `release/` (`dist:win`, `dist:mac`, `dist:linux` para elegir sistema) |
 
-Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` quede al día. `dist/index.html` es autónomo: sirve igual en GitHub Pages, itch.io o cualquier servidor de archivos. El flujo `.github/workflows/deploy.yml` ejecuta las pruebas, compila y publica en GitHub Pages cada vez que se actualiza `main` (activa *Settings → Pages → Source: GitHub Actions*).
+Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` quede al día. `dist/index.html` es autónomo: sirve igual en GitHub Pages, itch.io o cualquier servidor de archivos. El flujo `.github/workflows/deploy.yml` ejecuta las pruebas, compila y publica en GitHub Pages cada vez que se actualiza `main` (activa *Settings → Pages → Source: GitHub Actions*). El flujo `.github/workflows/desktop.yml` compila el programa de escritorio para los tres sistemas en cada cambio del juego, y una etiqueta `v*` adjunta los archivos a una *Release*.
 
 **Si algo falla al abrir**, la página lo dice en pantalla (por ejemplo, que el navegador no tiene WebGL 2) en lugar de quedarse en blanco.
 
@@ -105,12 +120,13 @@ src/
     missions.ts     escenarios, calendario de eventos, puntuación
     advisor.ts      consejos de ORBI y lecciones del informe final
   world/      Terreno analítico (cráteres, macizos, dunas), quadtree LOD, cielo, atmósfera, rocas
-  render/     Canal HDR (MSAA → bloom → ACES), materiales, partículas en GPU
-  entities/   Modelos procedurales: 16 módulos, astronauta animado, dron ORBI
+  render/     Canal HDR (MSAA → oclusión ambiental → bloom → ACES), reflejos del entorno, materiales, partículas en GPU
+  entities/   Modelos procedurales: 16 módulos, astronauta con traje EVA articulado, dron ORBI
   game/       Bucle, cámaras, jugador, construcción, escáner, guardado
   audio/      Síntesis completa con Web Audio (ambiente, herramientas, música generativa)
   ui/         Interfaz en español e inglés: menús, HUD, bitácora, informe
 tests/        Pruebas de la simulación (Vitest)
+electron/     Envoltorio de escritorio: ventana, pantalla completa, salir (la página no recibe acceso a Node.js)
 ```
 
 Detalles técnicos que sostienen el diseño:
@@ -119,6 +135,10 @@ Detalles técnicos que sostienen el diseño:
 - **Sombras de largo alcance** por *ray-marching* de un mapa de alturas en el sombreador, combinadas con un mapa de sombras clásico cerca de la cámara. Con el Sol a 5° sobre el horizonte, las sombras miden cientos de metros.
 - **Simulación determinista y serializable**: una semilla reproduce una misión; el estado es JSON, lo que hace triviales el guardado y las pruebas.
 - **Polvo según la física**: en la Luna cada grano sigue una parábola; en Marte el aire lo frena y lo deja flotando.
+- **Reflejos del entorno sin una sola imagen**: una sonda genera el cielo y el suelo de cada instante (Sol incluido) y los filtra con PMREM; por eso el visor dorado, el aluminio y las mantas térmicas reflejan el paisaje real y cambian con la hora.
+- **Oclusión ambiental (GTAO)** en las calidades alta y ultra: las juntas, los huecos bajo los módulos y el contacto con el suelo se oscurecen como en una foto.
+- **Traje EVA articulado**: torso rígido con pantalla de pecho, mochila de soporte vital con mangueras, anillos de rodamiento, fuelles en codos y rodillas, guantes con dedos, botas con tacos y visor dorado. Deja huellas de bota en el regolito al caminar.
+- **Rocas fracturadas**: cada piedra es una esfera deformada y cortada por planos de fractura, con vetas minerales y polvo fino posado en las caras que miran hacia arriba.
 - **Resolución dinámica**: si la tasa de fotogramas cae, el juego baja la resolución de render automáticamente.
 
 ## Pruebas
@@ -127,7 +147,7 @@ Detalles técnicos que sostienen el diseño:
 
 ## Créditos y licencias
 
-- Motor gráfico: [three.js](https://threejs.org/) (MIT). Tipografías: Oxanium e Inter (SIL Open Font License), vía Fontsource.
+- Motor gráfico: [three.js](https://threejs.org/) (MIT). Tipografías: B612 y B612 Mono, diseñadas para cabinas de avión (SIL Open Font License), vía Fontsource. Programa de escritorio: [Electron](https://www.electronjs.org/) (MIT).
 - Datos y hechos científicos: NASA y publicaciones citadas en `docs/SCIENCE.md`. Este proyecto no está afiliado a NASA ni cuenta con su respaldo.
 - **Uso de IA:** el código, los textos y el diseño se desarrollaron con la asistencia de un modelo de IA (Claude, de Anthropic) bajo la dirección del equipo. No se usaron imágenes, modelos 3D ni audio generados por IA: todos los recursos se crean por código en tiempo de ejecución.
 
@@ -139,10 +159,12 @@ Detalles técnicos que sostienen el diseño:
 
 Human consumables, measured surface radiation, gravity, solar irradiance and dose limits are real figures; simplifications are listed with sources in [`docs/SCIENCE.md`](docs/SCIENCE.md). The interface is fully bilingual (Spanish / English). Everything — terrain, models, textures, sound — is generated by code at run time.
 
-To play without installing anything, download the repository and double-click `helios-outpost.html` (the whole game in one self-contained file).
+It runs as a desktop program (`npm run app`, or the Windows / macOS / Linux builds produced by the *Desktop app* workflow under Actions → Artifacts) or straight from disk: download the repository and double-click `helios-outpost.html` (the whole game in one self-contained file).
 
 ```bash
 npm install && npm start       # develop at http://localhost:5173
 npm test                       # simulation unit tests
 npm run build                  # single-file build in dist/ and helios-outpost.html
+npm run app                    # desktop program in its own full-screen window
+npm run dist                   # packaged desktop build in release/
 ```

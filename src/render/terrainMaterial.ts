@@ -36,8 +36,11 @@ vec3 terrainAlbedo(vec3 wp, vec3 wn) {
   vec3 col = mix(uColB, uColA, smoothstep(0.3, 0.72, macro));
   float slope = 1.0 - wn.y;
   // exposed bedrock / fresh regolith on slopes, with sedimentary banding on Mars
-  float strata = 0.5 + 0.5 * sin(wp.y * 1.7 + nB.r * 5.0 + nA.g * 9.0);
-  vec3 steep = mix(uColSteep, uColSteep * 0.58, uSurface.x * smoothstep(0.35, 0.7, strata));
+  float strataPhase = wp.y * 1.7 + nB.r * 5.0 + nA.g * 9.0;
+  float strata = 0.5 + 0.5 * sin(strataPhase);
+  // bands thinner than a pixel would shimmer into moiré: let them melt into their average
+  float strataKeep = 1.0 - smoothstep(0.5, 1.8, fwidth(strataPhase));
+  vec3 steep = mix(uColSteep, uColSteep * 0.58, uSurface.x * mix(0.5, smoothstep(0.35, 0.7, strata), strataKeep));
   col = mix(col, steep, smoothstep(0.07, 0.34, slope));
   // patchy tone variation at walking scale (two unrelated scales so the tiling never lines up)
   col *= mix(1.0, 0.86 + 0.12 * nC.b + 0.16 * nE.r, midFade * 0.9);

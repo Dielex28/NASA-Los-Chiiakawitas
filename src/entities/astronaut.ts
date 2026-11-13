@@ -143,7 +143,9 @@ export class Astronaut {
 
     /* ----------------------------------------------------------- helmet */
     const hd = this.head;
-    hd.position.set(0, 0.86, 0.025);
+    // a real helmet is barely wider than the head inside it: keep it small against the shoulders
+    hd.position.set(0, 0.825, 0.03);
+    hd.scale.setScalar(0.86);
     t.add(hd);
     const neck = ring(0.185, 0.03, k.ring, 'y', 0, -0.2, 0);
     hd.add(neck);
