@@ -33,7 +33,7 @@ const FinalShader = {
   uniforms: {
     tDiffuse: { value: null as THREE.Texture | null },
     uTime: { value: 0 },
-    uVignette: { value: 0.38 },
+    uVignette: { value: 0.3 },
     uGrain: { value: 0.035 },
     /** Solar-particle-event intensity 0..1: energetic protons speckle the camera sensor. */
     uRad: { value: 0 },
@@ -59,7 +59,7 @@ const FinalShader = {
       // helmet visor: darker rim and a faint curved reflection band
       if (uVisor > 0.01) {
         float rim = smoothstep(0.42, 0.8, r2);
-        col *= 1.0 - 0.45 * rim * uVisor;
+        col *= 1.0 - 0.28 * rim * uVisor;
         col += vec3(0.5, 0.75, 1.0) * 0.03 * uVisor * smoothstep(0.02, 0.0, abs(c.y + 0.4 - c.x * c.x * 0.5));
       }
       float n = hash(gl_FragCoord.xy + fract(uTime) * 311.7) - 0.5;
