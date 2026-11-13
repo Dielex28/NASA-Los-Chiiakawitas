@@ -77,6 +77,7 @@ const EVA_RATE = 1 / 60;
 const SAVE_KEY = 'helios-outpost-save-v1';
 const TERRAIN_SEED: Record<WorldId, number> = { moon: 19690720, mars: 20210218 };
 const SUIT_SECONDS = 540;
+const INTRO_S = 6;
 
 interface Stage {
   world: World;
@@ -150,6 +151,8 @@ export class Game {
   private toolOn = false;
   private suitWarned = false;
   private boundsWarned = 0;
+  private alarmT = 0;
+  private introActive = false;
   private ctx: ViewContext;
 
   constructor(
@@ -249,6 +252,8 @@ export class Game {
     this.menuSim = this.demoBase(st, mission);
     st.base.clear();
     st.cargo.clear();
+    st.sites.restore([], []);
+    st.build.cancel();
     st.base.sync(this.menuSim);
     this.tactical!.focus(8, 0, true);
     this.tactical!.setDistance(74, true);
@@ -327,10 +332,10 @@ export class Game {
     this.tactical!.yaw = 0.75;
     this.tactical!.pitch = 0.5;
     if (fresh) {
-      // establishing shot: fall from altitude to the landing site
-      this.tactical!.setDistance(520, true);
-      this.tactical!.setDistance(92);
-      this.intro = 5;
+      // establishing shot: descend from altitude to the landing site
+      this.tactical!.setDistance(562, true);
+      this.intro = INTRO_S;
+      this.introActive = true;
     } else this.tactical!.setDistance(92, true);
     this.speed = 1;
     this.lastSpeed = 1;
@@ -670,7 +675,9 @@ export class Game {
     this.renderer.bloom.strength = st.world.id === 'moon' ? 0.36 : 0.3;
 
     this.audio.update(dt, this.mode === 'eva' && playing, st.world.id === 'mars', env.storm, clamp01(st.player.vel.length() / 5) + st.player.working * 0.5, !playing);
-    this.audio.setAlarm(playing && (env.speMsvH > 0.3 || sim.power.blackout) && this.speed > 0);
+    const emergency = playing && (env.speMsvH > 0.3 || sim.power.blackout);
+    this.alarmT = emergency ? this.alarmT + dt : 0;
+    this.audio.setAlarm(emergency && this.alarmT < 9 && (this.mode === 'eva' || this.speed > 0));
 
     this.renderer.render(st.world.scene, this.camera, atm.exposure, this.time);
 
@@ -725,6 +732,17 @@ export class Game {
       this.focus.copy(tac.target);
       this.hoverId = null;
       return;
+    }
+    if (this.intro > 0 || this.introActive) {
+      // any click or key hurries the establishing shot along
+      if (this.intro > 0.7 && (input.buttonHit(0) || input.hit('Space') || input.hit('Escape') || input.hit('Enter'))) this.intro = 0.7;
+      const k = this.intro / INTRO_S;
+      const e = k * k * (3 - 2 * k);
+      // drive the camera's goals (it eases toward them); one last pass at k = 0 lands exactly on the play view
+      tac.setDistance(92 + 470 * e);
+      tac.yaw = 0.75 + 1.1 * e;
+      tac.pitch = 0.5 + 0.42 * e;
+      this.introActive = this.intro > 0;
     }
     tac.update(input, dt, this.camera, allowInput);
     this.focus.copy(tac.target);

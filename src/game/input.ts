@@ -21,6 +21,8 @@ export class Input {
   /** Total mouse travel while a button is held (to tell clicks from drags). */
   dragDist = 0;
   enabled = true;
+  /** True once the player has touched the screen (shows on-screen controls). */
+  touch = false;
 
   constructor(private el: HTMLElement) {
     window.addEventListener('keydown', (e) => {
@@ -64,9 +66,107 @@ export class Input {
       { passive: false },
     );
     el.addEventListener('contextmenu', (e) => e.preventDefault());
+    this.bindTouch(el);
     document.addEventListener('pointerlockchange', () => {
       this.locked = document.pointerLockElement === el;
     });
+  }
+
+  /**
+   * Touch: one finger drags like the left button (a tap is a click); two fingers
+   * rotate like the right button and pinch to zoom.
+   */
+  private bindTouch(el: HTMLElement): void {
+    const pts = new Map<number, { x: number; y: number }>();
+    let pinch = 0;
+    let multi = false;
+    const mid = (): { x: number; y: number; d: number } => {
+      const a = [...pts.values()];
+      return { x: (a[0].x + a[1].x) / 2, y: (a[0].y + a[1].y) / 2, d: Math.hypot(a[0].x - a[1].x, a[0].y - a[1].y) };
+    };
+    el.addEventListener(
+      'touchstart',
+      (e) => {
+        e.preventDefault();
+        this.touch = true;
+        for (const t of Array.from(e.changedTouches)) pts.set(t.identifier, { x: t.clientX, y: t.clientY });
+        this.overView = true;
+        if (pts.size === 1) {
+          const t = e.changedTouches[0];
+          this.mouseX = t.clientX;
+          this.mouseY = t.clientY;
+          this.buttons = 1;
+          this.buttonsPressed |= 1;
+          this.dragDist = 0;
+          multi = false;
+        } else if (pts.size === 2) {
+          this.buttons = 4;
+          this.dragDist = 99;
+          multi = true;
+          pinch = mid().d;
+        }
+      },
+      { passive: false },
+    );
+    el.addEventListener(
+      'touchmove',
+      (e) => {
+        e.preventDefault();
+        if (pts.size === 1) {
+          const t = e.changedTouches[0];
+          const p = pts.get(t.identifier);
+          if (!p) return;
+          const mx = t.clientX - p.x;
+          const my = t.clientY - p.y;
+          this.dx += mx;
+          this.dy += my;
+          this.dragDist += Math.abs(mx) + Math.abs(my);
+          p.x = t.clientX;
+          p.y = t.clientY;
+          this.mouseX = t.clientX;
+          this.mouseY = t.clientY;
+        } else if (pts.size >= 2) {
+          const before = mid();
+          for (const t of Array.from(e.changedTouches)) {
+            const p = pts.get(t.identifier);
+            if (p) {
+              p.x = t.clientX;
+              p.y = t.clientY;
+            }
+          }
+          const after = mid();
+          this.dx += after.x - before.x;
+          this.dy += after.y - before.y;
+          this.wheel += (pinch - after.d) / 60;
+          pinch = after.d;
+        }
+      },
+      { passive: false },
+    );
+    const end = (e: TouchEvent): void => {
+      e.preventDefault();
+      for (const t of Array.from(e.changedTouches)) pts.delete(t.identifier);
+      if (pts.size === 0) {
+        if (!multi && this.buttons & 1) this.buttonsReleased |= 1;
+        this.buttons = 0;
+      } else if (pts.size === 1) {
+        // one finger left after a pinch: keep looking around, but do not treat the lift as a tap
+        this.buttons = 1;
+        this.dragDist = 99;
+      }
+    };
+    el.addEventListener('touchend', end, { passive: false });
+    el.addEventListener('touchcancel', end, { passive: false });
+  }
+
+  /** Virtual key (on-screen buttons). */
+  press(code: string): void {
+    if (!this.down.has(code)) this.pressed.add(code);
+    this.down.add(code);
+  }
+  release(code: string): void {
+    this.down.delete(code);
+    this.released.add(code);
   }
 
   key(code: string): boolean {

@@ -2113,8 +2113,12 @@ h3.sec {
   gap: 0.6em;
   pointer-events: auto;
 }
+.stick i {
+  transition: transform 0.05s linear;
+}
 .tbtns button {
   appearance: none;
+  touch-action: none;
   width: 4.2em;
   height: 4.2em;
   border-radius: 50%;

@@ -119,11 +119,13 @@ export class FollowCamera {
         }
       }
       if (!blocked) break;
-      dist = Math.max(1.0, dist - 0.4);
+      dist = Math.max(2.3, dist - 0.4);
     }
     this.clearDist = damp(this.clearDist, dist, dist < this.clearDist ? 20 : 3, dt);
     dist = Math.min(dist, this.clearDist);
-    const want = new THREE.Vector3(subject.x + sx * dist, subject.y + 1.75 + Math.sin(this.pitch) * dist, subject.z + sz * dist);
+    // when squeezed in close, rise a little and look over the commander's shoulder
+    const lift = (1 - dist / this.distance) * 1.5;
+    const want = new THREE.Vector3(subject.x + sx * dist, subject.y + 1.75 + lift + Math.sin(this.pitch) * dist, subject.z + sz * dist);
     // over-the-shoulder offset (eases off when the camera is squeezed in close)
     const shoulder = Math.min(1, dist / 3);
     want.x += ox * shoulder;

@@ -138,6 +138,8 @@ export class Hud {
   private jetFill = h('i');
   private geiger = h('div.geiger', h('span.muted', ''), h('span', ''));
   private lockMsg = h('div.eva-lock', t('eva.clickToLook'));
+  private evaHint = h('div.eva-hint', t('eva.hint'));
+  private touchEl: HTMLElement | null = null;
   private compass = h('div.compass');
   private compassMarks: HTMLElement[] = [];
   private markers = new Map<string, HTMLElement>();
@@ -724,8 +726,57 @@ export class Hud {
       this.geiger,
       h('div.note', t('eva.timeNote')),
     );
-    this.eva.append(this.compass, h('div.crosshair'), this.prompt, meters, this.markerLayer, this.lockMsg, h('div.eva-hint', t('eva.hint')));
+    this.eva.append(this.compass, h('div.crosshair'), this.prompt, meters, this.markerLayer, this.lockMsg, this.evaHint, this.touchLayer());
     this.el.append(this.eva);
+  }
+
+  /** On-screen stick and buttons for touch devices (shown after the first touch). */
+  private touchLayer(): HTMLElement {
+    const input = this.game.input;
+    const knob = h('i');
+    const stick = h('div.stick', knob);
+    const move = (e: TouchEvent): void => {
+      e.preventDefault();
+      const r = stick.getBoundingClientRect();
+      const t = e.targetTouches[0];
+      if (!t) return;
+      let x = (t.clientX - (r.left + r.width / 2)) / (r.width / 2);
+      let y = (t.clientY - (r.top + r.height / 2)) / (r.height / 2);
+      const len = Math.hypot(x, y);
+      if (len > 1) {
+        x /= len;
+        y /= len;
+      }
+      input.stickX = x;
+      input.stickY = -y;
+      knob.style.transform = `translate(${x * 2.4}em, ${y * 2.4}em)`;
+    };
+    const stop = (e: TouchEvent): void => {
+      e.preventDefault();
+      input.stickX = 0;
+      input.stickY = 0;
+      knob.style.transform = '';
+    };
+    stick.addEventListener('touchstart', move, { passive: false });
+    stick.addEventListener('touchmove', move, { passive: false });
+    stick.addEventListener('touchend', stop, { passive: false });
+    stick.addEventListener('touchcancel', stop, { passive: false });
+    const key = (label: string, code: string): HTMLElement => {
+      const b = h('button', label);
+      b.addEventListener('touchstart', (e) => {
+        e.preventDefault();
+        input.press(code);
+      }, { passive: false });
+      const up = (e: Event): void => {
+        e.preventDefault();
+        input.release(code);
+      };
+      b.addEventListener('touchend', up, { passive: false });
+      b.addEventListener('touchcancel', up, { passive: false });
+      return b;
+    };
+    this.touchEl = h('div.touch.hidden', stick, h('div.tbtns', key('E', 'KeyE'), key('▲', 'Space'), key('F', 'KeyF'), key('⇄', 'Tab')));
+    return this.touchEl;
   }
 
   /* --------------------------------------------------------- events */
@@ -1129,7 +1180,10 @@ export class Hud {
     setText(this.geiger.firstElementChild!, t('hud.rad'));
     setText(this.geiger.lastElementChild!, t('eva.dose', { v: fmt(rate, rate < 100 ? 0 : 0) }));
     this.geiger.classList.toggle('hot', s.env.speMsvH > 0.2);
-    this.lockMsg.classList.toggle('hidden', g.input.locked || this.evaBuild || !!this.app.overlayOpen);
+    const touch = g.input.touch;
+    this.lockMsg.classList.toggle('hidden', touch || g.input.locked || this.evaBuild || !!this.app.overlayOpen);
+    this.touchEl?.classList.toggle('hidden', !touch);
+    this.evaHint.classList.toggle('hidden', touch);
 
     // compass: heading the camera looks toward
     const yaw = g.cameraYaw();
