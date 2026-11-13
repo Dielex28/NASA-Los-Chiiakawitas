@@ -3,6 +3,9 @@ import { missionById } from './sim/missions';
 import { step } from './sim/sim';
 import { App, fatal } from './ui/app';
 
+// tells the boot script in index.html that the game code really loaded
+(window as any).__heliosStarted = true;
+
 const params = new URLSearchParams(location.search);
 const canvas = document.getElementById('view') as HTMLCanvasElement;
 const root = document.getElementById('ui') as HTMLElement;
@@ -17,12 +20,14 @@ function hasWebGL2(): boolean {
 
 async function main(): Promise<void> {
   if (!hasWebGL2()) {
-    await import('./ui/styles.css');
+    document.getElementById('boot')?.remove();
     fatal(root, 'Este simulador necesita WebGL 2. Prueba con una versión reciente de Chrome, Edge o Firefox. · This simulator needs WebGL 2. Try a recent Chrome, Edge or Firefox.');
     return;
   }
   const q = params.get('q') as QualityLevel | null;
   const app = new App(canvas, root, q && ['low', 'medium', 'high', 'ultra'].includes(q) ? q : undefined);
+  // the styled loading screen takes over from the plain boot message
+  document.getElementById('boot')?.remove();
   // handles for automated play-testing
   (window as any).app = app;
   (window as any).game = app.game;

@@ -7,10 +7,59 @@
     <meta name="description" content="Helios Outpost — simulador de misión para astronautas junior. Gestiona un puesto avanzado en la Luna o en Marte equilibrando energía, soporte vital, radiación y alimentos." />
     <title>Helios Outpost — Simulador de misión</title>
     <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='14' fill='%2305070c'/%3E%3Ccircle cx='32' cy='30' r='11' fill='%23ffb347'/%3E%3Cpath d='M6 46c10-9 42-9 52 0v12H6z' fill='%238a8f99'/%3E%3C/svg%3E" />
+    <style>
+      /* Shown before any script runs, so the page is never blank. */
+      html, body { margin: 0; height: 100%; background: #05070c; color: #e8f1fa; font-family: 'Segoe UI', system-ui, -apple-system, sans-serif; }
+      #boot { position: fixed; inset: 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 18px; padding: 24px; text-align: center; z-index: 1; }
+      #boot h1 { margin: 0; font-size: clamp(28px, 6vw, 56px); letter-spacing: 0.08em; font-weight: 800; color: #ffc67a; }
+      #boot p { margin: 0; max-width: 46em; line-height: 1.5; color: #b9c8d6; }
+      #boot .bad { color: #ff8a80; }
+      #boot code { background: rgba(255, 255, 255, 0.08); padding: 2px 7px; border-radius: 4px; color: #fff; }
+      #boot a { color: #5ad6ff; }
+      #boot pre { max-width: 90vw; overflow: auto; text-align: left; background: rgba(255, 255, 255, 0.06); padding: 10px 14px; border-radius: 6px; color: #ffd0cb; font-size: 13px; white-space: pre-wrap; }
+    </style>
   </head>
   <body>
     <canvas id="view"></canvas>
     <div id="ui"></div>
-    <script type="module" src="/src/main.ts"></script>
+    <div id="boot">
+      <h1>HELIOS OUTPOST</h1>
+      <p id="boot-msg">Cargando… · Loading…</p>
+      <noscript><p class="bad">Este simulador necesita JavaScript activado. · This simulator needs JavaScript enabled.</p></noscript>
+    </div>
+    <script>
+      // Plain (non-module) script: it runs even when the game itself cannot load, and says why.
+      (function () {
+        var boot = document.getElementById('boot');
+        var msg = document.getElementById('boot-msg');
+        var STANDALONE = 'helios-outpost.html';
+        function show(html) {
+          if (!boot || !boot.parentNode) return;
+          msg.innerHTML = html;
+        }
+        // The source page was opened without the dev server (double-click, "Live Server", a file
+        // preview…): browsers cannot run the TypeScript sources, so switch to the prebuilt copy.
+        window.__heliosFallback = function () {
+          show('Abriendo la versión lista para jugar… · Opening the ready-to-play build…<br><br>' +
+            'Si no ocurre nada, abre <a href="' + STANDALONE + '"><code>' + STANDALONE + '</code></a>.<br>' +
+            'Para desarrollar: <code>npm install</code> y <code>npm run dev</code>.');
+          setTimeout(function () { location.replace(STANDALONE); }, 350);
+        };
+        function report(text) {
+          if (window.__ready) return; // the game is running: do not cover it
+          show('<span class="bad">No se pudo iniciar el simulador. · The simulator could not start.</span>' +
+            '<pre>' + String(text).replace(/[<&]/g, function (c) { return c === '<' ? '&lt;' : '&amp;'; }).slice(0, 600) + '</pre>' +
+            'Prueba con una versión reciente de Chrome, Edge o Firefox en un ordenador, y recarga la página.<br>' +
+            'Try a recent Chrome, Edge or Firefox on a computer, then reload.');
+        }
+        window.addEventListener('error', function (e) {
+          if (e && e.message) report(e.message + (e.filename ? '\n' + e.filename + ':' + e.lineno : ''));
+        });
+        window.addEventListener('unhandledrejection', function (e) {
+          report(e && e.reason && (e.reason.stack || e.reason.message) ? e.reason.stack || e.reason.message : String(e && e.reason));
+        });
+      })();
+    </script>
+    <script type="module" src="/src/main.ts" onerror="window.__heliosFallback && window.__heliosFallback()"></script>
   </body>
 </html>
