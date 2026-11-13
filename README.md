@@ -27,7 +27,7 @@ npm install
 npm run dev        # http://localhost:5173
 ```
 
-Requiere un navegador con WebGL 2 (Chrome, Edge o Firefox recientes) y, de preferencia, teclado y ratón.
+Requiere un navegador con WebGL 2 (Chrome, Edge o Firefox recientes). Está pensado para teclado y ratón; en tabletas hay controles táctiles básicos (arrastrar, pellizcar, tocar, y joystick en pantalla durante las EVA).
 
 | Comando | Qué hace |
 | --- | --- |

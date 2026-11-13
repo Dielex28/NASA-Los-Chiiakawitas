@@ -152,6 +152,7 @@ export class Game {
   private suitWarned = false;
   private boundsWarned = 0;
   private alarmT = 0;
+  private windAcc = 0;
   private introActive = false;
   private ctx: ViewContext;
 
@@ -649,6 +650,21 @@ export class Game {
     if (playing) st.cargo.sync(sim, true);
     st.cargo.update(dt, this.time);
     if (st.cargo.touchdown) this.audio.land(1);
+
+    // Mars has weather: on foot you see dust streaming past on the wind, thick in a storm
+    if (st.world.id === 'mars' && playing && this.mode === 'eva') {
+      const storm = env.storm;
+      this.windAcc += dt * (8 + 150 * storm) * this.renderer.quality.particles;
+      const reach = 30;
+      while (this.windAcc >= 1) {
+        this.windAcc -= 1;
+        const x = this.focus.x + (Math.random() - 0.5) * 2 * reach - reach * 0.4;
+        const z = this.focus.z + (Math.random() - 0.5) * 2 * reach;
+        const y = st.world.ground(x, z) + 0.15 + Math.random() * (1.8 + 5 * storm);
+        const v = 5 + 9 * storm + Math.random() * 4;
+        st.dust.spawn(x, y, z, v, 0.1 + Math.random() * 0.4, v * 0.25, 2.2 + Math.random() * 1.6, 0.3 + 0.6 * storm, 0.8, 0.5, 0.3, 0.07 + 0.13 * storm);
+      }
+    }
 
     // dust is lit by whatever light reaches the ground here
     const light = 0.08 + 0.9 * (1 - atm.darkness);

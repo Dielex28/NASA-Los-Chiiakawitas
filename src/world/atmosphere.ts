@@ -112,8 +112,9 @@ export class Atmosphere {
       this.hemi.color.setRGB(0.02, 0.02, 0.025);
       this.hemi.groundColor.setRGB(0.5, 0.49, 0.47);
       this.hemi.intensity = 0.85 * lit + 0.03;
+      // earthshine: faint and bluish, but enough to find your way around a dark base
       this.fill.color.setRGB(0.5, 0.58, 0.8);
-      this.fill.intensity = 0.13;
+      this.fill.intensity = 0.13 + 0.09 * (1 - lit);
       this.darkness = 1 - lit;
       this.exposure = damp(this.exposure, lerp(0.92, 2.4, this.darkness), 1.2, dt);
     } else {

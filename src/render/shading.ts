@@ -219,6 +219,12 @@ float hfShadowAt(vec3 p) {
     if (res < -0.2) break;
     t += max(5.0, t * HF_GROW);
   }
+  // fixed far-field taps so a distant massif is never stepped over, whatever the quality preset
+  for (int j = 0; j < 4; j++) {
+    float tf = 1400.0 + 450.0 * float(j);
+    vec3 q = vec3(p.x, y0, p.z) + L * tf;
+    res = min(res, uHf.z * (q.y - hfHeight(q.xz)) / tf);
+  }
   return smoothstep(0.0, 1.0, res) * smoothstep(-0.06, 0.0, L.y);
 }
 `;
