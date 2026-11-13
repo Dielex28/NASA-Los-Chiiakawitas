@@ -54,33 +54,52 @@ function sheet(cls: string, title: string, sub: string | null, onClose: (() => v
 
 /* ------------------------------------------------------------- main menu */
 
+/** The Sun on the horizon: the game's mark. */
+export function sunMark(size = 44): HTMLElement {
+  const el = document.createElement('span');
+  el.className = 'ico';
+  el.innerHTML = `<svg viewBox="0 0 48 48" width="${size}" height="${size}" fill="none" aria-hidden="true"><circle cx="24" cy="20" r="9" fill="#f2a93b"/><path d="M4 34h40" stroke="#e6eaee" stroke-width="2"/><path d="M10 40h28" stroke="#5e6873" stroke-width="2"/></svg>`;
+  return el;
+}
+
+/** One numbered row of a menu. */
+function menuRow(n: number, label: string, onclick: () => void, opts: { hint?: string; primary?: boolean; quiet?: boolean } = {}): HTMLElement {
+  const cls = opts.primary ? '.primary' : opts.quiet ? '.quiet' : '';
+  return h(`button.mrow${cls}`, { onclick }, h('span.idx', String(n).padStart(2, '0')), h('span.lbl', label), opts.hint ? h('small', opts.hint) : null);
+}
+
 export function menuScreen(app: App): HTMLElement {
   const save = app.game.saveInfo();
   const hasSave = app.game.hasSave();
   const lang = getLang();
   const langBtn = (l: Lang, label: string): HTMLElement =>
-    h('button', { class: l === lang ? 'on' : '', onclick: () => app.setLanguage(l) }, label);
+    h('button', { class: l === lang ? 'on' : '', 'aria-pressed': String(l === lang), onclick: () => app.setLanguage(l) }, label);
   let saveLabel = '';
   if (save && hasSave) {
     const m = missionById(save.missionId);
     const day = Math.floor(save.timeH / WORLDS[save.world].solH) + (save.world === 'moon' ? 1 : 0);
-    saveLabel = `${t(`mission.${m.id}.name`)} · ${t(`unit.day.${save.world}`)} ${day}`;
+    saveLabel = `${t(`mission.${m.id}.name`)} · ${t(`unit.day.${save.world}`).toLowerCase()} ${day}`;
   }
+  const rows: HTMLElement[] = [];
+  let n = 1;
+  if (hasSave) rows.push(menuRow(n++, t('menu.continue'), () => app.continueGame(), { hint: saveLabel, primary: true }));
+  rows.push(menuRow(n++, t('menu.new'), () => app.openMissions(), { primary: !hasSave }));
+  rows.push(menuRow(n++, t('menu.codex'), () => app.openCodex()));
+  rows.push(menuRow(n++, t('menu.help'), () => app.openHelp()));
+  rows.push(menuRow(n++, t('menu.settings'), () => app.openSettings()));
+  if (app.canQuit) rows.push(menuRow(n++, t('menu.exit'), () => app.exitApp(), { quiet: true }));
+
+  const world = app.game.world?.id ?? 'moon';
+  const fact = (k: string): HTMLElement => h('div', h('dt', t(`menu.fact.${k}`)), h('dd', t(`menu.fact.${world}.${k}`)));
   return h(
     'div.screen.menu',
     h(
-      'div.menu-wrap',
-      h('div.logo', h('h1', 'HELIOS', h('br'), 'OUTPOST'), h('div.sub', t('app.subtitle')), h('div.tag', t('app.tagline'))),
-      h(
-        'div.menu-list',
-        hasSave ? h('button.btn.primary', { onclick: () => app.continueGame() }, icon('play'), t('menu.continue'), h('small', saveLabel)) : null,
-        h(`button.btn${hasSave ? '' : '.primary'}`, { onclick: () => app.openMissions() }, icon('rocket'), t('menu.new')),
-        h('button.btn', { onclick: () => app.openCodex() }, icon('book'), t('menu.codex')),
-        h('button.btn', { onclick: () => app.openHelp() }, icon('help'), t('menu.help')),
-        h('button.btn.ghost', { onclick: () => app.openSettings() }, icon('gear'), t('menu.settings')),
-      ),
-      h('div.menu-foot', h('div.lang', langBtn('es', 'ES'), langBtn('en', 'EN')), h('span', t('app.footer'))),
+      'div.menu-rail',
+      h('div.logo', sunMark(), h('h1', 'HELIOS', h('br'), 'OUTPOST'), h('div.sub', t('app.subtitle')), h('div.tag', t('app.tagline'))),
+      h('nav.menu-list', { 'aria-label': t('hud.menu') }, ...rows),
+      h('div.menu-foot', h('div.lang', { role: 'group', 'aria-label': t('set.lang') }, langBtn('es', 'ES'), langBtn('en', 'EN')), h('span', t('app.footer'))),
     ),
+    h('div.menu-stage', h('dl.menu-facts', fact('site'), fact('sun'), fact('light'), fact('gravity'))),
   );
 }
 
@@ -92,7 +111,7 @@ export function loadingScreen(): { el: HTMLElement; set: (fraction: number, stag
   const entry = CODEX[Math.floor(Math.random() * (CODEX.length - 1))];
   const el = h(
     'div.screen.loading',
-    h('div.logo', h('h1', 'HELIOS OUTPOST')),
+    h('div.logo', sunMark(40), h('h1', 'HELIOS OUTPOST')),
     h('div.bar', fill),
     stage,
     h('div.fact', t(`codex.${entry.id}.g`)),
@@ -215,9 +234,9 @@ export function planningScreen(app: App, missionId: string): HTMLElement {
       h(
         'div.plan-box',
         h('h4', t('plan.mass')),
-        h('div.massline', h('span.big', { style: { color: over ? 'var(--red)' : '' } }, `${fmt(mass)} kg`), h('span.muted', `/ ${fmt(m.budgetKg)} kg`)),
+        h('div.massline', h('span.big', { style: { color: over ? 'var(--bad-text)' : '' } }, `${fmt(mass)} kg`), h('span.muted', `/ ${fmt(m.budgetKg)} kg`)),
         h(`div.bar.thick.${over ? 'bad' : 'sun'}`, { style: { marginTop: '0.5em' } }, h('i', { style: { width: `${Math.min(100, (mass / m.budgetKg) * 100)}%` } })),
-        h('div.note', { style: { marginTop: '0.45em', color: over ? 'var(--red)' : '' } }, over ? t('plan.over', { kg: fmt(mass - m.budgetKg) }) : t('plan.free', { kg: fmt(m.budgetKg - mass) })),
+        h('div.note', { style: { marginTop: '0.45em', color: over ? 'var(--bad-text)' : '' } }, over ? t('plan.over', { kg: fmt(mass - m.budgetKg) }) : t('plan.free', { kg: fmt(m.budgetKg - mass) })),
         h('div.note', { style: { marginTop: '0.3em' } }, t('plan.included')),
       ),
       h(
@@ -227,7 +246,7 @@ export function planningScreen(app: App, missionId: string): HTMLElement {
         barRow(t('plan.water'), a.water),
         barRow(t('plan.food'), a.food),
         h('div.kv', h('span.muted', t('plan.power')), h('span'), h('span.v', `${fmt(avgGen, 1)} kW`)),
-        h('div.kv', h('span.muted', t('plan.demand')), h('span'), h('span.v', { style: { color: a.demandKw > avgGen * 1.1 ? 'var(--amber)' : '' } }, `${fmt(a.demandKw, 1)} kW`)),
+        h('div.kv', h('span.muted', t('plan.demand')), h('span'), h('span.v', { style: { color: a.demandKw > avgGen * 1.1 ? 'var(--accent)' : '' } }, `${fmt(a.demandKw, 1)} kW`)),
       ),
       h('div.plan-box', h('h4', t('hud.orbi')), h('ul.tips', ...tips.slice(0, 4).map(([k, ok]) => h(`li${ok ? '.ok' : ''}`, icon(ok ? 'check' : 'warn', 16), h('span', t(k)))))),
     );
@@ -313,6 +332,25 @@ export function settingsScreen(app: App, onClose: () => void): HTMLElement {
   const lang = getLang();
   const body = h(
     'div.sheet-body',
+    h(
+      'div.setrow',
+      h('span', t('set.fullscreen')),
+      h(
+        'div.row',
+        h(
+          'button.btn.small',
+          {
+            class: app.isFullscreen() ? 'on' : '',
+            onclick: () => {
+              app.toggleFullscreen();
+              setTimeout(() => app.rerender(), 250);
+            },
+          },
+          app.isFullscreen() ? t('set.fullscreen.on') : t('set.fullscreen.off'),
+        ),
+        h('span.note', 'F11'),
+      ),
+    ),
     h('div.setrow', h('span', t('set.quality')), qual),
     s.quality !== app.activeQuality
       ? h('div.setrow', h('span'), h('div.row', h('span.note', t('set.qualityNote')), h('button.btn.small', { onclick: () => location.reload() }, t('set.reload'))))
@@ -354,13 +392,12 @@ export function pauseScreen(app: App): HTMLElement {
   const body = h(
     'div.sheet-body',
     h(
-      'div.menu-list',
-      { style: { width: '100%' } },
-      h('button.btn.primary', { onclick: () => app.closeOverlay() }, icon('play'), t('menu.resume')),
-      h('button.btn', { onclick: () => app.openCodex() }, icon('book'), t('menu.codex')),
-      h('button.btn', { onclick: () => app.openHelp() }, icon('help'), t('menu.help')),
-      h('button.btn', { onclick: () => app.openSettings() }, icon('gear'), t('menu.settings')),
-      h('button.btn.danger', { onclick: () => app.quit() }, icon('home'), t('menu.quit')),
+      'nav.menu-list',
+      menuRow(1, t('menu.resume'), () => app.closeOverlay(), { primary: true }),
+      menuRow(2, t('menu.codex'), () => app.openCodex()),
+      menuRow(3, t('menu.help'), () => app.openHelp()),
+      menuRow(4, t('menu.settings'), () => app.openSettings()),
+      menuRow(5, t('menu.quit'), () => app.quit(), { quiet: true }),
     ),
   );
   return sheet('.narrow', t('menu.paused'), null, () => app.closeOverlay(), body);
@@ -488,11 +525,11 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
       ),
       h(
         'div',
-        pillar('crew', 'var(--green)'),
-        pillar('radiation', 'var(--violet)'),
-        pillar('science', 'var(--cyan)'),
-        pillar('power', 'var(--amber)'),
-        pillar('sustain', '#7fd65a'),
+        pillar('crew', 'var(--ok)'),
+        pillar('radiation', 'var(--rad)'),
+        pillar('science', 'var(--info)'),
+        pillar('power', 'var(--accent)'),
+        pillar('sustain', '#a8d86f'),
         h(
           'div.statgrid',
           stat(t('end.stat.mass'), `${fmt(st.massLanded / 1000, 1)} t`),
@@ -512,41 +549,41 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
       chart(
         t('end.chart.power'),
         [
-          { data: tele.gen, color: '#ffb347' },
-          { data: tele.demand, color: '#ff5a4d' },
-          { data: tele.stored, color: '#5ad6ff' },
+          { data: tele.gen, color: '#f2a93b' },
+          { data: tele.demand, color: '#ff6b5e' },
+          { data: tele.stored, color: '#5bc8e8' },
         ],
         [
-          [t('hud.gen'), '#ffb347'],
-          [t('hud.use'), '#ff5a4d'],
-          [t('insp.charge'), '#5ad6ff'],
+          [t('hud.gen'), '#f2a93b'],
+          [t('hud.use'), '#ff6b5e'],
+          [t('insp.charge'), '#5bc8e8'],
         ],
       ),
       chart(
         t('end.chart.life'),
         [
-          { data: tele.o2, color: '#5be29a' },
-          { data: tele.water, color: '#5ad6ff' },
-          { data: tele.food, color: '#ffb347' },
+          { data: tele.o2, color: '#7bd88f' },
+          { data: tele.water, color: '#5bc8e8' },
+          { data: tele.food, color: '#f2a93b' },
         ],
         [
-          [t('hud.o2'), '#5be29a'],
-          [t('hud.water'), '#5ad6ff'],
-          [t('hud.food'), '#ffb347'],
+          [t('hud.o2'), '#7bd88f'],
+          [t('hud.water'), '#5bc8e8'],
+          [t('hud.food'), '#f2a93b'],
         ],
       ),
       chart(
         t('end.chart.crew'),
         [
-          { data: tele.health, color: '#5be29a', scale: 100 },
-          { data: tele.morale, color: '#b58cff', scale: 100 },
+          { data: tele.health, color: '#7bd88f', scale: 100 },
+          { data: tele.morale, color: '#c9a6ff', scale: 100 },
         ],
         [
-          [t('hud.health'), '#5be29a'],
-          [t('hud.morale'), '#b58cff'],
+          [t('hud.health'), '#7bd88f'],
+          [t('hud.morale'), '#c9a6ff'],
         ],
       ),
-      chart(t('end.chart.dose'), [{ data: tele.dose, color: '#b58cff' }], [[t('hud.rad'), '#b58cff']]),
+      chart(t('end.chart.dose'), [{ data: tele.dose, color: '#c9a6ff' }], [[t('hud.rad'), '#c9a6ff']]),
     ),
   );
   const sub = ok ? t('end.success.sub') : t(`end.abort.${sim.outcome?.reason ?? 'health'}`);

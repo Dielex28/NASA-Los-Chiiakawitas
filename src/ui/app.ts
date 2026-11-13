@@ -64,6 +64,12 @@ export class App {
     };
     window.addEventListener('pointerdown', startAudio, { once: true });
     window.addEventListener('keydown', startAudio, { once: true });
+    window.addEventListener('keydown', (e) => {
+      if (e.code === 'F11') {
+        e.preventDefault();
+        this.toggleFullscreen();
+      }
+    });
     root.addEventListener('click', (e) => {
       const el = (e.target as HTMLElement).closest('button, .mcard, .tipcard.click');
       if (el && !(el as HTMLButtonElement).disabled) this.game.audio.ui('click');
@@ -200,6 +206,32 @@ export class App {
     const g = this.game;
     g.uiBlocking = false;
     if (g.phase === 'playing') g.setSpeed(this.resumeSpeed || 1);
+  }
+
+  /* --------------------------------------------------------- window */
+
+  /** Running inside the desktop app (Electron), which can close its own window. */
+  get canQuit(): boolean {
+    return !!(window as any).heliosApp?.quit;
+  }
+
+  exitApp(): void {
+    this.game.save();
+    (window as any).heliosApp?.quit();
+  }
+
+  isFullscreen(): boolean {
+    return !!document.fullscreenElement || !!(window as any).heliosApp?.isFullscreen?.();
+  }
+
+  toggleFullscreen(): void {
+    const desk = (window as any).heliosApp;
+    if (desk?.toggleFullscreen) {
+      desk.toggleFullscreen();
+      return;
+    }
+    if (document.fullscreenElement) void document.exitFullscreen();
+    else void document.documentElement.requestFullscreen?.().catch(() => undefined);
   }
 
   /* --------------------------------------------------------- actions */

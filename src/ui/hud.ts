@@ -41,7 +41,7 @@ function vital(iconName: string, label: string, barClass = ''): Vital {
   const bar = h(`div.bar${barClass}`, fill);
   const subL = h('span', '');
   const subR = h('span', '');
-  const el = h('div.vital.panel', h('div.vh', icon(iconName, 16), h('span.l', label), value), bar, h('div.vs', subL, subR));
+  const el = h('div.vital', h('div.vh', icon(iconName, 16), h('span.l', label), value), bar, h('div.vs', subL, subR));
   return { el, value, fill, bar, subL, subR };
 }
 
@@ -107,6 +107,7 @@ export class Hud {
   private moraleFill = h('i');
   // right
   private right!: HTMLElement;
+  private inspectorEl!: HTMLElement;
   private tabBody = h('div.tab-body');
   private tabBtns = new Map<string, HTMLElement>();
   private tab = 'goals';
@@ -220,11 +221,11 @@ export class Hud {
     this.vCrew.bar.remove();
     this.vCrew.el.querySelector('.vs')?.remove();
     this.vCrew.el.append(
-      h('div.twobars', h('span', t('hud.health')), h('div.bar.ok', this.healthFill), h('span'), h('span', t('hud.morale')), h('div.bar.violet', this.moraleFill), h('span')),
+      h('div.twobars', h('span', t('hud.health')), h('div.bar.ok', this.healthFill), h('span', t('hud.morale')), h('div.bar', this.moraleFill)),
     );
     this.vCrew.el.style.cursor = 'pointer';
     this.vCrew.el.addEventListener('click', () => this.showTab('crew'));
-    const left = h('div.hud-left', this.vPower.el, this.vO2.el, this.vWater.el, this.vFood.el, this.vAir.el, this.vRad.el, this.vCrew.el);
+    const left = h('section.hud-left.panel', { 'aria-label': t('hud.status') }, this.vPower.el, this.vO2.el, this.vWater.el, this.vFood.el, this.vAir.el, this.vRad.el, this.vCrew.el);
     if (!this.game.mission!.endless) left.append(this.vSci.el);
     this.el.append(left);
   }
@@ -245,7 +246,8 @@ export class Hud {
       this.tabBtns.set(id, b);
       tabs.append(b);
     }
-    this.right = h('div.hud-right.panel', tabs, this.tabBody);
+    this.inspectorEl = h('section.inspector.panel', tabs, this.tabBody);
+    this.right = h('div.hud-right', this.inspectorEl, this.orbi);
     this.el.append(this.right);
   }
 
@@ -707,7 +709,7 @@ export class Hud {
       this.mapBtns.set(kind, b);
       seg.append(b);
     }
-    this.corner = h('div.hud-corner', this.orbi, h('div.mapsw.panel', icon('map', 16), seg));
+    this.corner = h('div.hud-corner', h('div.mapsw.panel', icon('map', 16), seg));
     this.el.append(this.corner);
   }
 
@@ -834,7 +836,7 @@ export class Hud {
   private syncMode(): void {
     const evaMode = this.game.mode === 'eva';
     this.eva.classList.toggle('hidden', !evaMode);
-    this.right.classList.toggle('hidden', evaMode);
+    this.inspectorEl.classList.toggle('hidden', evaMode);
     this.corner.classList.toggle('hidden', evaMode);
     setText(this.evaBtn.lastElementChild!, evaMode ? t('hud.evaBack') : t('hud.eva'));
     this.evaBtn.classList.toggle('on', evaMode);
@@ -855,7 +857,7 @@ export class Hud {
       h('h5', t('scan.result')),
       h('div', ice > 0.04 ? t('scan.ice', { pct: fmt(ice * 100) }) : t('scan.noIce')),
       h('div', t('scan.illum', { pct: fmt(illum * 100) })),
-      found > 0 ? h('div', { style: { color: 'var(--cyan)' } }, t('scan.found', { n: found })) : null,
+      found > 0 ? h('div', { style: { color: 'var(--info)' } }, t('scan.found', { n: found })) : null,
     );
     this.eva.append(pop);
     this.scanpop = pop;
@@ -1127,9 +1129,10 @@ export class Hud {
     const data = sunForecast(s, span, n);
     for (let i = 0; i < n; i++) {
       const v = data[i];
-      const r = Math.round(18 + 237 * v);
-      const gg = Math.round(26 + 154 * v);
-      const b = Math.round(58 + 20 * v);
+      // night blue → caution amber, the same pair the rest of the interface uses
+      const r = Math.round(27 + 215 * v);
+      const gg = Math.round(42 + 127 * v);
+      const b = Math.round(74 - 15 * v);
       g.fillStyle = `rgb(${r},${gg},${b})`;
       g.fillRect((i / n) * w, 0, w / n + 1, hh);
     }
@@ -1153,7 +1156,7 @@ export class Hud {
         g.fillRect(x0, hh * 0.55, Math.max(2, x1 - x0), hh * 0.45);
       }
     }
-    for (const r of s.resupply) if (!r.delivered) mark(r.arrivalH, '#5ad6ff');
+    for (const r of s.resupply) if (!r.delivered) mark(r.arrivalH, '#5bc8e8', 3);
     if (!s.cfg.endless) mark(s.cfg.durationH, '#ffffff', 3);
     // day ticks
     g.fillStyle = 'rgba(0,0,0,0.45)';
