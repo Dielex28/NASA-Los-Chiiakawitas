@@ -139,7 +139,14 @@ export function makeHeightTexture(hf: Heightfield, u: WorldUniforms): THREE.Data
 export type OverlayKind = 'none' | 'illum' | 'ice';
 
 /** Colour-ramped survey map draped over the terrain (illumination or ice potential). */
-export function makeOverlayTexture(hf: Heightfield, kind: OverlayKind, world: WorldId, prev?: THREE.DataTexture | null): THREE.DataTexture {
+export function makeOverlayTexture(
+  hf: Heightfield,
+  kind: OverlayKind,
+  world: WorldId,
+  prev?: THREE.DataTexture | null,
+  /** Areas the player has surveyed; ice is only drawn inside them. */
+  scans?: Array<{ x: number; z: number; r: number }>,
+): THREE.DataTexture {
   const data = prev ? (prev.image.data as Uint8Array) : new Uint8Array(SURVEY_SIZE * SURVEY_SIZE * 4);
   for (let i = 0; i < SURVEY_SIZE * SURVEY_SIZE; i++) {
     let r = 0;
@@ -156,11 +163,26 @@ export function makeOverlayTexture(hf: Heightfield, kind: OverlayKind, world: Wo
       b = 150 * (1 - t) + 40 * Math.max(0, t - 0.75) * 4;
       a = 200;
     } else if (kind === 'ice') {
-      const f = hf.ice[i];
-      r = 20 + 60 * f;
-      g = 90 + 150 * f;
-      b = 140 + 115 * f;
-      a = f > 0.03 ? 70 + 170 * f : 0;
+      // ground truth exists everywhere, but the map only shows what a scan has revealed
+      const cell = SURVEY_EXTENT / SURVEY_SIZE;
+      const cx = ((i % SURVEY_SIZE) + 0.5) * cell - SURVEY_EXTENT / 2;
+      const cz = (Math.floor(i / SURVEY_SIZE) + 0.5) * cell - SURVEY_EXTENT / 2;
+      let known = false;
+      if (scans) {
+        for (const s of scans) {
+          if ((s.x - cx) ** 2 + (s.z - cz) ** 2 < (s.r + cell * 0.5) ** 2) {
+            known = true;
+            break;
+          }
+        }
+      }
+      if (known) {
+        const f = hf.ice[i];
+        r = 20 + 60 * f;
+        g = 70 + 170 * f;
+        b = 120 + 135 * f;
+        a = 55 + 185 * f;
+      }
     }
     data[i * 4] = r;
     data[i * 4 + 1] = g;

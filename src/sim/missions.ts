@@ -38,7 +38,7 @@ export const MISSIONS: MissionDef[] = [
     endless: false,
     seed: 20261114,
     recommended: { solar: 2, battery: 1, antenna: 1, lab: 1, rassor: 1, pylon: 2, food: 1, water: 2, o2: 1 },
-    spe: [{ sol: [4.6, 5.4], cls: 1 }],
+    spe: [{ sol: [5.9, 6.5], cls: 1 }],
     storms: [],
     resupply: [],
   },

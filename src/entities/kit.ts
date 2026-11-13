@@ -208,7 +208,7 @@ export class Kit {
     this.blue = std({ color: 0x2f7fd6, roughness: 0.5, metalness: 0.15 });
     this.green = std({ color: 0x3fae6a, roughness: 0.5, metalness: 0.15 });
     this.regolith = std({
-      color: world === 'moon' ? 0x55534f : 0x8a4a28,
+      color: world === 'moon' ? 0x8f8c87 : 0xa8603a,
       roughness: 1,
       metalness: 0,
     });

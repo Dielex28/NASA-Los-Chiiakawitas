@@ -1133,7 +1133,8 @@ export class Hud {
 
     // compass: heading the camera looks toward
     const yaw = g.cameraYaw();
-    const heading = (((Math.PI - yaw) * 180) / Math.PI + 720) % 360; // 0 = north (−z)
+    // the camera looks along −(sin yaw, cos yaw); bearing is clockwise from north (−z)
+    const heading = (((-yaw * 180) / Math.PI) % 360 + 360) % 360;
     const names = ['N', '30', '60', 'E', '120', '150', 'S', '210', '240', 'W', '300', '330'];
     for (let i = 0; i < 12; i++) {
       let d = i * 30 - heading;

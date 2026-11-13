@@ -1,5 +1,6 @@
 import type { QualityLevel } from './render/renderer';
 import { missionById } from './sim/missions';
+import { step } from './sim/sim';
 import { App, fatal } from './ui/app';
 
 const params = new URLSearchParams(location.search);
@@ -25,6 +26,8 @@ async function main(): Promise<void> {
   // handles for automated play-testing
   (window as any).app = app;
   (window as any).game = app.game;
+  (window as any).simStep = step;
+  if (params.get('fixedres')) app.game.adaptive = false;
   await app.start();
   const m = params.get('m');
   if (m) await app.game.startMission(m, missionById(m).recommended);

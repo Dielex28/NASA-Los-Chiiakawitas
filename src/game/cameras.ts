@@ -104,26 +104,30 @@ export class FollowCamera {
     const sx = Math.sin(this.yaw) * cp;
     const sz = Math.cos(this.yaw) * cp;
     // pull the camera in rather than let it pass through a module or boulder
+    const ox = Math.cos(this.yaw) * 0.7;
+    const oz = -Math.sin(this.yaw) * 0.7;
     let dist = this.distance;
-    for (let step = 0; step < 14; step++) {
-      const cx = subject.x + sx * dist;
-      const cz = subject.z + sz * dist;
+    for (let step = 0; step < 16; step++) {
+      const k = Math.min(1, dist / 3);
+      const cx = subject.x + sx * dist + ox * k;
+      const cz = subject.z + sz * dist + oz * k;
       let blocked = false;
       for (const c of colliders) {
-        if ((cx - c[0]) ** 2 + (cz - c[1]) ** 2 < (c[2] + 0.5) ** 2) {
+        if ((cx - c[0]) ** 2 + (cz - c[1]) ** 2 < (c[2] + 1.0) ** 2) {
           blocked = true;
           break;
         }
       }
       if (!blocked) break;
-      dist = Math.max(1.1, dist - 0.45);
+      dist = Math.max(1.0, dist - 0.4);
     }
     this.clearDist = damp(this.clearDist, dist, dist < this.clearDist ? 20 : 3, dt);
     dist = Math.min(dist, this.clearDist);
     const want = new THREE.Vector3(subject.x + sx * dist, subject.y + 1.75 + Math.sin(this.pitch) * dist, subject.z + sz * dist);
-    // over-the-shoulder offset
-    want.x += Math.cos(this.yaw) * 0.7;
-    want.z -= Math.sin(this.yaw) * 0.7;
+    // over-the-shoulder offset (eases off when the camera is squeezed in close)
+    const shoulder = Math.min(1, dist / 3);
+    want.x += ox * shoulder;
+    want.z += oz * shoulder;
     const minY = this.ground(want.x, want.z) + 0.45;
     if (want.y < minY) want.y = minY;
     if (!this.initialised) {

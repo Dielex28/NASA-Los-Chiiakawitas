@@ -40,7 +40,7 @@ vec3 terrainAlbedo(vec3 wp, vec3 wn) {
   col = mix(col, steep, smoothstep(0.07, 0.34, slope));
   // patchy tone variation at walking scale (two unrelated scales so the tiling never lines up)
   vec4 nE = texture2D(uNoise, p.yx * 0.061 + 0.53);
-  col *= mix(1.0, 0.82 + 0.2 * nC.b + 0.16 * nE.r, midFade * 0.9);
+  col *= mix(1.0, 0.86 + 0.12 * nC.b + 0.16 * nE.r, midFade * 0.9);
   col *= mix(1.0, 0.88 + 0.24 * nD.a, nearFade);
   // pebbles and clods
   float speck = smoothstep(0.7, 0.82, nD.r) * smoothstep(0.45, 0.6, nC.r) * nearFade;
@@ -57,7 +57,10 @@ vec3 terrainAlbedo(vec3 wp, vec3 wn) {
            + 0.38 * (texture2D(uNoise, pb + vec2(e1 * 0.143, 0.0)).b - texture2D(uNoise, pb - vec2(e1 * 0.143, 0.0)).b);
   float gz = 0.62 * (texture2D(uNoise, pa + vec2(e1 * 0.061, 0.0)).g - texture2D(uNoise, pa - vec2(e1 * 0.061, 0.0)).g)
            + 0.38 * (texture2D(uNoise, pb + vec2(0.0, e1 * 0.143)).b - texture2D(uNoise, pb - vec2(0.0, e1 * 0.143)).b);
-  vec2 g = vec2(gx, gz) * (0.55 / (2.0 * e1)) * midFade;
+  // only at walking distance: from the command view the real relief and the rocks carry the detail,
+  // and a repeating bump would read as a quilt
+  float bumpFade = 1.0 - smoothstep(30.0, 95.0, dist);
+  vec2 g = vec2(gx, gz) * (0.55 / (2.0 * e1)) * bumpFade;
   if (nearFade > 0.01) {
     float e2 = 0.035;
     float fx = (texture2D(uNoise, (p + vec2(e2, 0.0)) * 1.31).a - texture2D(uNoise, (p - vec2(e2, 0.0)) * 1.31).a);

@@ -29,6 +29,7 @@ import { World } from '../world/world';
 import { BaseView } from './base';
 import { BuildSystem, type ScanCircle } from './build';
 import { CameraBlend, FollowCamera, TacticalCamera } from './cameras';
+import { CargoLanders } from './cargo';
 import { AIRLOCK } from './colliders';
 import { Input } from './input';
 import { Player } from './player';
@@ -87,6 +88,7 @@ interface Stage {
   dust: Particles;
   sparks: Particles;
   build: BuildSystem;
+  cargo: CargoLanders;
 }
 
 interface SaveFile {
@@ -124,6 +126,8 @@ export class Game {
   /** UI sets this while a modal screen is open so the world ignores input. */
   uiBlocking = false;
   fps = 60;
+  /** Lower the render resolution automatically when the frame rate drops. */
+  adaptive = true;
   private stage: Stage | null = null;
   private stages: Partial<Record<WorldId, Stage>> = {};
   private tactical: TacticalCamera | null = null;
@@ -227,6 +231,7 @@ export class Game {
         dust,
         sparks,
         build: new BuildSystem(world, kit, () => this.scans),
+        cargo: new CargoLanders(world, kit, dust, sparks),
       };
       this.stages[id] = st;
     }
@@ -243,6 +248,7 @@ export class Game {
     const st = await this.ensureStage(world, mission.startLocalH);
     this.menuSim = this.demoBase(st, mission);
     st.base.clear();
+    st.cargo.clear();
     st.base.sync(this.menuSim);
     this.tactical!.focus(8, 0, true);
     this.tactical!.setDistance(74, true);
@@ -311,6 +317,8 @@ export class Game {
     st.base.clear();
     st.base.sync(sim);
     st.sites.restore(scannedSites, sim.discoveries);
+    st.cargo.clear();
+    st.cargo.sync(sim, false);
     st.player.astronaut.group.visible = false;
     st.orbi.group.visible = false;
     sim.playerOutside = false;
@@ -467,7 +475,7 @@ export class Game {
     this.overlay = kind;
     const w = this.stage?.world;
     if (!w) return;
-    w.setOverlay(kind);
+    w.setOverlay(kind, this.scans);
     w.uniforms.uOverlayMix.value.y = kind === 'none' ? 0 : 1;
   }
 
@@ -509,7 +517,7 @@ export class Game {
     st.player.astronaut.group.visible = true;
     st.orbi.group.visible = true;
     st.orbi.group.position.set(px + 1, st.player.pos.y + 2, pz + 1);
-    this.follow!.reset(yaw + Math.PI - 0.75);
+    this.follow!.reset(yaw + 2.2);
     this.blend.start(this.camera, 1.6);
     this.mode = 'eva';
     this.suit = 1;
@@ -579,6 +587,7 @@ export class Game {
     const dt = Math.min(0.05, raw);
     this.time += dt;
     this.fps = damp(this.fps, 1 / Math.max(1e-3, raw), 2, dt);
+    if (this.adaptive && !document.hidden) this.renderer.adapt(this.fps, dt);
     const st = this.stage;
     if (!st || (this.phase !== 'playing' && this.phase !== 'menu' && this.phase !== 'ended')) {
       this.input.endFrame();
@@ -632,6 +641,9 @@ export class Game {
     c.simRate = rate * 3600;
     st.base.update(sim, c, this.focus);
     st.sites.update(this.time);
+    if (playing) st.cargo.sync(sim, true);
+    st.cargo.update(dt, this.time);
+    if (st.cargo.touchdown) this.audio.land(1);
 
     // dust is lit by whatever light reaches the ground here
     const light = 0.08 + 0.9 * (1 - atm.darkness);

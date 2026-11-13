@@ -77,6 +77,11 @@ export class Astronaut {
     this.head.add(this.lamp, this.lampTarget);
     this.lamp.target = this.lampTarget;
     this.lamp.castShadow = false;
+    // suit running lights: a soft glow so the commander never disappears into a shadow
+    const glow = new THREE.PointLight(0xdfe8ff, 7, 9, 1.5);
+    glow.position.set(0, 0.5, 0.55);
+    glow.castShadow = false;
+    this.torso.add(glow);
 
     // arms
     const arm = (root: THREE.Group, fore: THREE.Group, s: number): void => {

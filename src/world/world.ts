@@ -101,10 +101,9 @@ export class World {
     return this.mesh.ground(x, z);
   }
 
-  setOverlay(kind: OverlayKind): void {
-    if (kind === this.overlay) return;
+  setOverlay(kind: OverlayKind, scans?: Array<{ x: number; z: number; r: number }>): void {
     this.overlay = kind;
-    if (kind !== 'none') makeOverlayTexture(this.hf, kind, this.id, this.overlayTex);
+    if (kind !== 'none') makeOverlayTexture(this.hf, kind, this.id, this.overlayTex, scans);
   }
 
   update(dt: number, env: EnvState, camera: THREE.Camera, focus: THREE.Vector3, timeH: number, realTime: number, budgetMs = 5): void {

@@ -111,9 +111,9 @@ export class Atmosphere {
       // light bounced off sunlit regolith fills the shadows a little; in a dark crater only earthshine remains
       this.hemi.color.setRGB(0.02, 0.02, 0.025);
       this.hemi.groundColor.setRGB(0.5, 0.49, 0.47);
-      this.hemi.intensity = 0.42 * lit + 0.02;
-      this.fill.color.setRGB(0.42, 0.52, 0.8);
-      this.fill.intensity = 0.07;
+      this.hemi.intensity = 0.85 * lit + 0.03;
+      this.fill.color.setRGB(0.5, 0.58, 0.8);
+      this.fill.intensity = 0.13;
       this.darkness = 1 - lit;
       this.exposure = damp(this.exposure, lerp(0.92, 2.4, this.darkness), 1.2, dt);
     } else {

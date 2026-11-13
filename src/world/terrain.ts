@@ -147,7 +147,7 @@ export class MoonTerrain implements Terrain {
   readonly world = 'moon' as const;
   readonly pois: Poi[];
   /** Centre and radius of the permanently shadowed crater. */
-  readonly umbra = { x: 150, z: 760, r: 430, depth: 150, rim: 30 };
+  readonly umbra = { x: 150, z: 760, r: 430, depth: 150, rim: 14 };
   private n1: Noise2D;
   private n2: Noise2D;
   private seed: number;
@@ -170,11 +170,11 @@ export class MoonTerrain implements Terrain {
       return [x, z, h, along, across, Math.atan2(-Math.cos(az), Math.sin(az)) + Math.PI / 2];
     };
     this.massifs = [
-      m(3.4, 2300, 440, 570, 330), // long night: ~2.9 days
-      m(1.2, 1500, 265, 175, 210), // short eclipse: ~20 h
-      m(5.3, 1900, 335, 205, 240), // short eclipse: ~24 h
-      m(0.25, 2700, 300, 500, 380), // scenery to the north-east (too low to hide the Sun)
-      m(4.45, 2900, 520, 600, 420),
+      m(3.4, 2300, 440, 430, 330), // the long night: ~2.7 days
+      m(1.2, 1500, 380, 150, 210), // a short eclipse early in the month: ~1 day
+      m(5.3, 1900, 335, 205, 240), // another short one late in the month
+      m(0.25, 2700, 210, 500, 380), // scenery only: these stay below the Sun's path
+      m(4.45, 2900, 170, 600, 420),
     ];
     this.pois = makePois(
       seed,

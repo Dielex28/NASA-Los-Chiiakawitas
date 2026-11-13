@@ -55,9 +55,9 @@ const FinalShader = {
       col *= 1.0 - uVignette * smoothstep(0.12, 0.85, r2);
       // helmet visor: darker rim and a faint curved reflection band
       if (uVisor > 0.01) {
-        float rim = smoothstep(0.32, 0.62, r2);
-        col *= 1.0 - 0.75 * rim * uVisor;
-        col += vec3(0.5, 0.75, 1.0) * 0.035 * uVisor * smoothstep(0.02, 0.0, abs(c.y + 0.36 - c.x * c.x * 0.5));
+        float rim = smoothstep(0.42, 0.8, r2);
+        col *= 1.0 - 0.45 * rim * uVisor;
+        col += vec3(0.5, 0.75, 1.0) * 0.03 * uVisor * smoothstep(0.02, 0.0, abs(c.y + 0.4 - c.x * c.x * 0.5));
       }
       float n = hash(gl_FragCoord.xy + fract(uTime) * 311.7) - 0.5;
       col += n * uGrain;
@@ -113,10 +113,38 @@ export class Renderer {
     return Math.min(window.devicePixelRatio || 1, 2) * Math.min(1, this.quality.pixelRatio) * (this.quality.pixelRatio > 1 ? 1 : 1);
   }
 
+  /** Dynamic-resolution factor (0.5..1) applied on top of the quality preset. */
+  scale = 1;
+  private slowT = 0;
+  private fastT = 0;
+
+  /** Trade resolution for frame rate on slower GPUs; call once per frame with the measured FPS. */
+  adapt(fps: number, dt: number): void {
+    if (fps < 31) {
+      this.slowT += dt;
+      this.fastT = 0;
+    } else if (fps > 56) {
+      this.fastT += dt;
+      this.slowT = 0;
+    } else {
+      this.slowT = Math.max(0, this.slowT - dt);
+      this.fastT = 0;
+    }
+    if (this.slowT > 2.5 && this.scale > 0.5) {
+      this.scale = Math.max(0.5, this.scale * 0.85);
+      this.slowT = 0;
+      this.resize(this.width, this.height);
+    } else if (this.fastT > 8 && this.scale < 1) {
+      this.scale = Math.min(1, this.scale * 1.1);
+      this.fastT = 0;
+      this.resize(this.width, this.height);
+    }
+  }
+
   resize(width: number, height: number): void {
     this.width = width;
     this.height = height;
-    const dpr = Math.min(Math.min(window.devicePixelRatio || 1, 2), this.quality.pixelRatio);
+    const dpr = Math.min(Math.min(window.devicePixelRatio || 1, 2), this.quality.pixelRatio) * this.scale;
     this.renderer.setPixelRatio(dpr);
     this.renderer.setSize(width, height, false);
     this.composer.setPixelRatio(dpr);
