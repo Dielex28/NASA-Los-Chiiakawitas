@@ -29,6 +29,7 @@ vec3 terrainAlbedo(vec3 wp, vec3 wn) {
   vec4 nB = texture2D(uNoise, p * 0.021 + 0.37);
   vec4 nC = texture2D(uNoise, p * 0.17 + 0.11);
   vec4 nD = texture2D(uNoise, p * 1.31);
+  vec4 nE = texture2D(uNoise, p.yx * 0.061 + 0.53);
   float midFade = 1.0 - smoothstep(140.0, 700.0, dist);
   float nearFade = 1.0 - smoothstep(14.0, 55.0, dist);
   float macro = nA.r * 0.65 + nB.g * 0.35;
@@ -39,14 +40,14 @@ vec3 terrainAlbedo(vec3 wp, vec3 wn) {
   vec3 steep = mix(uColSteep, uColSteep * 0.58, uSurface.x * smoothstep(0.35, 0.7, strata));
   col = mix(col, steep, smoothstep(0.07, 0.34, slope));
   // patchy tone variation at walking scale (two unrelated scales so the tiling never lines up)
-  vec4 nE = texture2D(uNoise, p.yx * 0.061 + 0.53);
   col *= mix(1.0, 0.86 + 0.12 * nC.b + 0.16 * nE.r, midFade * 0.9);
   col *= mix(1.0, 0.88 + 0.24 * nD.a, nearFade);
   // pebbles and clods
   float speck = smoothstep(0.7, 0.82, nD.r) * smoothstep(0.45, 0.6, nC.r) * nearFade;
   col *= 1.0 - uSurface.y * speck;
   // wind-blown dust drifts (Mars)
-  col = mix(col, uColA * 1.12, uSurface.w * smoothstep(0.5, 0.8, nC.g) * (1.0 - smoothstep(0.03, 0.14, slope)));
+  float drift = smoothstep(0.42, 0.7, nE.g * 0.55 + nB.b * 0.45);
+  col = mix(col, uColA * 1.1, uSurface.w * drift * (1.0 - smoothstep(0.03, 0.14, slope)));
 
   // Fine relief as a world-space gradient (central differences on the noise), so it is
   // stable under grazing light and free of screen-space derivative blockiness.
@@ -137,7 +138,7 @@ export function createTerrainMaterial(world: WorldId, u: WorldUniforms): THREE.M
         vec4 ov = texture2D(uOverlay, vHfWorld.xz * uOverlayMix.z + 0.5);
         vec2 ouv = abs(vHfWorld.xz * uOverlayMix.z);
         float oin = step(max(ouv.x, ouv.y), 0.5) * uOverlayMix.x * ov.a;
-        diffuseColor.rgb = mix(diffuseColor.rgb, ov.rgb * 0.55, oin * 0.8);`,
+        diffuseColor.rgb = mix(diffuseColor.rgb, ov.rgb * 0.6, oin * 0.5);`,
       )
       .replace(
         '#include <normal_fragment_maps>',
@@ -156,7 +157,7 @@ export function createTerrainMaterial(world: WorldId, u: WorldUniforms): THREE.M
         '#include <emissivemap_fragment>',
         `#include <emissivemap_fragment>
         totalEmissiveRadiance += terrainGlow(vHfWorld);
-        totalEmissiveRadiance += ov.rgb * oin * 0.4;
+        totalEmissiveRadiance += ov.rgb * oin * 0.22;
         if (uOverlayMix.y > 0.01) {
           float cl = abs(fract(vHfWorld.y / 5.0) - 0.5);
           float w = fwidth(vHfWorld.y / 5.0) * 1.2;

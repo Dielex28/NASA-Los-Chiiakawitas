@@ -289,7 +289,7 @@ export class Hud {
       { key: 'tut.power', done: placed('solar') },
       { key: 'tut.battery', done: placed('battery') },
       { key: 'tut.wait', done: built('solar') },
-      { key: 'tut.rest', done: placed('antenna') && placed('lab') && placed('rassor') },
+      { key: 'tut.rest', done: placed('antenna') && placed('lab') && placed('shelter') },
       { key: 'tut.eva', done: tu.eva },
       { key: 'tut.scan', done: tu.scan },
       { key: 'tut.sample', done: tu.sample },

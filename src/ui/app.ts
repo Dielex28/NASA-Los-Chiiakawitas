@@ -17,8 +17,17 @@ export interface Settings {
 const SETTINGS_KEY = 'helios-settings';
 const MINERALS_KEY = 'helios-minerals';
 
+/** A sensible starting preset for this device; the player can change it in Settings. */
+function defaultQuality(): QualityLevel {
+  const nav = navigator as Navigator & { deviceMemory?: number };
+  const mobile = /Android|iPhone|iPad|Mobile/i.test(nav.userAgent);
+  if (mobile) return 'low';
+  if ((nav.deviceMemory ?? 8) <= 4 || (nav.hardwareConcurrency ?? 8) <= 4) return 'medium';
+  return 'high';
+}
+
 function loadSettings(): Settings {
-  const def: Settings = { quality: 'high', volume: 0.8, music: 0.55 };
+  const def: Settings = { quality: defaultQuality(), volume: 0.8, music: 0.55 };
   try {
     return { ...def, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') as Partial<Settings>) };
   } catch {

@@ -422,7 +422,7 @@ const S: Record<string, [string, string]> = {
   'tut.power': ['Despliega un panel solar cerca del módulo de descenso', 'Deploy a solar array near the lander'],
   'tut.battery': ['Coloca la batería para guardar energía', 'Place the battery to store energy'],
   'tut.wait': ['Acelera el tiempo hasta que el primer panel esté montado', 'Speed up time until the first array is assembled'],
-  'tut.rest': ['Despliega la antena, el laboratorio y la excavadora', 'Deploy the antenna, the lab and the excavator'],
+  'tut.rest': ['Despliega la antena, el laboratorio y el refugio', 'Deploy the antenna, the lab and the storm shelter'],
   'tut.eva': ['Sal a la superficie (Tab o botón EVA)', 'Step outside (Tab or the EVA button)'],
   'tut.scan': ['Usa el escáner (F) para buscar sitios de interés', 'Use the scanner (F) to look for sites of interest'],
   'tut.sample': ['Camina hasta un haz azul y recoge una muestra (E)', 'Walk to a blue beam and collect a sample (E)'],
