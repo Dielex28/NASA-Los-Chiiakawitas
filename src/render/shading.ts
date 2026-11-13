@@ -32,6 +32,14 @@ export interface WorldUniforms {
   uSurface: { value: THREE.Vector4 };
   /** x: lean of the shading normal toward the Sun · y: regolith response shaping · z: micro-relief gain */
   uWrap: { value: THREE.Vector3 };
+  /** Baked ground micro-relief: RG normal · B cavity · A albedo. */
+  uGroundN: { value: THREE.Texture | null };
+  /** Opposition surge of the regolith. x: peak gain when looking straight down-Sun · y: angular half-width (tan g/2) */
+  uOpposition: { value: THREE.Vector2 };
+  /** Sun shadow map. x: width covered, m · y: depth range, m · z: tan(angular radius of the Sun) · w: widest penumbra searched, m */
+  uSunShadow: { value: THREE.Vector4 };
+  /** Light scattered toward the viewer by airborne dust. rgb: colour added to the haze when looking at the Sun · a: lobe exponent */
+  uFogGlow: { value: THREE.Vector4 };
 }
 
 export function createWorldUniforms(): WorldUniforms {
@@ -53,6 +61,10 @@ export function createWorldUniforms(): WorldUniforms {
     uColSteep: { value: new THREE.Color(0.4, 0.4, 0.4) },
     uSurface: { value: new THREE.Vector4(0, 0.3, 1, 0) },
     uWrap: { value: new THREE.Vector3(0.1, 1, 3) },
+    uGroundN: { value: null },
+    uOpposition: { value: new THREE.Vector2(0, 0.07) },
+    uSunShadow: { value: new THREE.Vector4(160, 1390, 0.00465, 0.9) },
+    uFogGlow: { value: new THREE.Vector4(0, 0, 0, 8) },
   };
 }
 
@@ -61,7 +73,7 @@ export function makeNoiseTexture(seed: number, size = 256): THREE.DataTexture {
   const data = new Uint8Array(size * size * 4);
   const rng = new Rng(seed);
   const lattices: Float32Array[][] = [];
-  const periods = [4, 8, 16, 32, 64, 128];
+  const periods = [4, 8, 16, 32, 64, 128, 256];
   for (let c = 0; c < 4; c++) {
     lattices.push(
       periods.map((p) => {
@@ -104,6 +116,8 @@ export function makeNoiseTexture(seed: number, size = 256): THREE.DataTexture {
         amp *= 0.5;
       }
       a = 0.5 * sample(lattices[3][4], periods[4], u, v) + 0.5 * sample(lattices[3][5], periods[5], u, v);
+      // a finer octave when the texture has the pixels to hold it
+      if (size >= 512) a = 0.72 * a + 0.28 * sample(lattices[3][6], periods[6], u, v);
       data[k] = Math.min(255, r * 263);
       data[k + 1] = Math.min(255, g * 263);
       data[k + 2] = Math.min(255, b * 300);
@@ -115,7 +129,7 @@ export function makeNoiseTexture(seed: number, size = 256): THREE.DataTexture {
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
-  tex.anisotropy = 4;
+  tex.anisotropy = 16;
   tex.needsUpdate = true;
   return tex;
 }
@@ -238,6 +252,84 @@ export function setHeightfieldQuality(steps: number): void {
   hfSteps = steps;
 }
 
+let sunTaps = 16;
+/** Samples used to filter the Sun's shadow; 0 keeps the renderer's fixed-width filter. */
+export function setSunShadowQuality(taps: number): void {
+  sunTaps = taps;
+}
+
+/**
+ * Sun shadows with a physically sized penumbra (percentage-closer soft shadows). The Sun is a
+ * disc, not a point: a shadow is razor sharp where the object touches the ground and blurs
+ * with distance, by the tangent of the Sun's angular radius. Depth comparisons follow the
+ * receiving surface (receiver-plane bias), which is what lets ground lit at 5° take a wide
+ * filter without shadowing itself.
+ */
+const SUN_SHADOW_GLSL = /* glsl */ `
+#if defined( USE_SHADOWMAP ) && NUM_DIR_LIGHT_SHADOWS > 0
+uniform vec4 uSunShadow;
+float sunNoise(vec2 p) { return fract(52.9829189 * fract(dot(p, vec2(0.06711056, 0.00583715)))); }
+float sunShadow(sampler2D shadowMap, vec2 mapSize, float intensity, float bias, float radius, vec4 coord) {
+  #if SUN_TAPS == 0
+    return getShadow(shadowMap, mapSize, intensity, bias, radius, coord);
+  #else
+    coord.xyz /= coord.w;
+    if (coord.x < 0.0 || coord.x > 1.0 || coord.y < 0.0 || coord.y > 1.0 || coord.z > 1.0) return 1.0;
+    float texel = 1.0 / mapSize.x;
+    // how depth changes across the shadow map on this surface
+    vec3 dx = dFdx(coord.xyz);
+    vec3 dy = dFdy(coord.xyz);
+    float det = dx.x * dy.y - dx.y * dy.x;
+    vec2 slope = abs(det) > 1e-14 ? vec2(dy.y * dx.z - dx.y * dy.z, dx.x * dy.z - dy.x * dx.z) / det : vec2(0.0);
+    float slopeMax = 30.0 * uSunShadow.x / uSunShadow.y;
+    slope = clamp(slope, vec2(-slopeMax), vec2(slopeMax));
+    float z = coord.z + bias - (abs(slope.x) + abs(slope.y)) * texel;
+    float phi = sunNoise(gl_FragCoord.xy) * 6.2831853;
+    // 1 · average depth of whatever stands between this point and the Sun
+    float searchR = max(uSunShadow.w / uSunShadow.x, 2.0 * texel);
+    float zb = 0.0;
+    float nb = 0.0;
+    for (int i = 0; i < SUN_TAPS; i++) {
+      float r = sqrt((float(i) + 0.5) / float(SUN_TAPS));
+      float a = float(i) * 2.39996323 + phi;
+      vec2 o = vec2(cos(a), sin(a)) * r * searchR;
+      float d = unpackRGBAToDepth(texture2D(shadowMap, coord.xy + o));
+      if (d < z + dot(o, slope)) { zb += d; nb += 1.0; }
+    }
+    if (nb < 0.5) return 1.0;
+    zb /= nb;
+    // 2 · penumbra half-width = distance to the occluder × tan(angular radius of the Sun)
+    float pen = max(z - zb, 0.0) * uSunShadow.y * uSunShadow.z;
+    // never narrower than a couple of texels: at a grazing Sun each texel is stretched many
+    // times along the ground, and an unfiltered edge would show as a staircase
+    float filterR = clamp(pen / uSunShadow.x, 1.7 * texel, searchR);
+    // 3 · fraction of the solar disc still visible
+    float lit = 0.0;
+    for (int i = 0; i < SUN_TAPS; i++) {
+      float r = sqrt((float(i) + 0.5) / float(SUN_TAPS));
+      float a = float(i) * 2.39996323 + phi + 1.3;
+      vec2 o = vec2(cos(a), sin(a)) * r * filterR;
+      lit += step(z + dot(o, slope), unpackRGBAToDepth(texture2D(shadowMap, coord.xy + o)));
+    }
+    return mix(1.0, lit / float(SUN_TAPS), intensity);
+  #endif
+}
+#endif
+`;
+
+/** Haze that brightens toward the Sun: airborne dust scatters light forward, so distance glows instead of greying out. */
+const FOG_GLSL = /* glsl */ `
+#ifdef USE_FOG
+  #ifdef FOG_EXP2
+    float fogFactor = 1.0 - exp( - fogDensity * fogDensity * vFogDepth * vFogDepth );
+  #else
+    float fogFactor = smoothstep( fogNear, fogFar, vFogDepth );
+  #endif
+  float fogSun = max(dot(normalize(vHfWorld - cameraPosition), uSunDir), 0.0);
+  gl_FragColor.rgb = mix( gl_FragColor.rgb, fogColor + uFogGlow.rgb * pow(fogSun, uFogGlow.a), fogFactor );
+#endif
+`;
+
 /**
  * Make a standard material receive far-field terrain shadows (in addition to the
  * regular shadow map). Only the directional light — the Sun — is attenuated, so
@@ -245,6 +337,7 @@ export function setHeightfieldQuality(steps: number): void {
  */
 export function patchWorldMaterial<T extends THREE.Material>(mat: T, u: WorldUniforms, extra?: (shader: THREE.WebGLProgramParametersWithUniforms) => void): T {
   const steps = hfSteps;
+  const taps = sunTaps;
   mat.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, u);
     shader.defines = shader.defines ?? {};
@@ -260,15 +353,16 @@ export function patchWorldMaterial<T extends THREE.Material>(mat: T, u: WorldUni
         #endif`,
       );
     const grow = steps >= 40 ? '0.155' : steps >= 28 ? '0.24' : '0.36';
-    const lights = THREE.ShaderChunk.lights_fragment_begin.replace(
-      'getDirectionalLightInfo( directionalLight, directLight );',
-      'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= hfShadow;',
-    );
+    const lights = THREE.ShaderChunk.lights_fragment_begin
+      .replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= hfShadow;')
+      .replace('getShadow( directionalShadowMap[ i ],', 'sunShadow( directionalShadowMap[ i ],');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n#define HF_STEPS ${steps}\n#define HF_GROW ${grow}\n${HF_GLSL_PARS}`)
-      .replace('#include <lights_fragment_begin>', `float hfShadow = hfShadowAt(vHfWorld);\n${lights}`);
+      .replace('#include <common>', `#include <common>\n#define HF_STEPS ${steps}\n#define HF_GROW ${grow}\n#define SUN_TAPS ${taps}\nuniform vec4 uFogGlow;\n${HF_GLSL_PARS}`)
+      .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>\n${SUN_SHADOW_GLSL}`)
+      .replace('#include <lights_fragment_begin>', `float hfShadow = hfShadowAt(vHfWorld);\n${lights}`)
+      .replace('#include <fog_fragment>', FOG_GLSL);
     extra?.(shader);
   };
-  mat.customProgramCacheKey = () => `world-${steps}-${extra ? extra.name || 'x' : 'std'}-${(mat as any).userData?.variant ?? ''}`;
+  mat.customProgramCacheKey = () => `world-${steps}-${taps}-${extra ? extra.name || 'x' : 'std'}-${(mat as any).userData?.variant ?? ''}`;
   return mat;
 }

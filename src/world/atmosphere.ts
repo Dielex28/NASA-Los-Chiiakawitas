@@ -44,6 +44,9 @@ export class Atmosphere {
   /** Direct sunlight reaching the ground near the camera, 0..1. */
   localSun = 1;
   shadowRange = 80;
+  /** How strongly dust in the air shows shafts of light, 0..1 (always 0 without an atmosphere). */
+  shafts = 0;
+  readonly shaftTint = new THREE.Color(1, 1, 1);
   private tmp = new THREE.Color();
   private tmp2 = new THREE.Color();
   private probeTimer = 0;
@@ -56,15 +59,25 @@ export class Atmosphere {
     private hf: Heightfield,
     private uniforms: WorldUniforms,
     shadowSize: number,
+    /** The Sun's shadow is filtered with a physically sized penumbra that follows the receiving surface. */
+    softShadows = false,
   ) {
     this.sun.castShadow = shadowSize > 0;
     if (shadowSize > 0) {
       this.sun.shadow.mapSize.set(shadowSize, shadowSize);
-      // the lunar Sun grazes the ground, so shadow lookups need a generous offset along the normal
-      this.sun.shadow.bias = world === 'moon' ? -0.0009 : -0.0004;
-      this.sun.shadow.normalBias = world === 'moon' ? 0.4 : 0.12;
+      if (softShadows) {
+        // the filter tracks the slope of the ground, so only a small offset is needed and
+        // shadows stay attached to the feet of whatever casts them
+        this.sun.shadow.bias = world === 'moon' ? -0.00006 : -0.00004;
+        this.sun.shadow.normalBias = world === 'moon' ? 0.07 : 0.04;
+      } else {
+        // the lunar Sun grazes the ground, so a fixed-width filter needs a generous offset along the normal
+        this.sun.shadow.bias = world === 'moon' ? -0.0009 : -0.0004;
+        this.sun.shadow.normalBias = world === 'moon' ? 0.4 : 0.12;
+      }
       this.sun.shadow.radius = 2.5;
     }
+    uniforms.uSunShadow.value.z = Math.tan(WORLDS[world].sunAngularRadius);
     scene.add(this.sun, this.sun.target, this.hemi, this.fill);
     scene.fog = world === 'mars' ? this.fog : null;
     uniforms.uHf.value.z = world === 'moon' ? 85 : 45;
@@ -125,6 +138,7 @@ export class Atmosphere {
       this.env.ground.setRGB(0.3, 0.295, 0.285).multiplyScalar(0.06 + 0.94 * lit);
       this.env.glow.setRGB(1, 0.98, 0.94).multiplyScalar(1.6 * lit);
       this.env.horizonPow = 3;
+      this.shafts = 0;
     } else {
       const mu = Math.sin(env.sunEl);
       const day = smoothstep(-0.1, 0.16, mu);
@@ -172,6 +186,13 @@ export class Atmosphere {
 
       this.fog.color.copy(p.horizon).multiplyScalar(0.92);
       this.fog.density = 0.00016 + 0.0028 * storm * storm + 0.00012 * dusk;
+      // dust scatters sunlight forward: the haze glows toward the Sun, bluish at dusk
+      const fg = this.uniforms.uFogGlow.value;
+      const glowGain = (0.55 + 0.9 * dusk) * Math.max(direct, 0.15) * smoothstep(-0.12, 0.04, mu) * (1 - 0.6 * storm);
+      fg.set(p.glow.r * glowGain, p.glow.g * glowGain, p.glow.b * glowGain, lerp(6, 14, dusk));
+      // light shafts are strongest with a low Sun and dusty (but not opaque) air
+      this.shafts = clamp01((0.35 + 0.5 * env.tau) * (1 - smoothstep(0.3, 0.75, mu)) * smoothstep(-0.06, 0.03, mu) * Math.max(direct, 0.1) * (1 - 0.7 * storm));
+      mix(this.shaftTint, MARS.glowDay, MARS.glowDusk, dusk);
       void timeH;
     }
 
@@ -186,6 +207,11 @@ export class Atmosphere {
       sc.near = 10;
       sc.far = 1400;
       sc.updateProjectionMatrix();
+      const ss = this.uniforms.uSunShadow.value;
+      ss.x = 2 * range;
+      ss.y = sc.far - sc.near;
+      // widest penumbra worth searching for: an occluder a couple of hundred metres up-Sun
+      ss.w = Math.max(0.9, range * 0.008);
     }
     const texel = (2 * range) / Math.max(1, this.sun.shadow.mapSize.x);
     const fx = Math.round(focus.x / texel) * texel;

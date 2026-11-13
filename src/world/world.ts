@@ -6,10 +6,12 @@ import {
   makeNoiseTexture,
   makeOverlayTexture,
   setHeightfieldQuality,
+  setSunShadowQuality,
   type OverlayKind,
   type WorldUniforms,
 } from '../render/shading';
 import type { QualitySettings } from '../render/renderer';
+import { setSurfaceQuality, surfaceTexture } from '../render/surface';
 import type { EnvState, WorldId } from '../sim/types';
 import { Atmosphere } from './atmosphere';
 import { HF_SIZE, Heightfield, SURVEY_SIZE } from './heightfield';
@@ -48,6 +50,8 @@ export class World {
   ): Promise<World> {
     const w = new World(id, seed);
     setHeightfieldQuality(quality.hfSteps);
+    setSunShadowQuality(quality.sunTaps);
+    setSurfaceQuality(quality.textureSize);
     w.terrain = createTerrain(id, seed);
     w.hf = new Heightfield(w.terrain, id);
 
@@ -66,7 +70,8 @@ export class World {
     }
 
     onProgress(0.8, 'surface');
-    w.uniforms.uNoise.value = makeNoiseTexture(seed);
+    w.uniforms.uNoise.value = makeNoiseTexture(seed, quality.textureSize >= 1024 ? 512 : 256);
+    w.uniforms.uGroundN.value = surfaceTexture('ground');
     makeHeightTexture(w.hf, w.uniforms);
     w.overlayTex = makeOverlayTexture(w.hf, 'none', id);
     w.uniforms.uOverlay.value = w.overlayTex;
@@ -80,7 +85,7 @@ export class World {
 
     w.sky = new Sky(id, seed, Math.min(window.devicePixelRatio || 1, quality.pixelRatio));
     w.scene.add(w.sky.group);
-    w.atmosphere = new Atmosphere(id, w.scene, w.sky, w.hf, w.uniforms, quality.shadowSize);
+    w.atmosphere = new Atmosphere(id, w.scene, w.sky, w.hf, w.uniforms, quality.shadowSize, quality.sunTaps > 0);
 
     // refine the terrain around the landing site before the first frame
     const eye = new THREE.Vector3(0, w.terrain.height(0, 0, 1) + 30, 60);

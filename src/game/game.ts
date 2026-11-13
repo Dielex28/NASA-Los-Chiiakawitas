@@ -220,6 +220,7 @@ export class Game {
       world.scene.add(dust.points, sparks.points);
       const player = new Player(kit);
       player.astronaut.group.visible = false;
+      player.astronaut.setLampShadows(this.renderer.quality.lampShadows);
       world.scene.add(player.astronaut.group);
       const prints = new Footprints(id === 'moon' ? 0.5 : 0.34);
       world.scene.add(prints.mesh);
@@ -719,6 +720,7 @@ export class Game {
     this.alarmT = emergency ? this.alarmT + dt : 0;
     this.audio.setAlarm(emergency && this.alarmT < 9 && (this.mode === 'eva' || this.speed > 0));
 
+    this.renderer.setRays(this.camera, atm.sunDir, atm.shafts, atm.shaftTint);
     this.renderer.render(st.world.scene, this.camera, atm.exposure, this.time);
 
     // ---- housekeeping

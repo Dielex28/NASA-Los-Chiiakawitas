@@ -19,13 +19,21 @@ export interface QualitySettings {
   particles: number;
   /** Screen-space ambient occlusion: soft contact shadows where surfaces meet. */
   ao: boolean;
+  /** Samples for the Sun's soft shadow (0 = fixed-width filter). */
+  sunTaps: number;
+  /** Side of the generated detail textures, pixels. */
+  textureSize: number;
+  /** Samples for the light shafts through dusty air (0 = off). */
+  rays: number;
+  /** The helmet lamp casts shadows. */
+  lampShadows: boolean;
 }
 
 export const QUALITY: Record<QualityLevel, Omit<QualitySettings, 'level'>> = {
-  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false },
-  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false },
-  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true },
-  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 48, bloom: true, msaa: 4, rocks: 1.5, particles: 1.4, ao: true },
+  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false, sunTaps: 0, textureSize: 256, rays: 0, lampShadows: false },
+  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false, sunTaps: 10, textureSize: 512, rays: 20, lampShadows: false },
+  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true, sunTaps: 16, textureSize: 1024, rays: 32, lampShadows: true },
+  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 48, bloom: true, msaa: 4, rocks: 1.5, particles: 1.4, ao: true, sunTaps: 24, textureSize: 1024, rays: 48, lampShadows: true },
 };
 
 /** Final grade applied after tone mapping: vignette, grain, radiation speckle, dust tint. */
@@ -56,11 +64,10 @@ const FinalShader = {
       vec2 off = c * r2 * 0.0028;
       vec3 col = vec3(texture2D(tDiffuse, vUv + off).r, texture2D(tDiffuse, vUv).g, texture2D(tDiffuse, vUv - off).b);
       col *= 1.0 - uVignette * smoothstep(0.12, 0.85, r2);
-      // helmet visor: darker rim and a faint curved reflection band
+      // helmet visor: darker rim
       if (uVisor > 0.01) {
         float rim = smoothstep(0.42, 0.8, r2);
         col *= 1.0 - 0.28 * rim * uVisor;
-        col += vec3(0.5, 0.75, 1.0) * 0.03 * uVisor * smoothstep(0.02, 0.0, abs(c.y + 0.4 - c.x * c.x * 0.5));
       }
       float n = hash(gl_FragCoord.xy + fract(uTime) * 311.7) - 0.5;
       col += n * uGrain;
@@ -76,14 +83,58 @@ const FinalShader = {
   `,
 };
 
-/** WebGL renderer with an HDR pipeline: MSAA → bloom → ACES tone map → grade. */
+/**
+ * Light shafts ("crepuscular rays"): in dusty air the bright sky around the Sun lights up the
+ * dust along every line of sight, except where something stands in the way. Marching from each
+ * pixel toward the Sun on screen and summing the bright sky found on the way gives exactly that.
+ */
+const RaysShader = {
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    uSun: { value: new THREE.Vector2(0.5, 0.5) },
+    uTint: { value: new THREE.Color(1, 1, 1) },
+    /** x: strength · y: luminance above which a pixel counts as open sky · z: radius of the aureole (screen heights) · w: aspect */
+    uRays: { value: new THREE.Vector4(0, 0.8, 0.5, 1) },
+  },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    precision highp float;
+    varying vec2 vUv;
+    uniform sampler2D tDiffuse;
+    uniform vec2 uSun;
+    uniform vec3 uTint;
+    uniform vec4 uRays;
+    void main() {
+      vec4 base = texture2D(tDiffuse, vUv);
+      vec2 toSun = uSun - vUv;
+      vec2 stepv = toSun * (0.92 / float(RAY_STEPS));
+      float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      vec2 uv = vUv + stepv * jitter;
+      float acc = 0.0;
+      float reach = 1.0;
+      for (int i = 0; i < RAY_STEPS; i++) {
+        vec3 s = texture2D(tDiffuse, clamp(uv, 0.0, 1.0)).rgb;
+        float sky = smoothstep(uRays.y, uRays.y * 1.7, dot(s, vec3(0.2126, 0.7152, 0.0722)));
+        vec2 d = (uv - uSun) * vec2(uRays.w, 1.0);
+        acc += sky * exp(-dot(d, d) / (uRays.z * uRays.z)) * reach;
+        reach *= 0.975;
+        uv += stepv;
+      }
+      gl_FragColor = vec4(base.rgb + uTint * (acc / float(RAY_STEPS)) * uRays.x, base.a);
+    }
+  `,
+};
+
+/** WebGL renderer with an HDR pipeline: MSAA → ambient occlusion → light shafts → bloom → ACES tone map → grade. */
 export class Renderer {
   readonly renderer: THREE.WebGLRenderer;
   readonly composer: EffectComposer;
   readonly bloom: UnrealBloomPass;
   readonly ao: GTAOPass | null = null;
   readonly final: ShaderPass;
+  readonly rays: ShaderPass | null = null;
   private renderPass: RenderPass;
+  private sunNdc = new THREE.Vector3();
   quality: QualitySettings;
   private width = 1;
   private height = 1;
@@ -120,6 +171,11 @@ export class Renderer {
       };
       this.ao = ao;
       this.composer.addPass(ao);
+    }
+    if (this.quality.rays > 0) {
+      this.rays = new ShaderPass({ ...RaysShader, defines: { RAY_STEPS: this.quality.rays } });
+      this.rays.enabled = false;
+      this.composer.addPass(this.rays);
     }
     this.bloom = new UnrealBloomPass(new THREE.Vector2(1, 1), 0.3, 0.6, 1.75);
     this.bloom.enabled = this.quality.bloom;
@@ -174,6 +230,26 @@ export class Renderer {
     this.composer.setPixelRatio(dpr);
     this.composer.setSize(width, height);
     this.final.uniforms.uAspect.value = width / Math.max(1, height);
+  }
+
+  /**
+   * Aim the light shafts. `strength` is how much dust is lit (0 on an airless world); the pass
+   * switches itself off when the Sun is behind the camera or far outside the frame.
+   */
+  setRays(camera: THREE.Camera, sunDir: THREE.Vector3, strength: number, tint: THREE.Color): void {
+    const pass = this.rays;
+    if (!pass) return;
+    const v = this.sunNdc.copy(sunDir).multiplyScalar(5000).add(camera.position).project(camera);
+    const inFront = v.z < 1 && v.z > -1;
+    // fade out as the Sun leaves the frame: shafts from an off-screen source smear across the image
+    const off = Math.max(Math.abs(v.x), Math.abs(v.y));
+    const k = inFront ? strength * Math.max(0, Math.min(1, (1.5 - off) / 0.5)) : 0;
+    pass.enabled = k > 0.004;
+    if (!pass.enabled) return;
+    const u = pass.uniforms;
+    (u.uSun.value as THREE.Vector2).set(v.x * 0.5 + 0.5, v.y * 0.5 + 0.5);
+    (u.uTint.value as THREE.Color).copy(tint);
+    (u.uRays.value as THREE.Vector4).set(k, 0.75, 0.42, this.width / Math.max(1, this.height));
   }
 
   render(scene: THREE.Scene, camera: THREE.Camera, exposure: number, time: number): void {

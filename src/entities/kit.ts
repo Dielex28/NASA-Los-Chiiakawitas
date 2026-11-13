@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { Rng } from '../core/rng';
 import { patchWorldMaterial, type WorldUniforms } from '../render/shading';
+import { surfacePatch, type SurfaceSpec } from '../render/surface';
 import type { WorldId } from '../sim/types';
 
 function canvas(size: number): [HTMLCanvasElement, CanvasRenderingContext2D] {
@@ -13,16 +14,19 @@ function tex(c: HTMLCanvasElement, srgb: boolean, repeat = 1): THREE.CanvasTextu
   const t = new THREE.CanvasTexture(c);
   t.wrapS = t.wrapT = THREE.RepeatWrapping;
   t.repeat.set(repeat, repeat);
-  t.anisotropy = 8;
+  t.anisotropy = 16;
   if (srgb) t.colorSpace = THREE.SRGBColorSpace;
   return t;
 }
 
 /** Painted panel skin: seams, fasteners, faint streaking. Returns colour + bump textures. */
-function hullTextures(seed: number): { map: THREE.Texture; bump: THREE.Texture } {
+function hullTextures(seed: number): { map: THREE.Texture; normal: THREE.Texture } {
   const S = 512;
-  const [c, g] = canvas(S);
-  const [cb, gb] = canvas(S);
+  const K = 2; // drawn at twice the layout size
+  const [c, g] = canvas(S * K);
+  const [cb, gb] = canvas(S * K);
+  g.scale(K, K);
+  gb.scale(K, K);
   const rng = new Rng(seed);
   g.fillStyle = '#e8e5de';
   g.fillRect(0, 0, S, S);
@@ -77,12 +81,13 @@ function hullTextures(seed: number): { map: THREE.Texture; bump: THREE.Texture }
     g.fillStyle = grad;
     g.fillRect(x, y, rng.range(1, 5), len);
   }
-  return { map: tex(c, true), bump: tex(cb, false) };
+  return { map: tex(c, true), normal: normalFromHeight(cb, 1.1) };
 }
 
 function solarTexture(): THREE.Texture {
   const S = 256;
-  const [c, g] = canvas(S);
+  const [c, g] = canvas(S * 4);
+  g.scale(4, 4);
   g.fillStyle = '#b8bcc4';
   g.fillRect(0, 0, S, S);
   const n = 8;
@@ -106,36 +111,6 @@ function solarTexture(): THREE.Texture {
     }
   }
   return tex(c, true);
-}
-
-function foilBump(seed: number): THREE.Texture {
-  const S = 128;
-  const [c, g] = canvas(S);
-  const rng = new Rng(seed);
-  const img = g.createImageData(S, S);
-  // crinkled multilayer insulation: coarse random facets
-  const grid = 12;
-  const lat: number[] = [];
-  for (let i = 0; i < grid * grid; i++) lat.push(rng.next());
-  for (let y = 0; y < S; y++) {
-    for (let x = 0; x < S; x++) {
-      const fx = (x / S) * grid;
-      const fy = (y / S) * grid;
-      const x0 = Math.floor(fx) % grid;
-      const y0 = Math.floor(fy) % grid;
-      const x1 = (x0 + 1) % grid;
-      const y1 = (y0 + 1) % grid;
-      const u = fx - Math.floor(fx);
-      const v = fy - Math.floor(fy);
-      const val = (lat[y0 * grid + x0] * (1 - u) + lat[y0 * grid + x1] * u) * (1 - v) + (lat[y1 * grid + x0] * (1 - u) + lat[y1 * grid + x1] * u) * v;
-      const q = Math.floor(val * 255);
-      const k = (y * S + x) * 4;
-      img.data[k] = img.data[k + 1] = img.data[k + 2] = q;
-      img.data[k + 3] = 255;
-    }
-  }
-  g.putImageData(img, 0, 0);
-  return tex(c, false, 2);
 }
 
 /** Convert a greyscale height canvas into a tangent-space normal map (Sobel filter, wraps at the edges). */
@@ -164,7 +139,7 @@ function normalFromHeight(src: HTMLCanvasElement, strength: number, repeat = 1):
 
 /** Height field of a plain-weave fabric (the outer layer of a pressure suit is woven cloth). */
 function weaveHeight(): HTMLCanvasElement {
-  const S = 128;
+  const S = 256;
   const [c, g] = canvas(S);
   const img = g.createImageData(S, S);
   const n = 16; // threads across the tile
@@ -281,53 +256,61 @@ export class Kit {
     const u = uniforms;
     const ht = hullTextures(11);
     // `env` is how strongly the material mirrors its surroundings (image-based lighting)
-    const std = (p: THREE.MeshStandardMaterialParameters, env = 0.4): THREE.MeshStandardMaterial => {
-      const m = patchWorldMaterial(new THREE.MeshStandardMaterial(p), u);
+    const std = (p: THREE.MeshStandardMaterialParameters, env = 0.4, surf?: SurfaceSpec): THREE.MeshStandardMaterial => {
+      const m = patchWorldMaterial(new THREE.MeshStandardMaterial(p), u, surf ? surfacePatch(surf) : undefined);
       this.reflective.push([m, env]);
       return m;
     };
-    const phys = (p: THREE.MeshPhysicalMaterialParameters, env: number): THREE.MeshPhysicalMaterial => {
-      const m = patchWorldMaterial(new THREE.MeshPhysicalMaterial(p), u);
+    const phys = (p: THREE.MeshPhysicalMaterialParameters, env: number, surf?: SurfaceSpec): THREE.MeshPhysicalMaterial => {
+      const m = patchWorldMaterial(new THREE.MeshPhysicalMaterial(p), u, surf ? surfacePatch(surf) : undefined);
       this.reflective.push([m, env]);
       return m;
     };
-    this.hull = std({ color: 0xe6e5e1, map: ht.map, bumpMap: ht.bump, bumpScale: 0.6, roughness: 0.5, metalness: 0.08 }, 0.5);
-    this.hullDark = std({ color: 0x3d4148, map: ht.map, bumpMap: ht.bump, bumpScale: 0.6, roughness: 0.6, metalness: 0.3 }, 0.6);
-    this.hullDouble = std({ color: 0xdddbd6, roughness: 0.45, metalness: 0.2, side: THREE.DoubleSide }, 0.6);
-    this.metal = std({ color: 0xc9ccd2, roughness: 0.28, metalness: 1.0 }, 1.0);
-    this.darkMetal = std({ color: 0x2a2c31, roughness: 0.42, metalness: 0.9 }, 0.9);
-    this.foil = std({ color: 0xe0a53c, roughness: 0.26, metalness: 1.0, bumpMap: foilBump(5), bumpScale: 2.2 }, 1.25);
+    // detail layers: what each kind of surface looks like from a hand's breadth away
+    const PAINT: SurfaceSpec = { kind: 'paint', scale: 1.7, normal: 0.55, rough: 0.55, albedo: 0.9 };
+    const METAL: SurfaceSpec = { kind: 'metal', scale: 2.6, normal: 0.5, rough: 0.7, albedo: 0.6 };
+    const FOIL: SurfaceSpec = { kind: 'foil', scale: 2.3, normal: 1.0, rough: 0.6, albedo: 0 };
+    const RUBBER: SurfaceSpec = { kind: 'rubber', scale: 6.5, normal: 0.7, rough: 0, albedo: 0.8 };
+    const CLOTH: SurfaceSpec = { kind: 'cloth', scale: 1.4, normal: 0, rough: 0, albedo: 1 };
+    const SOIL: SurfaceSpec = { kind: 'ground', scale: 0.8, normal: 1.0, rough: 0, albedo: 0.9 };
+    this.hull = std({ color: 0xe6e5e1, map: ht.map, normalMap: ht.normal, normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.5, metalness: 0.08 }, 0.5, PAINT);
+    this.hullDark = std({ color: 0x3d4148, map: ht.map, normalMap: ht.normal, normalScale: new THREE.Vector2(0.8, 0.8), roughness: 0.6, metalness: 0.3 }, 0.6, PAINT);
+    this.hullDouble = std({ color: 0xdddbd6, roughness: 0.45, metalness: 0.2, side: THREE.DoubleSide }, 0.6, PAINT);
+    this.metal = std({ color: 0xc9ccd2, roughness: 0.3, metalness: 1.0 }, 1.0, METAL);
+    this.darkMetal = std({ color: 0x2a2c31, roughness: 0.42, metalness: 0.9 }, 0.9, METAL);
+    this.foil = std({ color: 0xe0a53c, roughness: 0.24, metalness: 1.0 }, 1.25, FOIL);
     this.solarMap = solarTexture();
     this.solar = std({ color: 0xffffff, map: this.solarMap, roughness: 0.16, metalness: 0.6 }, 1.0);
     this.glass = std({ color: 0xbfe6ff, roughness: 0.04, metalness: 0.2, transparent: true, opacity: 0.22, depthWrite: false, side: THREE.DoubleSide }, 1.5);
-    this.accent = std({ color: 0xe8552b, roughness: 0.5, metalness: 0.1 }, 0.4);
+    this.accent = std({ color: 0xe8552b, roughness: 0.5, metalness: 0.1 }, 0.4, PAINT);
     this.hazard = std({ color: 0xffffff, map: stripeTexture('#e9b21a', '#1d1d1f'), roughness: 0.6, metalness: 0.1 }, 0.3);
-    this.rubber = std({ color: 0x15161a, roughness: 0.9, metalness: 0.0 }, 0.15);
-    this.blue = std({ color: 0x2f7fd6, roughness: 0.45, metalness: 0.2 }, 0.5);
-    this.green = std({ color: 0x3fae6a, roughness: 0.45, metalness: 0.2 }, 0.5);
-    this.regolith = std({ color: world === 'moon' ? 0x8f8c87 : 0xa8603a, roughness: 1, metalness: 0 }, 0);
+    this.rubber = std({ color: 0x15161a, roughness: 0.9, metalness: 0.0 }, 0.15, RUBBER);
+    this.blue = std({ color: 0x2f7fd6, roughness: 0.45, metalness: 0.2 }, 0.5, PAINT);
+    this.green = std({ color: 0x3fae6a, roughness: 0.45, metalness: 0.2 }, 0.5, PAINT);
+    this.regolith = std({ color: world === 'moon' ? 0x8f8c87 : 0xa8603a, roughness: 1, metalness: 0 }, 0, SOIL);
     this.window = std({ color: 0x1a1d22, roughness: 0.12, metalness: 0.5, emissive: 0xffc98a, emissiveIntensity: 0.6 }, 0.9);
     this.lamp = std({ color: 0x222222, roughness: 0.4, emissive: 0xdfeaff, emissiveIntensity: 0 }, 0.3);
     this.ledOn = new THREE.MeshBasicMaterial({ color: new THREE.Color(0.35, 2.6, 1.1) });
     this.ledOff = std({ color: 0x1b2220, roughness: 0.5 }, 0.3);
     this.holo = new THREE.MeshBasicMaterial({ color: 0x48d8ff, transparent: true, opacity: 0.16, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
     this.holoBad = new THREE.MeshBasicMaterial({ color: 0xff4a3a, transparent: true, opacity: 0.2, depthWrite: false, blending: THREE.AdditiveBlending, side: THREE.DoubleSide });
-    this.cable = std({ color: 0x1a1b1f, roughness: 0.8, metalness: 0.2 }, 0.2);
+    this.cable = std({ color: 0x1a1b1f, roughness: 0.8, metalness: 0.2 }, 0.2, RUBBER);
 
     // ---- pressure suit
     const weave = weaveHeight();
     const fabricN = normalFromHeight(weave, 2.2, 5);
     const dust = world === 'moon' ? new THREE.Color(0x8d8b87) : new THREE.Color(0xb9764a);
-    this.suit = std({ color: 0xd9d7d1, roughness: 0.86, metalness: 0, normalMap: fabricN, normalScale: new THREE.Vector2(0.55, 0.55) }, 0.2);
+    this.suit = std({ color: 0xd9d7d1, roughness: 0.86, metalness: 0, normalMap: fabricN, normalScale: new THREE.Vector2(0.55, 0.55) }, 0.2, CLOTH);
     this.suitDust = std(
       { color: new THREE.Color(0xd9d7d1).lerp(dust, 0.6), roughness: 0.95, metalness: 0, normalMap: fabricN, normalScale: new THREE.Vector2(0.5, 0.5) },
       0.1,
+      CLOTH,
     );
-    this.shell = phys({ color: 0xdfdeda, roughness: 0.32, metalness: 0.0, clearcoat: 0.6, clearcoatRoughness: 0.25 }, 0.7);
+    this.shell = phys({ color: 0xdfdeda, roughness: 0.32, metalness: 0.0, clearcoat: 0.6, clearcoatRoughness: 0.25 }, 0.7, PAINT);
     // gold-coated sun visor: a thin layer of gold reflects infrared and glare, and mirrors the landscape
     this.visor = phys({ color: 0xd9a441, roughness: 0.05, metalness: 1.0, clearcoat: 1, clearcoatRoughness: 0.03 }, 1.9);
-    this.glove = std({ color: 0x4a4e55, roughness: 0.72, metalness: 0.05, normalMap: fabricN, normalScale: new THREE.Vector2(0.3, 0.3) }, 0.2);
-    this.ring = std({ color: 0x9aa3ad, roughness: 0.3, metalness: 1.0 }, 1.0);
+    this.glove = std({ color: 0x4a4e55, roughness: 0.72, metalness: 0.05, normalMap: fabricN, normalScale: new THREE.Vector2(0.3, 0.3) }, 0.2, RUBBER);
+    this.ring = std({ color: 0x9aa3ad, roughness: 0.3, metalness: 1.0 }, 1.0, METAL);
   }
 
   /** Hand the pre-filtered sky/ground map to every reflective material. */

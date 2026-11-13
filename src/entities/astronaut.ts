@@ -258,6 +258,18 @@ export class Astronaut {
     });
   }
 
+  /** Let the helmet lamp cast shadows: at night every rock throws a long one away from the commander. */
+  setLampShadows(on: boolean): void {
+    this.lamp.castShadow = on;
+    if (!on) return;
+    this.lamp.shadow.mapSize.set(1024, 1024);
+    this.lamp.shadow.camera.near = 0.4;
+    this.lamp.shadow.camera.far = 60;
+    this.lamp.shadow.bias = -0.0015;
+    this.lamp.shadow.normalBias = 0.03;
+    this.lamp.shadow.radius = 3;
+  }
+
   /** World position of the boots (for dust and footprints). */
   get feet(): THREE.Vector3 {
     return this.group.position;
@@ -321,6 +333,8 @@ export class Astronaut {
       n.scale.y = 0.6 + thrust * (0.8 + 0.4 * Math.sin(time * 60));
     }
     this.lamp.intensity = 260 * clamp01((darkness - 0.3) / 0.5);
+    // no need to redraw the lamp's shadow map while the lamp is off
+    this.lamp.shadow.autoUpdate = this.lamp.intensity > 0;
     this.glow.intensity = 5 * clamp01((darkness - 0.15) / 0.5);
     // the chest display is self-lit: it stands out more in the dark
     this.screenMat.color.setScalar(1.1 + 1.2 * darkness);
