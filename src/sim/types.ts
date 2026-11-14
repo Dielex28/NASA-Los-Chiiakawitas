@@ -16,6 +16,7 @@ export type ModuleType =
   | 'greenhouse'
   | 'icerig'
   | 'moxie'
+  | 'propellant'
   | 'rassor'
   | 'shelter'
   | 'lab'
@@ -276,6 +277,9 @@ export interface Stats {
   emergencies?: number;
   emergencyAuto?: number;
   emergencyO2Lost?: number;
+  /** Return propellant made on site, and the water it took, kg. */
+  propellantMade?: number;
+  propellantWater?: number;
 }
 
 export interface Telemetry {
@@ -318,6 +322,8 @@ export interface MissionConfig {
   level?: 1 | 2 | 3;
   /** Multiplier on wear, breakdowns and micrometeorite hits for that level. */
   hazard?: number;
+  /** Return-trip propellant the mission asks to make on site, kg (0 = no such objective). */
+  fuelGoalKg?: number;
 }
 
 export interface SimState {
@@ -332,7 +338,8 @@ export interface SimState {
   modules: ModuleState[];
   nextId: number;
   inventory: Partial<Record<ModuleType, number>>;
-  stores: { o2: number; water: number; food: number };
+  /** propellant: return-trip fuel made on site, kg (absent in old saves). */
+  stores: { o2: number; water: number; food: number; propellant?: number };
   caps: { o2: number; water: number };
   cabin: { co2Kg: number; tempC: number };
   alloc: Allocation;

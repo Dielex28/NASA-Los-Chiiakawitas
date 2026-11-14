@@ -24,6 +24,7 @@ export const MOD_ICON: Record<ModuleType, string> = {
   greenhouse: 'leaf',
   icerig: 'ice',
   moxie: 'o2',
+  propellant: 'flame',
   rassor: 'drill',
   lab: 'science',
   antenna: 'antenna',

@@ -185,6 +185,9 @@ export function lessons(s: SimState): Array<{ key: string; good: boolean; params
   if (s.crew.some((c) => c.doseReactor > 2)) add('reactor', false);
   if (st.failures > 3 && st.repairsByPlayer === 0) add('maintenance', false, { n: st.failures });
   if (st.samplesCollected >= 3) add('fieldwork', true, { n: st.samplesCollected });
+  const fuelGoal = s.cfg.fuelGoalKg ?? 0;
+  if (fuelGoal > 0 && s.flags.fuelDone) add(s.world === 'mars' ? 'fuelMars' : 'fuelMoon', true, { kg: (st.propellantMade ?? 0).toFixed(0), air: (((st.propellantMade ?? 0) * 44) / 80).toFixed(0) });
+  else if (fuelGoal > 0 && (st.propellantMade ?? 0) > 0) add('fuelShort', false, { kg: (st.propellantMade ?? 0).toFixed(0), goal: fuelGoal });
   if ((st.emergencies ?? 0) > 0) {
     if ((st.emergencyAuto ?? 0) > 0) add('emgSlow', false, { n: st.emergencyAuto ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
     else add('emgFast', true, { n: st.emergencies ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });

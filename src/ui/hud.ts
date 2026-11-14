@@ -18,6 +18,7 @@ import {
   shieldOf,
   sunForecast,
   totalDose,
+  propTank,
 } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { Allocation, CargoItem, CrewMember, LogEntry, ModuleState, ModuleType, Priority, SimState } from '../sim/types';
@@ -311,6 +312,8 @@ export class Hud {
     const dose = s.crew.reduce((a, c) => Math.max(a, totalDose(c)), 0);
     out.push({ text: t('goal.dose', { limit: s.cfg.doseLimitMsv, have: fmt(dose, 1) }), done: dose < s.cfg.doseLimitMsv });
     out.push({ text: t('goal.crew'), done: s.crew.every((c) => c.health > 60) });
+    const fuel = s.cfg.fuelGoalKg ?? 0;
+    if (fuel > 0) out.push({ text: t('goal.fuel', { have: fmt(Math.min(fuel, s.stores.propellant ?? 0)), goal: fmt(fuel) }), done: !!s.flags.fuelDone });
     const exp = this.game.expedition();
     if (exp && !m.endless && !m.tutorial) out.push({ text: t('goal.expedition', { what: t(`min.${exp.kind}`), d: fmt(exp.distance) }), done: exp.done });
     return out;
@@ -455,6 +458,14 @@ export class Hud {
         if (!m) return;
         setText(rich, `${fmt(m.richness * 100)} %`);
         setText(out, `${fmt(m.output, 1)} kg/${t(`unit.day.${this.sim.world}`).toLowerCase()}`);
+      });
+    }
+    if (m0.type === 'propellant') {
+      const out = row(t('insp.output'));
+      const tank = row(t('insp.propTank'));
+      rows.push(() => {
+        setText(out, `${fmt(get()?.output ?? 0, 0)} kg/${t(`unit.day.${this.sim.world}`).toLowerCase()}`);
+        setText(tank, `${fmt(this.sim.stores.propellant ?? 0)} / ${fmt(propTank(this.sim))} kg`);
       });
     }
     if (m0.type === 'moxie') {

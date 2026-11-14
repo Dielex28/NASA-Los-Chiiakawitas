@@ -753,6 +753,32 @@ const BUILDERS: Record<ModuleType, Builder> = {
     v.beacon(1.2, 2.15, 0);
   },
 
+  /* -------------------------------------------------------- propellant */
+  propellant(v, k) {
+    // electrolysis stack and reactor skid, two insulated spheres for the cryogenic propellant,
+    // and a radiator panel that rejects the heat of liquefaction
+    v.add(k.box(5.2, 0.2, 3.4, k.darkMetal, 0, 0.3, 0));
+    legs(v, k, 5.0, 3.2, 0.3, 0.08);
+    v.add(k.box(1.8, 1.5, 1.6, k.hull, -1.5, 1.15, 0.5));
+    v.add(k.box(1.82, 0.12, 1.62, k.accent, -1.5, 1.7, 0.5));
+    for (let i = 0; i < 5; i++) v.add(k.box(0.12, 1.1, 1.3, k.metal, -2.2 + i * 0.32, 1.1, -0.85));
+    for (const [x, band] of [
+      [0.6, k.blue],
+      [1.95, k.hullDark],
+    ] as const) {
+      v.add(k.sphere(0.78, k.foil, x, 1.4, 0.15, 24, 16));
+      v.add(k.torus(0.79, 0.05, band, x, 1.4, 0.15));
+      for (const sz of [-1, 1]) v.add(k.strut(V(x, 0.42, 0.15 + sz * 0.5), V(x, 0.95, 0.15 + sz * 0.35), 0.05, k.metal));
+    }
+    v.add(k.strut(V(-0.6, 1.4, 0.5), V(0.0, 1.4, 0.3), 0.06, k.metal));
+    v.add(k.strut(V(1.2, 1.9, 0.15), V(1.4, 2.1, 0.15), 0.05, k.metal));
+    const rad = v.add(k.box(2.6, 0.04, 1.2, k.hullDouble, 0.9, 2.65, -1.0));
+    rad.rotation.x = -0.9;
+    v.add(k.strut(V(0.0, 0.4, -1.3), V(0.3, 2.3, -0.8), 0.04, k.metal));
+    v.add(k.strut(V(1.8, 0.4, -1.3), V(1.5, 2.3, -0.8), 0.04, k.metal));
+    v.beacon(-1.5, 2.05, 0.5);
+  },
+
   /* ------------------------------------------------------------- pylon */
   pylon(v, k) {
     v.add(k.cyl(0.32, 0.4, 0.14, k.hullDark, 0, 0.07, 0, 10));

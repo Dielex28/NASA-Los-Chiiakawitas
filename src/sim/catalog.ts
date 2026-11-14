@@ -185,6 +185,17 @@ export const MODULES: Record<ModuleType, ModuleDef> = {
     wearPerSol: 0.8,
     worlds: ['mars'],
   },
+  propellant: {
+    ...base,
+    type: 'propellant',
+    category: 'isru',
+    massKg: 1200,
+    opKw: 10,
+    defaultPriority: 3,
+    buildHours: 8,
+    radius: 4.2,
+    wearPerSol: 0.9,
+  },
   rassor: {
     ...base,
     type: 'rassor',
@@ -270,6 +281,7 @@ export const MODULE_ORDER: ModuleType[] = [
   'greenhouse',
   'icerig',
   'moxie',
+  'propellant',
   'rassor',
   'lab',
   'antenna',
@@ -348,6 +360,19 @@ export const TUNE = {
   /** Ice rig output at richness 1, kg water per sol. */
   iceKgPerSol: 45,
   moxieKgPerSol: 4,
+  /**
+   * Return propellant. Moon: water split into hydrogen and oxygen, then liquefied; all the
+   * mass comes from water (≈ 7 kWh per kg with liquefaction). Mars: water split for hydrogen,
+   * which the Sabatier reaction combines with CO₂ from the air into methane, plus oxygen: net
+   * CO₂ + 2 H₂O → CH₄ + 2 O₂, so 36 kg of water and 44 kg of air make 80 kg of propellant
+   * (≈ 2.2 kg per kg of water, ≈ 3.5 kWh per kg).
+   */
+  propKwhPerKg: { moon: 7, mars: 3.5 },
+  propPerWaterKg: { moon: 1, mars: 80 / 36 },
+  /** Propellant each plant can store, kg. */
+  propTankKg: 4000,
+  /** Science credited when the mission's propellant objective is met. */
+  fuelScience: 20,
   eclssO2KgDay: 3.6,
   eclssCrew: 4,
   recycleEff: 0.95,

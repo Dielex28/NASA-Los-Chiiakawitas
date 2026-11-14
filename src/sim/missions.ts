@@ -20,6 +20,8 @@ export interface MissionDef {
   realSite?: boolean;
   /** Built around a real solar storm (see the mission's briefing and docs/SCIENCE.md). */
   historic?: boolean;
+  /** Return propellant to make on site, kg: an optional objective worth extra science. */
+  fuelGoalKg?: number;
   /** Emergencies that will happen in this mission (window in sols), besides random ones. */
   emergencies?: Array<{ sol: [number, number]; kind: EmergencyKind }>;
   seed: number;
@@ -84,6 +86,7 @@ export const MISSIONS: MissionDef[] = [
       { sol: [19, 25], cls: 3 },
     ],
     emergencies: [{ sol: [10, 14], kind: 'meteor' }],
+    fuelGoalKg: 300,
     storms: [],
     resupply: [{ sol: 15, capacityKg: 2500 }],
   },
@@ -120,6 +123,7 @@ export const MISSIONS: MissionDef[] = [
       { sol: [44, 54], cls: 3 },
     ],
     emergencies: [{ sol: [16, 19], kind: 'eclss' }],
+    fuelGoalKg: 1500,
     storms: [{ sol: [21, 27], durationSols: [9, 12], tau: [3.2, 4.4] }],
     resupply: [{ sol: 30, capacityKg: 3000 }],
   },
@@ -163,6 +167,7 @@ export const MISSIONS: MissionDef[] = [
       { sol: [35, 45], kind: 'leak' },
       { sol: [100, 120], kind: 'eclss' },
     ],
+    fuelGoalKg: 6000,
     storms: [
       { sol: [35, 50], durationSols: [8, 11], tau: [2.6, 3.6] },
       { sol: [100, 115], durationSols: [22, 30], tau: [5.5, 7.5] },

@@ -251,6 +251,7 @@ export function createMission(
       doseLimitMsv: mission.doseLimitMsv,
       budgetKg: mission.budgetKg,
       endless: mission.endless,
+      fuelGoalKg: mission.fuelGoalKg ?? 0,
       level: opts.level ?? 2,
       hazard: [0.5, 1, 1.35][(opts.level ?? 2) - 1],
     },
@@ -263,6 +264,7 @@ export function createMission(
     inventory: {},
     // emergency reserve carried in the lander: about three days for the crew
     stores: {
+      propellant: 0,
       o2: mission.crew * HUMAN.o2KgDay * 3,
       water: mission.crew * HUMAN.waterKgDay * 3,
       food: mission.crew * 3,
@@ -332,6 +334,11 @@ export const conditionEff = (m: ModuleState): number =>
   m.condition >= 70 ? 1 : clamp(0.45 + (0.55 * (m.condition - TUNE.offlineAt)) / (70 - TUNE.offlineAt), 0.2, 1);
 export const insulation = (m: ModuleState): number => 0.7 * clamp01(m.regolith / 120);
 export const shieldOf = (m: ModuleState): number => MODULES[m.type].shieldGcm2 + m.regolith;
+
+/** How much propellant the base's plants can hold, kg. */
+export function propTank(s: SimState): number {
+  return s.modules.filter((m) => m.type === 'propellant' && isBuilt(m)).length * TUNE.propTankKg;
+}
 
 export function recomputeCaps(s: SimState): void {
   let o2 = 0;
@@ -545,6 +552,9 @@ function opDraw(s: SimState, m: ModuleState): number {
       return m.richness > 0.02 && s.stores.water < s.caps.water - 0.5 ? def.opKw : 0;
     case 'moxie':
       return s.stores.o2 < s.caps.o2 - 0.2 ? def.opKw : 0;
+    case 'propellant':
+      // never at the expense of drinking water: keep four days' worth for the crew
+      return (s.stores.propellant ?? 0) < propTank(s) - 1 && s.stores.water > s.crew.length * HUMAN.waterKgDay * 4 ? def.opKw : 0;
     default:
       return def.opKw;
   }
@@ -625,7 +635,7 @@ function solvePower(s: SimState, dtH: number): void {
       if (keep > 0) loads.push({ m, kw: keep, rank: m.priority * 2, op: false, granted: false });
       if (op > 0) loads.push({ m, kw: op, rank: m.priority * 2 + 1, op: true, granted: false });
     } else if (def.genKw <= 0 && def.storageKwh <= 0 && !saved) {
-      m.mode = m.type === 'rassor' || m.type === 'icerig' || m.type === 'moxie' ? 'standby' : 'full';
+      m.mode = m.type === 'rassor' || m.type === 'icerig' || m.type === 'moxie' || m.type === 'propellant' ? 'standby' : 'full';
     }
   }
   p.genKw = p.solarKw + p.nuclearKw;
@@ -865,6 +875,29 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
       s.stats.waterMined += made;
       m.output = dtSol > 0 ? made / dtSol : 0;
     }
+  }
+
+  // ---- return propellant: ice → water → hydrogen and oxygen (+ CO₂ from the air on Mars → methane)
+  const propPerWater = TUNE.propPerWaterKg[s.world];
+  for (const m of s.modules) {
+    if (m.type !== 'propellant') continue;
+    m.output = 0;
+    if (m.mode !== 'full' || !isUp(m)) continue;
+    const room = Math.max(0, propTank(s) - (s.stores.propellant ?? 0));
+    const spare = Math.max(0, s.stores.water + waterIn - waterOut - n * HUMAN.waterKgDay * 4);
+    const made = Math.min(room, spare * propPerWater, ((MODULES.propellant.opKw * conditionEff(m)) / TUNE.propKwhPerKg[s.world]) * dtH);
+    if (made <= 0) continue;
+    s.stores.propellant = (s.stores.propellant ?? 0) + made;
+    waterOut += made / propPerWater;
+    s.stats.propellantMade = (s.stats.propellantMade ?? 0) + made;
+    s.stats.propellantWater = (s.stats.propellantWater ?? 0) + made / propPerWater;
+    m.output = dtSol > 0 ? made / dtSol : 0;
+  }
+  const goal = s.cfg.fuelGoalKg ?? 0;
+  if (goal > 0 && !s.flags.fuelDone && (s.stores.propellant ?? 0) >= goal) {
+    s.flags.fuelDone = 1;
+    s.science += TUNE.fuelScience;
+    pushLog(s, 'log.fuel.done', 'good', { kg: goal });
   }
 
   // ---- oxygen

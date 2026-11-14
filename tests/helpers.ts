@@ -31,7 +31,7 @@ export function deployAll(
   if (tweak) mission = tweak({ ...mission });
   const s = createMission(mission, manifest ?? mission.recommended, mission.seed, probe);
   // power first, then life support, then everything else — the order a sensible commander would use
-  const order: ModuleType[] = ['reactor', 'solar', 'battery', 'fuelcell', 'hab', 'eclss', 'antenna', 'shelter', 'rassor', 'lab', 'greenhouse', 'tank', 'icerig', 'moxie', 'pylon'];
+  const order: ModuleType[] = ['reactor', 'solar', 'battery', 'fuelcell', 'hab', 'eclss', 'antenna', 'shelter', 'rassor', 'lab', 'greenhouse', 'tank', 'icerig', 'moxie', 'propellant', 'pylon'];
   let i = 0;
   for (const type of order) {
     while ((s.inventory[type] ?? 0) > 0) {
