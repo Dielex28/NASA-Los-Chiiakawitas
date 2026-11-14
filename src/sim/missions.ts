@@ -303,7 +303,50 @@ for (const [base, id, seed] of [
 const ORDER = ['moon-first', 'moon-base', 'moon-1972', 'mars-first', 'mars-2017', 'mars-long', 'moon-sandbox', 'moon-real', 'mars-sandbox', 'mars-real'];
 MISSIONS.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
-export const missionById = (id: string): MissionDef => MISSIONS.find((m) => m.id === id) ?? MISSIONS[0];
+/** Things that make each day's challenge different. */
+export type DailyTwist = 'extraSpe' | 'tightDose' | 'extraEmg' | 'noResupply' | 'bigFuel';
+const TWISTS: DailyTwist[] = ['extraSpe', 'tightDose', 'extraEmg', 'noResupply', 'bigFuel'];
+
+/** Today's code, YYYYMMDD in local time: everyone who plays on the same day gets the same challenge. */
+export function dailyCode(d = new Date()): string {
+  return `${d.getFullYear()}${String(d.getMonth() + 1).padStart(2, '0')}${String(d.getDate()).padStart(2, '0')}`;
+}
+
+/**
+ * The daily challenge for a code (YYYYMMDD): a short mission whose world, events and two twists
+ * all follow from the code, so a whole class — or two classes in different schools — play
+ * exactly the same mission and can compare scores.
+ */
+export function dailyMission(code: string): MissionDef & { twists: DailyTwist[] } {
+  const seed = Number.parseInt(code, 10) || 20260101;
+  const rng = new Rng(seed ^ 0xda11);
+  const moon = rng.next() < 0.5;
+  const base = MISSIONS.find((m) => m.id === (moon ? 'moon-base' : 'mars-first'))!;
+  const pool = [...TWISTS];
+  const twists: DailyTwist[] = [];
+  while (twists.length < 2) twists.push(pool.splice(Math.floor(rng.next() * pool.length), 1)[0]);
+  const days = moon ? 14 : 20;
+  const kinds = ['leak', 'meteor', 'eclss'] as const;
+  const m: MissionDef & { twists: DailyTwist[] } = {
+    ...base,
+    id: `daily-${code}`,
+    durationSols: days,
+    scienceGoal: moon ? 45 : 65,
+    seed,
+    doseLimitMsv: Math.round(base.doseLimitMsv * (twists.includes('tightDose') ? 0.6 : 0.85)),
+    spe: [{ sol: [2, days * 0.6], cls: rng.next() < 0.4 ? 3 : 2 }],
+    storms: moon ? [] : [{ sol: [5, 10], durationSols: [3, 6], tau: [2.6, 3.8] }],
+    emergencies: [{ sol: [3, days - 3], kind: kinds[Math.floor(rng.next() * 3)] }],
+    resupply: twists.includes('noResupply') ? [] : [{ sol: Math.round(days / 2), capacityKg: 1500 }],
+    fuelGoalKg: twists.includes('bigFuel') ? (moon ? 500 : 1500) : moon ? 200 : 600,
+    twists,
+  };
+  if (twists.includes('extraSpe')) m.spe.push({ sol: [days * 0.65, days - 1], cls: 2 });
+  if (twists.includes('extraEmg')) m.emergencies!.push({ sol: [days * 0.5, days - 1], kind: kinds[Math.floor(rng.next() * 3)] });
+  return m;
+}
+
+export const missionById = (id: string): MissionDef => (id.startsWith('daily-') ? dailyMission(id.slice(6)) : (MISSIONS.find((m) => m.id === id) ?? MISSIONS[0]));
 
 const SPE_CLASS = {
   1: { total: 12, durationH: 12 },

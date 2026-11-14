@@ -1,12 +1,13 @@
 import { lessons } from '../sim/advisor';
 import { MODULES, MODULE_ORDER, SUPPLIES, cargoMass, isSupply } from '../sim/catalog';
-import { MISSIONS, missionById, scoreMission, type MissionDef } from '../sim/missions';
+import { MISSIONS, dailyCode, missionById, scoreMission, type MissionDef } from '../sim/missions';
 import { manifestMass, planAutonomy } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { CargoItem, ModuleType, SimState, SupplyType } from '../sim/types';
 import type { App } from './app';
 import { CODEX, GLOSSARY } from './codexData';
 import { pickQuestions, tx } from './quiz';
+import { ACHIEVEMENTS, check as checkAchievements, dailyBest, ensureDailyStrings, recordDaily, unlocked } from './achievements';
 import { downloadReport, teacherReport, type QuizAnswer } from './report';
 import { clear, fmt, h, icon } from './dom';
 import { getLang, t, type Lang } from './strings';
@@ -79,6 +80,7 @@ export function menuScreen(app: App): HTMLElement {
     h('button', { class: l === lang ? 'on' : '', 'aria-pressed': String(l === lang), onclick: () => app.setLanguage(l) }, label);
   let saveLabel = '';
   if (save && hasSave) {
+    ensureDailyStrings(save.missionId);
     const m = missionById(save.missionId);
     const day = Math.floor(save.timeH / WORLDS[save.world].solH) + (save.world === 'moon' ? 1 : 0);
     saveLabel = `${t(`mission.${m.id}.name`)} · ${t(`unit.day.${save.world}`).toLowerCase()} ${day}`;
@@ -88,6 +90,7 @@ export function menuScreen(app: App): HTMLElement {
   if (hasSave) rows.push(menuRow(n++, t('menu.continue'), () => app.continueGame(), { hint: saveLabel, primary: true }));
   rows.push(menuRow(n++, t('menu.new'), () => app.openMissions(), { primary: !hasSave }));
   rows.push(menuRow(n++, t('menu.codex'), () => app.openCodex()));
+  rows.push(menuRow(n++, t('menu.achievements'), () => app.openAchievements()));
   rows.push(menuRow(n++, t('menu.help'), () => app.openHelp()));
   rows.push(menuRow(n++, t('menu.settings'), () => app.openSettings()));
   if (app.canQuit) rows.push(menuRow(n++, t('menu.exit'), () => app.exitApp(), { quiet: true }));
@@ -152,7 +155,31 @@ export function missionsScreen(app: App): HTMLElement {
       ),
     );
   };
-  const body = h('div.sheet-body', h('div.cards', ...MISSIONS.map(card)));
+  // the daily challenge: same code, same mission, for everyone
+  const today = dailyCode();
+  const codeInput = h('input.code', { type: 'text', inputmode: 'numeric', maxlength: '8', value: today, 'aria-label': t('daily.code') }) as HTMLInputElement;
+  const best = dailyBest()[today];
+  ensureDailyStrings(`daily-${today}`);
+  const daily = h(
+    'div.daily',
+    h('div.grow', h('span.site', t('daily.title')), h('h3', t(`mission.daily-${today}.name`)), h('p', t(`mission.daily-${today}.brief`)), best ? h('div.best', t('daily.best', { s: best })) : null),
+    h(
+      'div.dailyplay',
+      h('label', t('daily.code'), codeInput),
+      h(
+        'button.btn.primary',
+        {
+          onclick: () => {
+            const code = /^\d{8}$/.test(codeInput.value.trim()) ? codeInput.value.trim() : today;
+            app.openPlanning(`daily-${code}`);
+          },
+        },
+        icon('rocket'),
+        t('daily.play'),
+      ),
+    ),
+  );
+  const body = h('div.sheet-body', daily, h('div.cards', ...MISSIONS.map(card)));
   return sheet('', t('mission.select'), null, () => app.openMenu(), body);
 }
 
@@ -427,6 +454,25 @@ export function pauseScreen(app: App): HTMLElement {
   return sheet('.narrow', t('menu.paused'), null, () => app.closeOverlay(), body);
 }
 
+/* ---------------------------------------------------------- achievements */
+
+export function achievementsScreen(app: App, onClose: () => void): HTMLElement {
+  const have = unlocked();
+  const n = ACHIEVEMENTS.filter((a) => have[a.id]).length;
+  const list = h(
+    'div.achlist',
+    ...ACHIEVEMENTS.map((a) =>
+      h(`div.ach${have[a.id] ? '.on' : ''}`, icon(have[a.id] ? a.icon : 'lock', 20), h('div', h('b', t(`ach.${a.id}`)), h('span', t(`ach.${a.id}.d`)))),
+    ),
+  );
+  const days = Object.entries(dailyBest()).sort((a, b) => b[0].localeCompare(a[0])).slice(0, 7);
+  const daily = days.length
+    ? h('div.dailylog', h('h3.sec', t('daily.history')), ...days.map(([code, s]) => h('div', h('span', `${code.slice(6, 8)}/${code.slice(4, 6)}/${code.slice(0, 4)}`), h('b', String(s)))))
+    : null;
+  void app;
+  return sheet('.mid', t('menu.achievements'), t('ach.count', { n, total: ACHIEVEMENTS.length }), onClose, h('div.sheet-body', list, daily));
+}
+
 /* ----------------------------------------------------------------- codex */
 
 export function codexScreen(app: App, onClose: () => void, startId?: string): HTMLElement {
@@ -670,6 +716,33 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
     ),
   );
   body.insertBefore(classroom, body.querySelector('h3.sec'));
+
+  // achievements unlocked by this mission, and the daily challenge result
+  const earned = h('div.achlist');
+  const progress = (): Parameters<typeof checkAchievements>[0] => ({
+    sim,
+    driven: app.game.roverOdo,
+    longestThrow: app.game.longestThrow,
+    ended: true,
+    quizRight: answers.every((a) => a.chosen !== null) ? answers.filter((a) => a.chosen === 0).length : null,
+    quizTotal: answers.length,
+  });
+  const showEarned = (ids: string[]): void => {
+    for (const id of ids) {
+      const a = ACHIEVEMENTS.find((x) => x.id === id)!;
+      earned.append(h('div.ach.on', icon(a.icon, 20), h('div', h('b', t(`ach.${id}`)), h('span', t(`ach.${id}.d`)))));
+    }
+    earnedSec.classList.toggle('hidden', earned.childElementCount === 0);
+  };
+  const earnedSec = h('div.hidden', h('h3.sec', t('end.ach')), earned);
+  body.insertBefore(earnedSec, classroom);
+  showEarned(checkAchievements(progress()));
+  quiz.addEventListener('click', () => setTimeout(() => showEarned(checkAchievements(progress())), 0));
+  if (sim.missionId.startsWith('daily-')) {
+    const code = sim.missionId.slice(6);
+    const bestNow = recordDaily(code, ok ? score.total : 0);
+    body.insertBefore(h('div.dailyres', icon('sun', 18), t('end.daily', { code, s: fmt(ok ? score.total : 0), best: bestNow })), earnedSec);
+  }
 
   const sub = ok ? t('end.success.sub') : t(`end.abort.${sim.outcome?.reason ?? 'health'}`);
   const foot = h(

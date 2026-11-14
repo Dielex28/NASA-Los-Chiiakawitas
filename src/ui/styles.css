@@ -247,6 +247,24 @@ kbd {
 }
 .badge.train { border-color: var(--ok); color: var(--ok); }
 .badge.real { border-color: var(--info); color: var(--info); }
+.daily { display: flex; flex-wrap: wrap; gap: 1em 1.6em; align-items: flex-end; padding: 1.2em 1.4em; margin-bottom: 8px; border: 1px solid var(--accent); background: rgba(242, 169, 59, 0.06); }
+.daily .site { font-family: var(--mono); font-size: 0.76em; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+.daily h3 { margin: 0.25em 0 0.4em; font-size: 1.4em; letter-spacing: 0.04em; }
+.daily p { margin: 0; color: var(--text-2); font-size: 0.94em; line-height: 1.5; max-width: 52em; }
+.daily .best { margin-top: 0.5em; font-family: var(--mono); font-size: 0.86em; color: var(--ok); }
+.dailyplay { display: flex; gap: 10px; align-items: flex-end; }
+.dailyplay label { display: flex; flex-direction: column; gap: 4px; font-size: 0.76em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-2); }
+.dailyplay .code { width: 7.5em; padding: 0.55em 0.7em; background: transparent; border: 1px solid var(--line); color: var(--text); font-family: var(--mono); font-size: 1.15em; letter-spacing: 0.06em; }
+.achlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(19em, 100%), 1fr)); gap: 6px; margin-top: 0.6em; }
+.ach { display: flex; gap: 0.8em; align-items: flex-start; padding: 0.75em 0.9em; border: 1px solid var(--line); color: var(--text-2); }
+.ach b { display: block; color: var(--text); font-size: 0.95em; }
+.ach span { font-size: 0.84em; line-height: 1.4; }
+.ach.on { border-color: var(--accent); }
+.ach.on .ico { color: var(--accent); }
+.ach:not(.on) { opacity: 0.6; }
+.dailyres { display: flex; gap: 0.6em; align-items: center; padding: 0.8em 1em; margin: 0.8em 0; border: 1px solid var(--accent); font-size: 0.95em; }
+.dailyres .ico { color: var(--accent); }
+.dailylog > div { display: flex; justify-content: space-between; padding: 0.4em 0; border-bottom: 1px solid var(--line-soft); font-family: var(--mono); }
 .badge.hist { border-color: var(--rad); color: var(--rad); }
 
 /* cargo planning */

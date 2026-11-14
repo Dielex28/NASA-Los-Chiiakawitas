@@ -1,3 +1,4 @@
+import { check as checkAchievements } from './achievements';
 import { avatarSvg, ROLE_COLOR } from './avatar';
 import { emergencyOptions } from '../sim/emergency';
 import { clamp01 } from '../core/math';
@@ -986,6 +987,10 @@ export class Hud {
       this.slower = 0;
       this.drawForecast(s);
       this.updateOrbi(s);
+      for (const id of checkAchievements({ sim: s, driven: g.roverOdo, longestThrow: g.longestThrow, ended: false, quizRight: null, quizTotal: 0 })) {
+        this.toast(t('ach.unlocked', { name: t(`ach.${id}`) }), 'good');
+        g.audio.ui('good');
+      }
     }
   }
 

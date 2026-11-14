@@ -40,6 +40,10 @@ En **Ajustes → Nivel** se elige uno de tres niveles. Cambia cuántas averías 
 3. ¿Por qué el juego no deja ir a pie hasta la expedición? ¿Qué limita realmente a un astronauta en la superficie?
 4. El límite de dosis no es un muro: por debajo de él sigue valiendo la pena recibir menos (ALARA). ¿Por qué?
 
+## El reto del día
+
+En la lista de misiones, el **reto del día** es una misión corta generada a partir de la fecha. El mismo código da la misma misión a todo el mundo: proyectad el código en la pizarra, que cada estudiante (o cada pareja) la juegue y comparad puntuaciones e informes. Para repetir el reto otro día basta con escribir su código. Las puntuaciones solo se guardan en cada ordenador: no hay ranking en línea.
+
 ## El informe
 
 Al final de cada misión, **Descargar informe para el docente** genera un archivo HTML con el resultado, la puntuación por áreas, las lecciones de la misión y las respuestas a las preguntas (con la correcta y la explicación). Se abre en cualquier navegador y se imprime en una o dos páginas. El nombre del estudiante es opcional y no sale del ordenador: el juego no envía datos a ningún sitio.

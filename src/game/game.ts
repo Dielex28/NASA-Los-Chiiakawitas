@@ -161,6 +161,8 @@ export class Game {
   private roverFlatTold = false;
   /** Metres driven this mission (for the tutorial). */
   roverOdo = 0;
+  /** Longest rock throw this mission, m (for achievements). */
+  longestThrow = 0;
   private flipT = 0;
   private roverFocus = new THREE.Vector3();
   private probeT = 0;
@@ -388,6 +390,7 @@ export class Game {
     this.roverHelped = false;
     this.roverSkidTold = false;
     this.roverOdo = 0;
+    this.longestThrow = 0;
     st.player.astronaut.group.visible = false;
     st.orbi.group.visible = false;
     sim.playerOutside = false;
@@ -1312,6 +1315,7 @@ export class Game {
     };
     props.onThrow = (r) => {
       const sim = this.sim;
+      this.longestThrow = Math.max(this.longestThrow, r.range);
       const params = { r: num(r.range, 0), t: num(r.time, 1), a: num(r.apex, 1), e: num(r.earthRange, 0) };
       this.events.emit('toast', { key: 'toast.throw', params, sev: 'info' });
       if (sim && recordExperiment(sim, 'throw')) this.audio.ui('good');

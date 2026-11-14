@@ -1,10 +1,11 @@
+import { ensureDailyStrings } from './achievements';
 import { Game } from '../game/game';
 import type { QualityLevel } from '../render/renderer';
 import type { CargoItem } from '../sim/types';
 import './codexData';
 import { h } from './dom';
 import { Hud } from './hud';
-import { codexScreen, debriefScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
+import { achievementsScreen, codexScreen, debriefScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
 import { initLang, setLang, type Lang } from './strings';
 import './styles.css';
 
@@ -154,6 +155,7 @@ export class App {
   }
 
   openPlanning(missionId: string): void {
+    ensureDailyStrings(missionId);
     this.current = () => this.setScreen(planningScreen(this, missionId));
     this.current();
   }
@@ -171,6 +173,10 @@ export class App {
 
   openCodex(id?: string): void {
     this.modal((close) => codexScreen(this, close, id));
+  }
+
+  openAchievements(): void {
+    this.modal((close) => achievementsScreen(this, close));
   }
 
   openHelp(): void {
