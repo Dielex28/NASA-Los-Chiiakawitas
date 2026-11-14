@@ -31,6 +31,10 @@ En **Ajustes → Nivel** se elige uno de tres niveles. Cambia cuántas averías 
 | Un fallo se encadena con otros | *Abril de 1970*: el tanque de oxígeno estalla, cae la celda de combustible y fallan los depuradores de CO₂ a la vez |
 | La autonomía de una tripulación | Conjunción solar en Marte: dos semanas sin avisos ni ayuda de la Tierra |
 | Leer datos y hacer gráficas | *Descargar datos (CSV)*: la telemetría de la misión, lista para una hoja de cálculo |
+| El área crece con el cuadrado del diámetro | Una perforación del doble de tamaño pierde cuatro veces más aire |
+| Sin aire, nada frena los fragmentos | La eyecta de un impacto daña la base a decenas de metros; los escudos Whipple |
+| Los procedimientos tienen un porqué | Minijuegos: apretar en estrella, purgar válvulas en orden, primeros auxilios paso a paso |
+| Planificar con reservas | Repuestos en la carga frente a otra cosa; improvisar solo lo sencillo |
 
 ## Antes de empezar
 
@@ -56,6 +60,10 @@ En **Ajustes → Nivel** se elige uno de tres niveles. Cambia cuántas averías 
 
 **Actividad de matemáticas con los datos.** Cualquier misión sirve: el CSV tiene una fila cada pocas horas con energía, oxígeno, agua, comida, CO₂, dosis, salud, ánimo, ciencia, temperatura y luz solar. Ideas: calcular la pendiente del oxígeno (kg por día) y compararla con el consumo de 0,84 kg por persona; encontrar la noche lunar en la columna de luz; sumar la dosis por día y compararla con la de una radiografía.
 
+**Sesión 7 · Catástrofes y repuestos (Cadete y Experto).** Escenario *Marzo de 2013* (el impacto) o *Marzo de 1973* (el sismo). Antes de jugar, cada grupo decide cuántas cajas de repuestos lleva y qué deja en tierra para hacerles sitio, y lo justifica por escrito. Durante la misión, que reparen a mano lo que puedan (los minijuegos) y anoten cada daño: qué lo causó, a qué distancia, qué hizo y cuántas piezas costó. Después, comparad: ¿qué grupo eligió mejor? ¿Qué daño hizo más falta reparar primero y por qué (pista: lo que cuesta aire)? Para Experto: con el dato de que un agujero de 5 mm pierde unos 7 kg de aire por hora, calculad cuánto perdería uno de 10 mm y explicad por qué.
+
+**Tareas y encargos como trabajo en equipo.** En el modo por equipos, repartid las tareas del día y los encargos de Control entre los puestos: quien lleva soporte vital limpia el filtro, quien lleva ciencia analiza las muestras y despliega los instrumentos, quien lleva mantenimiento repara. La barra de tareas del día muestra cuántas habéis hecho vosotros y cuántas tuvo que hacer la tripulación.
+
 ## Preguntas para el debate
 
 1. Si cada kilo que se lleva a Marte cuesta muchísimo, ¿qué conviene más: llevar agua o una máquina que la recicla? ¿A partir de cuántos días cambia la respuesta?
@@ -65,6 +73,18 @@ En **Ajustes → Nivel** se elige uno de tres niveles. Cambia cuántas averías 
 5. Desde Marte, una pregunta a la Tierra tarda media hora en tener respuesta. ¿Qué decisiones debe estar preparada para tomar sola una tripulación marciana?
 6. Durante la conjunción solar no hay contacto con la Tierra durante dos semanas. ¿Qué prepararíais antes? ¿Qué reglas acordaría la tripulación para decidir sin ayuda?
 7. En el Apolo 13 no falló una sola cosa, sino varias a la vez porque estaban conectadas. Buscad en vuestra base un fallo que pueda arrastrar a otros. ¿Cómo lo evitaríais?
+8. Ante un fuego, ¿combatirlo o despresurizar el módulo? ¿Qué se gana y qué se pierde en cada caso?
+9. ¿Por qué hay procedimientos con un orden fijo (apretar en estrella, purgar válvulas, primeros auxilios)? ¿Qué pasa si te saltas un paso?
+10. Cada kilo de repuestos es un kilo menos de otra cosa. ¿Cómo decidiríais cuántos llevar a una base en Marte, que no recibe naves de carga cada pocos meses?
+
+## Catástrofes, tareas y minijuegos
+
+- **Catástrofes.** Impactos de meteoroides, sismos, incendios, fugas térmicas de baterías y ordenadores bloqueados por tormentas solares dejan daños concretos, visibles en 3D y explicados en el inspector de cada módulo (por ejemplo, «Perforación del casco · 5 mm · se escapan 2 kg de O₂/h»). En el nivel Junior hay la mitad, y las misiones de entrenamiento no tienen catástrofes al azar. Si en el editor ponéis 0 emergencias, tampoco las habrá.
+- **Repuestos.** Las reparaciones gastan piezas; sin ellas solo se improvisan los arreglos sencillos. Es una buena excusa para hablar de logística: la ISS recibe carga varias veces al año, una base en Marte no.
+- **Minijuegos.** Duran entre 10 y 30 segundos y la misión se detiene mientras tanto. Cada uno muestra el dato real en el que se basa. En Junior son más sencillos (menos piezas, más margen). Se pueden jugar con ratón, dedo o teclado.
+- **Tareas del día.** Una lista corta cada mañana. Si nadie las hace, la tripulación las hace cuando vencen, a costa de horas de mantenimiento: nadie pierde la misión por no hacerlas, pero se nota.
+- **Encargos de Control.** Trabajos con plazo y recompensa en ciencia (instrumentos, testigos, fotos, inspecciones). Una inspección olvidada acaba en una fuga: buena ocasión para hablar de mantenimiento preventivo.
+- **Mejoras.** En cada hito de ciencia se elige una de tres tecnologías reales: pedid al grupo que explique su elección antes de pulsar.
 
 ## La campaña
 

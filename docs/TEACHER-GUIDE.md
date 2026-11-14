@@ -31,6 +31,10 @@ Helios Outpost is a simulator in which students run an outpost on the Moon or Ma
 | One failure drags others with it | *April 1970*: the oxygen tank bursts, the fuel cell dies and the CO₂ scrubbers fail all at once |
 | A crew's autonomy | Solar conjunction on Mars: two weeks without warnings or help from Earth |
 | Reading data and charting it | *Download data (CSV)*: the mission telemetry, ready for a spreadsheet |
+| Area grows with the square of the diameter | A puncture twice the size loses four times as much air |
+| With no air, nothing slows fragments | An impact's ejecta damages the base tens of metres away; Whipple shields |
+| Procedures have a reason | Minigames: tightening in a star, purging valves in order, first aid step by step |
+| Planning with reserves | Spare parts in the cargo instead of something else; improvising only simple fixes |
 
 ## Before you start
 
@@ -56,6 +60,10 @@ Helios Outpost is a simulator in which students run an outpost on the Moon or Ma
 
 **A maths activity with the data.** Any mission works: the CSV has a row every few hours with power, oxygen, water, food, CO₂, dose, health, morale, science, temperature and sunlight. Ideas: work out the slope of the oxygen (kg per day) and compare it with 0.84 kg per person; find the lunar night in the sunlight column; add up the dose per day and compare it with a chest X-ray.
 
+**Session 7 · Catastrophes and spare parts (Cadet and Expert).** The *March 2013* scenario (the impact) or *March 1973* (the quake). Before playing, each group decides how many crates of spare parts to take and what to leave on Earth to make room, and justifies it in writing. During the mission, they repair by hand whatever they can (the minigames) and note every piece of damage: what caused it, how far away, what it did and how many parts it took. Afterwards, compare: which group chose best? Which damage needed repairing first, and why (hint: whatever costs air)? For Expert: given that a 5 mm hole loses about 7 kg of air an hour, work out how much a 10 mm one would lose and explain why.
+
+**Tasks and requests as teamwork.** In team mode, share the daily tasks and Mission Control's requests among the stations: life support cleans the filter, science analyses samples and sets out instruments, maintenance repairs. The daily task bar shows how many you did yourselves and how many the crew had to do.
+
 ## Discussion questions
 
 1. If every kilo taken to Mars costs a fortune, which is better: carrying water or a machine that recycles it? After how many days does the answer change?
@@ -65,6 +73,18 @@ Helios Outpost is a simulator in which students run an outpost on the Moon or Ma
 5. From Mars, a question to Earth takes half an hour to be answered. Which decisions should a Martian crew be ready to take alone?
 6. During solar conjunction there is no contact with Earth for two weeks. What would you prepare beforehand? What rules would the crew agree on to decide without help?
 7. On Apollo 13 not one thing failed but several at once, because they were connected. Find a failure in your base that could drag others with it. How would you prevent it?
+8. Faced with a fire, fight it or vent the module? What do you gain and lose each way?
+9. Why do some procedures have a fixed order (tightening in a star, purging valves, first aid)? What happens if you skip a step?
+10. Every kilo of spare parts is a kilo less of something else. How would you decide how many to take to a base on Mars, which does not get cargo ships every few months?
+
+## Catastrophes, tasks and minigames
+
+- **Catastrophes.** Meteoroid impacts, quakes, fires, battery thermal runaways and computers crashed by solar storms leave concrete damage, visible in 3D and explained in each module's inspector (for example "Hull puncture · 5 mm · 2 kg of O₂/h escaping"). The Junior level has half as many, and training missions have no random catastrophes. If you set 0 emergencies in the editor, there will be none either.
+- **Spare parts.** Repairs use parts; without them only simple fixes can be improvised. A good way into logistics: the ISS gets cargo several times a year, a base on Mars does not.
+- **Minigames.** They last 10 to 30 seconds and the mission pauses meanwhile. Each shows the real fact it is based on. At Junior level they are simpler (fewer pieces, more margin). They work with mouse, finger or keyboard.
+- **Daily tasks.** A short list each morning. If nobody does them, the crew does them when they fall due, at the cost of maintenance hours: nobody loses a mission for skipping them, but it shows.
+- **Mission Control requests.** Jobs with a deadline and a science reward (instruments, cores, photos, inspections). A forgotten inspection ends in a leak: a good opening to talk about preventive maintenance.
+- **Upgrades.** At each science milestone you choose one of three real technologies: ask the group to explain their choice before they click.
 
 ## The campaign
 
