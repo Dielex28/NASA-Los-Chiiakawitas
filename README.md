@@ -67,7 +67,7 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 
 ## Cómo se juega
 
-1. **Elige misión.** Entrenamiento de 8 días en la Luna, 30 días en la cresta Shackleton, 60 o 180 soles en Marte, o modo libre.
+1. **Elige misión.** Entrenamiento de 8 días en la Luna, 30 días en la cresta Shackleton, 60 o 180 soles en Marte, o modo libre. Dos de los modos libres usan **relieve real medido por sondas de la NASA**: el borde del cráter Shackleton (altímetro láser LOLA) y el punto de Jezero donde aterrizó Perseverance (cámara CTX).
 2. **Planifica la carga.** Tienes un límite de masa. ¿Agua para todo el viaje o una máquina que la recicla? ¿Paneles o reactor? ¿Refugio o excavadora? ORBI, tu dron asistente, te avisa de lo que falta.
 3. **Construye la base** desde la consola de mando: los módulos se conectan solos a la red de servicios y la tripulación los monta.
 4. **Sal a la superficie (EVA).** Camina y salta con la gravedad real de cada mundo, escanea el terreno en busca de hielo y muestras, repara averías, limpia el polvo de los paneles. Conduce el róver para llegar más lejos gastando menos traje. Suelta un martillo y una pluma como en el Apolo 15, o lanza una roca y compara con lo que habría pasado en la Tierra. Correr gasta la reserva del traje más deprisa, y una caída dura lo daña.
@@ -151,6 +151,7 @@ Detalles técnicos que sostienen el diseño:
 - **Reflejos de la escena real** (calidades alta y ultra): una cámara cúbica fotografía el entorno desde el casco del comandante y ese mapa, filtrado, es lo que reflejan el visor, el metal y los paneles. Además tiñe las piezas con el color del suelo que tienen debajo.
 - **Luz volumétrica en Marte** (alta y ultra): el polvo del aire se ilumina paso a paso a lo largo de cada línea de visión, consultando el mapa de sombras del Sol y el relieve. La sombra del módulo de descenso o de un borde de cráter se ve en el propio aire, y las tormentas levantan una capa de polvo que se mueve con el viento. En la Luna no se aplica: no hay aire que iluminar.
 - **Iluminación global de un rebote** (media, alta y ultra): dos pasadas en la GPU sobre el mapa de alturas calculan dónde cae el Sol y, para cada punto, cuánto cielo deja libre el relieve y cuánto suelo iluminado tiene a la vista. Con eso el fondo de los cráteres recibe menos luz de cielo y las sombras junto a terreno soleado se rellenan con la luz que este devuelve.
+- **Relieve real** (`src/world/realTerrain.ts`): dos modelos de elevación públicos recortados a 6,4 × 6,4 km, comprimidos dentro del propio juego (unos 380 kB) e interpolados con splines cúbicas. Por debajo de la resolución de los datos (5 m en la Luna, 20 m en Marte) se añade una rugosidad generada, porque ninguna sonda ha medido detalle más fino. El script `scripts/real-terrain.py` reproduce el proceso desde los archivos originales.
 - **Motor de física propio** (`src/game/physics.ts`, sin gráficos y con pruebas): gravedad de cada mundo, arrastre aerodinámico ½·ρ·Cd·A·v², viento, rebote con restitución, fricción de Coulomb y la energía que absorbe el suelo suelto. Mueve las rocas lanzadas y el experimento del martillo y la pluma.
 - **Simulación determinista y serializable**: una semilla reproduce una misión; el estado es JSON, lo que hace triviales el guardado y las pruebas.
 - **Polvo según la física**: en la Luna cada grano sigue una parábola; en Marte el aire lo frena y lo deja flotando.
@@ -167,7 +168,8 @@ Detalles técnicos que sostienen el diseño:
 ## Créditos y licencias
 
 - Motor gráfico: [three.js](https://threejs.org/) (MIT). Tipografías: B612 y B612 Mono, diseñadas para cabinas de avión (SIL Open Font License), vía Fontsource. Programa de escritorio: [Electron](https://www.electronjs.org/) (MIT).
-- Datos y hechos científicos: NASA y publicaciones citadas en `docs/SCIENCE.md`. Este proyecto no está afiliado a NASA ni cuenta con su respaldo.
+- Datos y hechos científicos: NASA y publicaciones citadas en `docs/SCIENCE.md`.
+- Relieve real: modelo LOLA de 5 m/px del borde de Shackleton (NASA GSFC, Barker et al., 2021, doi:10.1016/j.pss.2020.105119) y mosaico CTX de Jezero de 20 m/px de la misión Mars 2020 (USGS Astrogeology, Fergason et al., 2020, doi:10.5066/P906QQT8). Datos de dominio público. Este proyecto no está afiliado a NASA ni cuenta con su respaldo.
 - **Uso de IA:** el código, los textos y el diseño se desarrollaron con la asistencia de un modelo de IA (Claude, de Anthropic) bajo la dirección del equipo de manera muy parcial (aprox. 15% del total). No se usaron imágenes, modelos 3D ni audio generados por IA: todos los recursos se crean por código en tiempo de ejecución.
 
 ---

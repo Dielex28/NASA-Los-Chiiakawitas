@@ -166,7 +166,8 @@ export class Game {
   /** Lower the render resolution automatically when the frame rate drops. */
   adaptive = true;
   private stage: Stage | null = null;
-  private stages: Partial<Record<WorldId, Stage>> = {};
+  /** One stage per site: the designed Moon and Mars, and their measured counterparts. */
+  private stages: Partial<Record<string, Stage>> = {};
   private tactical: TacticalCamera | null = null;
   private follow: FollowCamera | null = null;
   private blend = new CameraBlend();
@@ -241,10 +242,11 @@ export class Game {
 
   /* ------------------------------------------------------------ worlds */
 
-  private async ensureStage(id: WorldId, startLocalH: number): Promise<Stage> {
-    let st = this.stages[id];
+  private async ensureStage(id: WorldId, startLocalH: number, real = false): Promise<Stage> {
+    const key = real ? `${id}:real` : id;
+    let st = this.stages[key];
     if (!st) {
-      const world = await World.create(id, TERRAIN_SEED[id], startLocalH, this.renderer.quality, (fraction, stage) => this.events.emit('loading', { fraction, stage }));
+      const world = await World.create(id, TERRAIN_SEED[id], startLocalH, this.renderer.quality, (fraction, stage) => this.events.emit('loading', { fraction, stage }), real);
       const kit = new Kit(id, world.uniforms);
       const g = WORLDS[id].gravity;
       const q = this.renderer.quality.particles;
@@ -277,7 +279,7 @@ export class Game {
         bounce: this.renderer.quality.bounce ? new BounceMap(world.uniforms, this.renderer.quality.level === 'medium' ? 192 : 256) : null,
       };
       world.atmosphere.bounce = !!st.bounce;
-      this.stages[id] = st;
+      this.stages[key] = st;
     }
     this.stage = st;
     this.tactical = new TacticalCamera((x, z) => st!.world.ground(x, z));
@@ -344,7 +346,7 @@ export class Game {
     const mission = missionById(missionId);
     this.setPhase('loading');
     this.events.emit('loading', { fraction: 0, stage: 'terrain' });
-    const st = await this.ensureStage(mission.world, mission.startLocalH);
+    const st = await this.ensureStage(mission.world, mission.startLocalH, !!mission.realSite);
     const hf = st.world.hf;
     const sim = createMission(mission, manifest, mission.seed, hf, hf.padHeight(0, 0, 5).top);
     this.beginPlay(st, mission, sim, [], [], true);
@@ -451,7 +453,7 @@ export class Game {
     if (!file || file.v !== SIM_VERSION || !file.sim) return false;
     const mission = missionById(file.sim.missionId);
     this.setPhase('loading');
-    const st = await this.ensureStage(mission.world, mission.startLocalH);
+    const st = await this.ensureStage(mission.world, mission.startLocalH, !!mission.realSite);
     file.sim.playerOutside = false;
     this.pendingRover = file.rover ?? null;
     this.beginPlay(st, mission, file.sim, file.scans ?? [], file.scannedSites ?? [], false);

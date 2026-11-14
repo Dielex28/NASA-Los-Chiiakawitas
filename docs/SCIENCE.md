@@ -28,6 +28,17 @@ Este documento separa tres cosas: **valores reales** que el simulador usa tal cu
 | Rendimiento de cultivos en ambiente controlado | 20–35 g de materia seca comestible por m² y día (papa, trigo) | Wheeler et al., *Crop productivities and radiation use efficiencies for bioregenerative life support*, Adv. Space Res. 41 (2008) |
 | Presión parcial de CO₂ | 1 kg en 300 m³ a 22 °C ≈ 1,39 mmHg | Ley de los gases ideales |
 
+### Relieve real
+
+Los modos «relieve real» usan dos modelos digitales de elevación públicos, recortados a 6,4 × 6,4 km y remuestreados a 384 × 384 puntos (unos 17 m por punto):
+
+| Sitio | Fuente | Resolución original | Centro del recorte |
+| --- | --- | --- | --- |
+| Borde de Shackleton, polo sur lunar | LRO-LOLA, «Site04 Shackleton rim». Barker, M.K., et al. (2021), *Planetary & Space Science* 203, 105119, doi:10.1016/j.pss.2020.105119. https://pgda.gsfc.nasa.gov/products/78 | 5 m/px | El punto más llano y alto de la cresta con la pared del cráter a menos de 1 km (cota 1 734 m sobre el datum del modelo); el cráter cae casi 2 km |
+| Cráter Jezero, Marte | Mosaico DTM CTX de *Mars 2020 Terrain Relative Navigation*. USGS Astrogeology, Fergason et al. (2020), doi:10.5066/P906QQT8 | 20 m/px | Lugar de aterrizaje de Perseverance, 18,4447° N, 77,4508° E (cota −2 566 m) |
+
+Por debajo de esa resolución el juego añade rugosidad generada (≤ 1,7 m), que se anula en los 12 m alrededor de la zona de aterrizaje. En el borde de Shackleton el potencial de hielo crece con la profundidad bajo la cresta, como aproximación a las trampas frías; no es un mapa medido de hielo. La posición del Sol sigue siendo la del modelo general del juego, no la efeméride del sitio. El proceso completo está en `scripts/real-terrain.py`.
+
 ## 2. Modelos simplificados
 
 **Red eléctrica.** Toda la base comparte una sola red. Cada módulo pide una carga de mantenimiento (calefacción) y otra de operación; se sirven por orden de prioridad y lo que no cabe se queda sin energía. El excedente carga primero el almacenamiento más eficiente. No se modelan tensiones ni pérdidas en cables.

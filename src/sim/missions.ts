@@ -15,6 +15,8 @@ export interface MissionDef {
   difficulty: 1 | 2 | 3;
   tutorial: boolean;
   endless: boolean;
+  /** Played on measured topography (a NASA / USGS elevation model) instead of the designed site. */
+  realSite?: boolean;
   seed: number;
   recommended: Partial<Record<CargoItem, number>>;
   /** Solar particle events: window in sols and class (1 minor, 2 moderate, 3 severe). */
@@ -226,6 +228,14 @@ export const MISSIONS: MissionDef[] = [
     resupply: [],
   },
 ];
+
+// Free play on measured topography: the same rules as the sandboxes, on the real shape of the land.
+for (const [base, id, seed] of [
+  ['moon-sandbox', 'moon-real', 11],
+  ['mars-sandbox', 'mars-real', 12],
+] as const) {
+  MISSIONS.push({ ...MISSIONS.find((m) => m.id === base)!, id, seed, realSite: true });
+}
 
 export const missionById = (id: string): MissionDef => MISSIONS.find((m) => m.id === id) ?? MISSIONS[0];
 

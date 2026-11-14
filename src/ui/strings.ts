@@ -99,6 +99,19 @@ const S: Record<string, [string, string]> = {
     'Sin límite de tiempo y con carga generosa. Experimenta con diseños de base y descubre qué pasa.',
     'No time limit and a generous payload. Experiment with base designs and see what happens.',
   ],
+  'mission.realData': ['Relieve real · NASA', 'Real terrain · NASA'],
+  'mission.moon-real.name': ['Borde de Shackleton · relieve real', 'Shackleton rim · real terrain'],
+  'mission.moon-real.site': ['Polo sur lunar · datos LOLA de la NASA', 'Lunar south pole · NASA LOLA data'],
+  'mission.moon-real.brief': [
+    'El suelo que pisas es el que midió el altímetro láser LOLA de la sonda LRO, a 5 m por muestra. Estás en la cresta del borde de Shackleton: a tu lado el cráter cae casi dos kilómetros hacia la sombra permanente. Modo libre.',
+    'The ground under you is the one measured by the LOLA laser altimeter on the LRO spacecraft, 5 m per sample. You are on the crest of Shackleton\'s rim: beside you the crater drops almost two kilometres into permanent shadow. Free play.',
+  ],
+  'mission.mars-real.name': ['Jezero · relieve real', 'Jezero · real terrain'],
+  'mission.mars-real.site': ['Donde aterrizó Perseverance · datos CTX', 'Where Perseverance landed · CTX data'],
+  'mission.mars-real.brief': [
+    'El relieve es un modelo de elevación hecho con imágenes de la cámara CTX de la sonda MRO, a 20 m por muestra, centrado en el punto donde Perseverance tocó suelo en 2021 (18,44° N, 77,45° E). Modo libre.',
+    'The relief is an elevation model built from images of the CTX camera on the MRO spacecraft, 20 m per sample, centred where Perseverance touched down in 2021 (18.44° N, 77.45° E). Free play.',
+  ],
   'mission.mars-sandbox.name': ['Marte · modo libre', 'Mars · free play'],
   'mission.mars-sandbox.site': ['Fondo de cráter · Marte', 'Crater floor · Mars'],
   'mission.mars-sandbox.brief': [

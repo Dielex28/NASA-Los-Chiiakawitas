@@ -114,7 +114,7 @@ function massif(x: number, z: number, cx: number, cz: number, height: number, si
 /** Position at a compass azimuth (clockwise from north) and distance from the origin. */
 const polar = (az: number, dist: number): [number, number] => [Math.sin(az) * dist, -Math.cos(az) * dist];
 
-function makePois(seed: number, kinds: string[], minR: number, maxR: number, avoid: Array<[number, number, number]>): Poi[] {
+export function makePois(seed: number, kinds: string[], minR: number, maxR: number, avoid: Array<[number, number, number]>): Poi[] {
   const out: Poi[] = [];
   let k = 0;
   let guard = 0;
