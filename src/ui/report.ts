@@ -3,6 +3,7 @@ import { lessons } from '../sim/advisor';
 import type { SimState } from '../sim/types';
 import { tx, type Level, type ShownQuestion } from './quiz';
 import { saveFile } from './save';
+import { telemetryCsv } from '../sim/csv';
 import { getLang, t } from './strings';
 
 export interface QuizAnswer {
@@ -94,6 +95,13 @@ ${quiz}
 <p class="meta" style="margin-top:2em">Helios Outpost · NASA Space Apps Challenge 2026 · ${es ? 'Las cifras científicas y sus fuentes están en docs/SCIENCE.md del proyecto.' : 'Scientific figures and their sources are in docs/SCIENCE.md of the project.'}</p>
 </body>
 </html>`;
+}
+
+/** The mission's telemetry as a spreadsheet file (CSV). */
+export function downloadTelemetry(sim: SimState): void {
+  const day = new Date().toISOString().slice(0, 10);
+  const name = getLang() === 'es' ? 'datos' : 'data';
+  void saveFile(`helios-${sim.missionId}-${day}-${name}.csv`, telemetryCsv(sim, getLang()), 'text/csv');
 }
 
 /** Hand the report to the player as a file to save. */

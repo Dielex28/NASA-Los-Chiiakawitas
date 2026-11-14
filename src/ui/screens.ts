@@ -11,7 +11,7 @@ import type { App } from './app';
 import { CODEX, GLOSSARY } from './codexData';
 import { pickQuestions, tx } from './quiz';
 import { ACHIEVEMENTS, check as checkAchievements, dailyBest, ensureMissionStrings, recordDaily, unlocked } from './achievements';
-import { downloadReport, teacherReport, type QuizAnswer } from './report';
+import { downloadReport, downloadTelemetry, teacherReport, type QuizAnswer } from './report';
 import { clear, fmt, h, icon } from './dom';
 import { getLang, t, type Lang } from './strings';
 
@@ -753,7 +753,8 @@ export function pauseScreen(app: App): HTMLElement {
       menuRow(3, t('menu.codex'), () => app.openCodex()),
       menuRow(4, t('menu.help'), () => app.openHelp()),
       menuRow(5, t('menu.settings'), () => app.openSettings()),
-      menuRow(6, t('menu.quit'), () => app.quit(), { quiet: true }),
+      menuRow(6, t('end.csv'), () => app.game.sim && downloadTelemetry(app.game.sim), { hint: t('end.csv.hint') }),
+      menuRow(7, t('menu.quit'), () => app.quit(), { quiet: true }),
     ),
   );
   return sheet('.narrow', t('menu.paused'), null, () => app.closeOverlay(), body);
@@ -1017,6 +1018,7 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
       'div.report',
       student,
       h('button.btn', { onclick: () => downloadReport(teacherReport(sim, level, answers, student.value.trim()), sim.missionId) }, icon('download'), t('end.report')),
+      h('button.btn.ghost', { onclick: () => downloadTelemetry(sim), title: t('end.csv.d') }, icon('download'), t('end.csv')),
       h('span.note', t('end.report.note')),
     ),
   );
