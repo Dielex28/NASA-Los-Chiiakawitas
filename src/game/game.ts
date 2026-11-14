@@ -1,7 +1,7 @@
 import * as THREE from 'three';
 import { AudioEngine } from '../audio/audio';
 import { Emitter } from '../core/events';
-import { clamp01, damp } from '../core/math';
+import { clamp01, damp, dampAngle } from '../core/math';
 import { Orbi } from '../entities/astronaut';
 import { Kit } from '../entities/kit';
 import type { ViewContext } from '../entities/modules3d';
@@ -38,11 +38,13 @@ import { Input } from './input';
 import { AIR_DENSITY, metabolicWatts, type PhysEnv } from './physics';
 import { Player } from './player';
 import { Props } from './props';
+import { DOCK_RANGE, RoverUnit } from './rover';
+import type { VehicleEnv, VehicleInput } from './vehicle';
 import { Sites, type Site } from './sites';
 
 export type GamePhase = 'boot' | 'menu' | 'loading' | 'playing' | 'ended';
 export type GameMode = 'command' | 'eva';
-export type PromptKind = 'assemble' | 'repair' | 'clean' | 'enter' | 'sample';
+export type PromptKind = 'assemble' | 'repair' | 'clean' | 'enter' | 'sample' | 'drive';
 
 export interface Prompt {
   kind: PromptKind;
@@ -55,7 +57,7 @@ export interface Prompt {
 
 export interface Marker {
   id: string;
-  kind: 'base' | 'site' | 'alert';
+  kind: 'base' | 'site' | 'alert' | 'rover';
   x: number;
   y: number;
   z: number;
@@ -84,6 +86,8 @@ const TERRAIN_SEED: Record<WorldId, number> = { moon: 19690720, mars: 20210218 }
 const SUIT_SECONDS = 540;
 /** Effort at which the suit lasts exactly SUIT_SECONDS: the steady loping walk of the game (3.1 m/s). */
 const NOMINAL_WATTS = 345;
+/** Where the rover is parked at the start of a mission: x, z, heading. */
+const ROVER_PARK: [number, number, number] = [8.4, 5.4, 0.9];
 /** Touchdown speed above which a landing hurts, m/s (a 2 m drop on Earth is about 6 m/s). */
 const HARD_LANDING = 6.5;
 const INTRO_S = 6;
@@ -101,6 +105,7 @@ interface Stage {
   cargo: CargoLanders;
   prints: Footprints;
   props: Props;
+  rover: RoverUnit;
 }
 
 interface SaveFile {
@@ -109,6 +114,8 @@ interface SaveFile {
   scans: ScanCircle[];
   scannedSites: string[];
   savedAt: number;
+  /** Where the rover was left, and its charge. */
+  rover?: { x: number; z: number; yaw: number; battery: number };
 }
 
 /**
@@ -138,6 +145,15 @@ export class Game {
   metabolic = 0;
   private throwCooldown = 0;
   private poseT = 0;
+  /** The commander is at the controls of the rover. */
+  driving = false;
+  private pendingRover: SaveFile['rover'] | null = null;
+  private roverHelped = false;
+  private roverSkidTold = false;
+  private roverFlatTold = false;
+  private flipT = 0;
+  private roverFocus = new THREE.Vector3();
+  private roverQuat = new THREE.Quaternion();
   overlay: OverlayKind = 'none';
   /** UI sets this while a modal screen is open so the world ignores input. */
   uiBlocking = false;
@@ -252,6 +268,7 @@ export class Game {
         cargo: new CargoLanders(world, kit, dust, sparks),
         prints,
         props: this.makeProps(world, kit, dust),
+        rover: this.makeRover(world, kit),
       };
       this.stages[id] = st;
     }
@@ -343,6 +360,14 @@ export class Game {
     st.cargo.sync(sim, false);
     st.prints.clear();
     st.props.clear();
+    this.driving = false;
+    st.player.astronaut.seated = false;
+    const parked = this.pendingRover;
+    this.pendingRover = null;
+    st.rover.place(parked?.x ?? ROVER_PARK[0], parked?.z ?? ROVER_PARK[1], parked?.yaw ?? ROVER_PARK[2], this.vehicleEnv(st.world));
+    if (parked) st.rover.battery = parked.battery;
+    this.roverHelped = false;
+    this.roverSkidTold = false;
     st.player.astronaut.group.visible = false;
     st.orbi.group.visible = false;
     sim.playerOutside = false;
@@ -393,6 +418,7 @@ export class Game {
         scans: this.scans,
         scannedSites: this.stage.sites.list.filter((s) => s.scanned).map((s) => s.poi.id),
         savedAt: Date.now(),
+        rover: { x: this.stage.rover.vehicle.pos[0], z: this.stage.rover.vehicle.pos[2], yaw: this.stage.rover.vehicle.yaw, battery: this.stage.rover.battery },
       };
       localStorage.setItem(SAVE_KEY, JSON.stringify(file));
     } catch {
@@ -420,6 +446,7 @@ export class Game {
     this.setPhase('loading');
     const st = await this.ensureStage(mission.world, mission.startLocalH);
     file.sim.playerOutside = false;
+    this.pendingRover = file.rover ?? null;
     this.beginPlay(st, mission, file.sim, file.scans ?? [], file.scannedSites ?? [], false);
     return true;
   }
@@ -557,6 +584,7 @@ export class Game {
     const sim = this.sim;
     const st = this.stage;
     if (!st || this.mode !== 'eva') return;
+    if (this.driving) this.leaveRover(st);
     this.mode = 'command';
     if (sim) sim.playerOutside = false;
     st.build.cancel();
@@ -652,6 +680,8 @@ export class Game {
     const env = sim.env;
 
     // ---- player / camera
+    // the rover moves first, so the driver is drawn on this frame's seat
+    this.updateRover(dt, st, sim, rate * dt, playing && this.mode === 'eva' && allowInput);
     if (playing && this.mode === 'eva') this.updateEva(dt, st, sim, allowInput);
     else this.updateCommand(dt, st, sim, allowInput);
     this.blend.apply(this.camera, dt);
@@ -858,7 +888,19 @@ export class Game {
     const follow = this.follow!;
     const world = st.world;
     const colliders = st.base.colliders.concat(world.rocks.colliders);
-    player.update(
+    const rover = st.rover;
+    const nearRover = !this.driving && rover.distanceTo(player.pos.x, player.pos.z) < 3.7;
+    if (allowInput && input.hit('KeyV') && !st.build.active) {
+      if (this.driving) {
+        // nobody steps off a moving rover
+        if (Math.abs(rover.vehicle.speed) < 1.3) this.leaveRover(st);
+        else this.events.emit('toast', { key: 'toast.roverStop', sev: 'info' });
+      } else if (nearRover && player.grounded) this.boardRover(st);
+    }
+    // on foot the rover is one more thing to walk around
+    if (!this.driving) colliders.push([rover.vehicle.pos[0], rover.vehicle.pos[2], 1.35]);
+    if (this.driving) this.rideRover(dt, st);
+    else player.update(
       dt,
       allowInput ? input : null,
       follow.yaw,
@@ -880,7 +922,11 @@ export class Game {
       world.atmosphere.darkness,
       this.time,
     );
-    follow.update(input, dt, this.camera, player.pos, allowInput, colliders);
+    if (this.driving && Math.abs(rover.vehicle.speed) > 1.2 && !(input.locked && (Math.abs(input.dx) > 0 || Math.abs(input.dy) > 0))) {
+      // drift back behind the rover when the driver is not looking around
+      follow.yaw = dampAngle(follow.yaw, rover.vehicle.yaw + Math.PI, 0.9, dt);
+    }
+    follow.update(input, dt, this.camera, this.driving ? this.roverFocus : player.pos, allowInput, colliders);
     this.focus.copy(player.pos);
     st.orbi.update(dt, player.pos, follow.yaw, (x, z) => world.ground(x, z), this.camera.position);
 
@@ -898,7 +944,7 @@ export class Game {
     this.physEnv.colliders = colliders;
     st.props.update(dt, this.physEnv);
     this.throwCooldown = Math.max(0, this.throwCooldown - dt);
-    if (allowInput && !st.build.active && player.grounded && player.working < 0.2) {
+    if (allowInput && !this.driving && !st.build.active && player.grounded && player.working < 0.2) {
       if (input.hit('KeyG') && !st.props.dropping) {
         st.props.startDrop(player.pos.x, player.pos.z, player.yaw, (x, z) => world.ground(x, z));
         this.poseT = 0.7;
@@ -962,7 +1008,13 @@ export class Game {
       this.prompt = null;
       this.setTool(false);
       player.working = 0;
-    } else this.updateInteraction(dt, st, sim, allowInput);
+    } else if (this.driving) {
+      this.prompt = null;
+      this.setTool(false);
+    } else {
+      this.updateInteraction(dt, st, sim, allowInput);
+      if (!this.prompt && nearRover) this.prompt = { kind: 'drive', subject: '', hold: false, progress: 0 };
+    }
     // arms out while releasing or throwing something
     if (this.poseT > 0) player.working = Math.max(player.working, 0.45);
 
@@ -982,6 +1034,133 @@ export class Game {
     for (const m of sim.modules) {
       if (m.down || (m.type === 'solar' && m.dust > 0.3)) this.markers.push({ id: `m${m.id}`, kind: 'alert', x: m.x, y: m.y + 5, z: m.z, label: m.type });
     }
+    if (!this.driving && rover.distanceTo(player.pos.x, player.pos.z) > 14) {
+      this.markers.push({ id: 'rover', kind: 'rover', x: rover.vehicle.pos[0], y: rover.vehicle.pos[1] + 2.4, z: rover.vehicle.pos[2] });
+    }
+  }
+
+  /* -------------------------------------------------------------- rover */
+
+  private vehicleEnv(world: World, colliders?: Array<[number, number, number]>): VehicleEnv {
+    return {
+      gravity: WORLDS[world.id].gravity,
+      ground: (x, z) => world.ground(x, z),
+      normal: (x, z) => {
+        const n = world.mesh.normal(x, z, this.tmpN);
+        return [n.x, n.y, n.z];
+      },
+      colliders,
+    };
+  }
+
+  private makeRover(world: World, kit: Kit): RoverUnit {
+    const rover = new RoverUnit(kit, world.id === 'moon');
+    world.scene.add(rover.view.group, rover.tracks.mesh);
+    rover.place(ROVER_PARK[0], ROVER_PARK[1], ROVER_PARK[2], this.vehicleEnv(world));
+    return rover;
+  }
+
+  private boardRover(st: Stage): void {
+    const p = st.player;
+    this.driving = true;
+    st.rover.occupied = true;
+    p.vel.set(0, 0, 0);
+    p.working = 0;
+    p.astronaut.seated = true;
+    this.audio.setJet(false);
+    this.follow!.distance = 8.6;
+    this.follow!.yaw = st.rover.vehicle.yaw + Math.PI;
+    this.follow!.pitch = 0.34;
+    this.audio.ui('open');
+    if (!this.roverHelped) {
+      this.roverHelped = true;
+      this.events.emit('toast', { key: 'toast.roverHelp', sev: 'info' });
+    }
+  }
+
+  private leaveRover(st: Stage): void {
+    const p = st.player;
+    const [x, z] = st.rover.exitPoint();
+    this.driving = false;
+    st.rover.occupied = false;
+    p.astronaut.seated = false;
+    p.astronaut.group.rotation.set(0, 0, 0);
+    p.place(x, z, st.rover.vehicle.yaw, (px, pz) => st.world.ground(px, pz));
+    this.follow!.distance = 6.2;
+    this.audio.ui('close');
+  }
+
+  /** Keep the commander in the seat: the figure rides with the chassis and the player's position follows. */
+  private rideRover(dt: number, st: Stage): void {
+    const p = st.player;
+    const v = st.rover.vehicle;
+    const seat = st.rover.seatPose(this.roverQuat);
+    const a = p.astronaut;
+    a.group.position.copy(seat);
+    a.group.quaternion.copy(this.roverQuat);
+    a.steer = -v.steerAngle / 0.52;
+    a.animate(dt, 0, true, 0, WORLDS[st.world.id].gravity, 0, 0, st.world.atmosphere.darkness, this.time);
+    p.pos.set(v.pos[0], st.world.ground(v.pos[0], v.pos[2]), v.pos[2]);
+    p.vel.set(0, 0, 0);
+    p.yaw = v.yaw;
+    p.grounded = true;
+    p.outOfBounds = Math.hypot(v.pos[0], v.pos[2]) > 1180 - 60;
+    this.roverFocus.set(v.pos[0], v.pos[1] - 0.5, v.pos[2]);
+  }
+
+  /** Physics, charging and the lessons the rover has to teach. Runs every frame, driven or parked. */
+  private updateRover(dt: number, st: Stage, sim: SimState, hours: number, allowInput: boolean): void {
+    const rover = st.rover;
+    const world = st.world;
+    const v = rover.vehicle;
+    let control: VehicleInput | null = null;
+    if (this.driving) {
+      const input = this.input;
+      // A and D steer left and right as seen from behind the rover
+      control = allowInput ? { throttle: input.axisY(), steer: -input.axisX(), brake: input.key('Space') ? 1 : 0 } : { throttle: 0, steer: 0, brake: 1 };
+    }
+    const lander = sim.modules[0];
+    const docked = !!lander && rover.distanceTo(lander.x, lander.z) < DOCK_RANGE;
+    const env = this.vehicleEnv(world, st.base.colliders.concat(world.rocks.colliders));
+    rover.update(dt, control, env, Math.max(0, hours), world.atmosphere.localSun, docked, st.dust, this.dustColor(st), world.id === 'mars', world.atmosphere.darkness, this.time);
+    // the edge of the mapped area
+    const far = Math.hypot(v.pos[0], v.pos[2]);
+    if (far > 1180) {
+      v.pos[0] *= 1180 / far;
+      v.pos[2] *= 1180 / far;
+      v.vel[0] *= 0.5;
+      v.vel[2] *= 0.5;
+    }
+    if (!this.driving) return;
+    if (rover.battery <= 0 && !this.roverFlatTold) {
+      this.roverFlatTold = true;
+      this.events.emit('toast', { key: 'toast.roverFlat', sev: 'warn' });
+      this.audio.ui('warn');
+    } else if (rover.battery > 0.05) this.roverFlatTold = false;
+    if (!this.roverSkidTold && v.slip > 1.05 && Math.abs(v.speed) > 3) {
+      this.roverSkidTold = true;
+      this.events.emit('toast', { key: world.id === 'moon' ? 'toast.roverSkid.moon' : 'toast.roverSkid.mars', sev: 'info' });
+    }
+    // on its side or its back: the crew rights it (a real crew could: on the Moon the rover weighs what a person does on Earth)
+    this.flipT = v.overturned ? this.flipT + dt : 0;
+    if (this.flipT > 1.6) {
+      this.flipT = 0;
+      v.recover(env);
+      for (const c of sim.crew) if (c.isPlayer) c.health = Math.max(5, c.health - 6);
+      this.suit = Math.max(0.02, this.suit - 0.08);
+      this.events.emit('toast', { key: 'toast.roverFlip', sev: 'warn' });
+      this.audio.ui('warn');
+    }
+  }
+
+  /** Rover speed for the HUD, km/h. */
+  roverKmh(): number {
+    return this.stage ? Math.abs(this.stage.rover.vehicle.speed) * 3.6 : 0;
+  }
+
+  /** Rover state of charge, 0..1. */
+  roverBattery(): number {
+    return this.stage?.rover.battery ?? 0;
   }
 
   /** Find what the commander can do right here and run hold-to-work actions. */

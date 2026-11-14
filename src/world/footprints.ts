@@ -34,6 +34,31 @@ function treadTexture(): THREE.CanvasTexture {
   return t;
 }
 
+/** Tyre print: the chevron cleats of a wire-mesh wheel, as an alpha mask (tiles end to end). */
+function tyreTexture(): THREE.CanvasTexture {
+  const w = 64;
+  const h = 64;
+  const c = document.createElement('canvas');
+  c.width = w;
+  c.height = h;
+  const g = c.getContext('2d')!;
+  g.clearRect(0, 0, w, h);
+  g.fillStyle = 'rgba(255,255,255,0.3)';
+  g.fillRect(3, 0, w - 6, h);
+  g.strokeStyle = 'rgba(255,255,255,0.95)';
+  g.lineWidth = 5;
+  for (let y = -8; y < h + 16; y += 16) {
+    g.beginPath();
+    g.moveTo(5, y + 12);
+    g.lineTo(w / 2, y);
+    g.lineTo(w - 5, y + 12);
+    g.stroke();
+  }
+  const t = new THREE.CanvasTexture(c);
+  t.anisotropy = 4;
+  return t;
+}
+
 /**
  * Bootprints pressed into the regolith. On the Moon nothing ever erases them —
  * the Apollo prints are still there — so they simply accumulate (oldest recycled).
@@ -49,13 +74,17 @@ export class Footprints {
   private pos = new THREE.Vector3();
   private scale = new THREE.Vector3(1, 1, 1);
 
-  constructor(strength: number) {
-    const geo = new THREE.PlaneGeometry(0.19, 0.36);
+  private capacity: number;
+
+  /** `kind` picks the mark: a boot sole, or one length of tyre track. */
+  constructor(strength: number, kind: 'boot' | 'tyre' = 'boot', capacity = CAPACITY) {
+    this.capacity = capacity;
+    const geo = kind === 'boot' ? new THREE.PlaneGeometry(0.19, 0.36) : new THREE.PlaneGeometry(0.3, 0.46);
     geo.rotateX(-Math.PI / 2); // lie flat, toe toward +z after the yaw below
     geo.rotateY(Math.PI);
     const mat = new THREE.MeshBasicMaterial({
       color: 0x000000,
-      alphaMap: treadTexture(),
+      alphaMap: kind === 'boot' ? treadTexture() : tyreTexture(),
       transparent: true,
       opacity: strength,
       depthWrite: false,
@@ -64,7 +93,7 @@ export class Footprints {
       polygonOffsetUnits: -2,
       fog: true,
     });
-    this.mesh = new THREE.InstancedMesh(geo, mat, CAPACITY);
+    this.mesh = new THREE.InstancedMesh(geo, mat, capacity);
     this.mesh.count = 0;
     this.mesh.frustumCulled = false;
     this.mesh.renderOrder = 1;
@@ -86,8 +115,8 @@ export class Footprints {
     this.pos.set(x, y + 0.012, z);
     this.m.compose(this.pos, this.q, this.scale);
     this.mesh.setMatrixAt(this.cursor, this.m);
-    this.cursor = (this.cursor + 1) % CAPACITY;
-    this.count = Math.min(CAPACITY, this.count + 1);
+    this.cursor = (this.cursor + 1) % this.capacity;
+    this.count = Math.min(this.capacity, this.count + 1);
     this.mesh.count = this.count;
     this.mesh.instanceMatrix.needsUpdate = true;
   }

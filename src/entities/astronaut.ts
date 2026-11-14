@@ -33,6 +33,10 @@ export class Astronaut {
   private nozzles: THREE.Mesh[] = [];
   private screenMat: THREE.MeshBasicMaterial;
   private glow = new THREE.PointLight(0xdfe8ff, 0, 9, 1.5);
+  /** Sitting at the controls of the rover. */
+  seated = false;
+  /** −1…1: how far the hand controller is pushed to one side (seated only). */
+  steer = 0;
 
   constructor(k: Kit) {
     const g = this.group;
@@ -319,11 +323,20 @@ export class Astronaut {
       this.foreR.rotation.x = lerp(this.foreR.rotation.x, -0.5, w);
       this.foreL.rotation.x = lerp(this.foreL.rotation.x, -0.6, w);
     }
+    if (this.seated) {
+      // thighs forward on the seat, shins down, one hand on the T-handle between the seats
+      this.legL.rotation.x = this.legR.rotation.x = -1.42;
+      this.shinL.rotation.x = this.shinR.rotation.x = 1.3;
+      this.armL.rotation.set(-0.35, 0, -0.14);
+      this.foreL.rotation.x = -0.75;
+      this.armR.rotation.set(-0.55, 0, 0.08 - this.steer * 0.12);
+      this.foreR.rotation.x = -0.9 - this.steer * 0.1;
+    }
     // body: bob with the stride (a deeper bound in low gravity), lean into motion, breathe when idle
     const bob = Math.abs(s) * lerp(0.04, 0.12, lowG) * moving * (1 - air);
     this.body.position.y = 0.98 + bob - 0.012 * (1 - moving) * (0.5 + 0.5 * Math.sin(time * 1.4));
     this.lean = damp(this.lean, clamp01(speed / 6) * 0.28 + air * clamp01(-vy / 6) * 0.2, 6, dt);
-    this.torso.rotation.x = this.lean + this.workBlend * 0.25 + 0.04;
+    this.torso.rotation.x = this.seated ? -0.06 : this.lean + this.workBlend * 0.25 + 0.04;
     this.torso.rotation.y = s * 0.07 * moving;
     this.head.rotation.y = -s * 0.04 * moving;
 

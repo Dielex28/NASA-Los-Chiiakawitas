@@ -139,6 +139,10 @@ export class Hud {
   private jetFill = h('i');
   private effortFill = h('i');
   private effortVal = h('span.vl', '');
+  private roverFill = h('i');
+  private roverVal = h('span.vl', '');
+  private hintKey = '';
+  private leftEl: HTMLElement | null = null;
   private geiger = h('div.geiger', h('span.muted', ''), h('span', ''));
   private lockMsg = h('div.eva-lock', t('eva.clickToLook'));
   private evaHint = h('div.eva-hint', t('eva.hint'));
@@ -227,7 +231,7 @@ export class Hud {
     );
     this.vCrew.el.style.cursor = 'pointer';
     this.vCrew.el.addEventListener('click', () => this.showTab('crew'));
-    const left = h('section.hud-left.panel', { 'aria-label': t('hud.status') }, this.vPower.el, this.vO2.el, this.vWater.el, this.vFood.el, this.vAir.el, this.vRad.el, this.vCrew.el);
+    const left = (this.leftEl = h('section.hud-left.panel', { 'aria-label': t('hud.status') }, this.vPower.el, this.vO2.el, this.vWater.el, this.vFood.el, this.vAir.el, this.vRad.el, this.vCrew.el));
     if (!this.game.mission!.endless) left.append(this.vSci.el);
     this.el.append(left);
   }
@@ -732,6 +736,7 @@ export class Hud {
       h('div.meter', h('span.lb', t('eva.suit')), h('div.bar.ok', this.suitFill), h('span.vl')),
       h('div.meter', h('span.lb', t('eva.jet')), h('div.bar', this.jetFill), h('span.vl')),
       h('div.meter', h('span.lb', t('eva.effort')), h('div.bar', this.effortFill), this.effortVal),
+      h('div.meter', h('span.lb', t('eva.rover')), h('div.bar', this.roverFill), this.roverVal),
       this.geiger,
       h('div.note', t('eva.timeNote')),
     );
@@ -843,6 +848,8 @@ export class Hud {
   private syncMode(): void {
     const evaMode = this.game.mode === 'eva';
     this.eva.classList.toggle('hidden', !evaMode);
+    // on the surface the suit panel needs the room: keep only the consumables in the status column
+    this.leftEl?.classList.toggle('compact', evaMode);
     this.inspectorEl.classList.toggle('hidden', evaMode);
     this.corner.classList.toggle('hidden', evaMode);
     setText(this.evaBtn.lastElementChild!, evaMode ? t('hud.evaBack') : t('hud.eva'));
@@ -1192,6 +1199,15 @@ export class Hud {
     this.effortFill.style.width = `${Math.min(100, (watts / 700) * 100)}%`;
     (this.effortFill.parentElement as HTMLElement).className = `bar ${watts > 580 ? 'bad' : watts > 420 ? 'warn' : 'ok'}`;
     setText(this.effortVal, `${Math.round(watts / 10) * 10} W`);
+    const charge = g.roverBattery();
+    this.roverFill.style.width = `${charge * 100}%`;
+    (this.roverFill.parentElement as HTMLElement).className = `bar ${charge < 0.15 ? 'bad' : charge < 0.35 ? 'warn' : 'ok'}`;
+    setText(this.roverVal, g.driving ? `${fmt(g.roverKmh())} km/h` : `${fmt(charge * 100)} %`);
+    const hintKey = g.driving ? 'eva.hintDrive' : 'eva.hint';
+    if (hintKey !== this.hintKey) {
+      this.hintKey = hintKey;
+      setText(this.evaHint, t(hintKey));
+    }
     const rate = (s.flows.doseRateEvaMsvDay / 24) * 1000;
     setText(this.geiger.firstElementChild!, t('hud.rad'));
     setText(this.geiger.lastElementChild!, t('eva.dose', { v: fmt(rate, rate < 100 ? 0 : 0) }));
