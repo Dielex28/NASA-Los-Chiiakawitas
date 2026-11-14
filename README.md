@@ -16,6 +16,10 @@ No hay una solución correcta. Hay disyuntivas de ingeniería reales —masa, en
 | ![Caminata en Marte](docs/img/mars-eva.jpg) | ![Base marciana de noche](docs/img/mars-night.jpg) |
 | *EVA en Marte… con un apagón en curso: dos paneles no bastan cuando el Sol es débil.* | *Noche marciana: los reactores siguen dando energía y el invernadero brilla en magenta.* |
 
+![Róver en Marte](docs/img/rover.jpg)
+
+*El róver: cuatro ruedas con suspensión independiente, batería propia y panel solar. Pesa menos que en la Tierra, pero tiene la misma masa: agarra poco y tarda en frenar.*
+
 *(English summary at the end.)*
 
 ---
@@ -66,7 +70,7 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 1. **Elige misión.** Entrenamiento de 8 días en la Luna, 30 días en la cresta Shackleton, 60 o 180 soles en Marte, o modo libre.
 2. **Planifica la carga.** Tienes un límite de masa. ¿Agua para todo el viaje o una máquina que la recicla? ¿Paneles o reactor? ¿Refugio o excavadora? ORBI, tu dron asistente, te avisa de lo que falta.
 3. **Construye la base** desde la consola de mando: los módulos se conectan solos a la red de servicios y la tripulación los monta.
-4. **Sal a la superficie (EVA).** Camina y salta con la gravedad real de cada mundo, escanea el terreno en busca de hielo y muestras, repara averías, limpia el polvo de los paneles. Suelta un martillo y una pluma como en el Apolo 15, o lanza una roca y compara con lo que habría pasado en la Tierra. Correr gasta la reserva del traje más deprisa, y una caída dura lo daña.
+4. **Sal a la superficie (EVA).** Camina y salta con la gravedad real de cada mundo, escanea el terreno en busca de hielo y muestras, repara averías, limpia el polvo de los paneles. Conduce el róver para llegar más lejos gastando menos traje. Suelta un martillo y una pluma como en el Apolo 15, o lanza una roca y compara con lo que habría pasado en la Tierra. Correr gasta la reserva del traje más deprisa, y una caída dura lo daña.
 5. **Sobrevive a los eventos** y completa los objetivos. Al final, un informe con telemetría explica qué decisiones marcaron la misión.
 
 ### Controles
@@ -90,6 +94,8 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 | `B` | Abrir el menú de construcción |
 | `G` | Experimento de Galileo: soltar un martillo y una pluma a la vez |
 | `R` | Lanzar una roca (la cámara apunta: mirar arriba la eleva) |
+| `V` | Subir al róver (junto a él) o bajar (parado) |
+| Al volante: `W` `S` · `A` `D` · `Espacio` | Acelerar y retroceder · girar · frenar |
 | `Tab` | Volver a la base |
 
 ## Las disyuntivas que enseña
@@ -105,6 +111,7 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 | **Hielo lejano** | En la Luna el hielo solo sobrevive en la sombra permanente del cráter, lejos, a oscuras y a −180 °C. Hay que tender postes hasta allí. |
 | **Trabajar o ponerse a cubierto** | Durante una tormenta solar, refugiarse evita más del 90 % de la dosis… y detiene la ciencia, el cultivo y el montaje. |
 | **Ritmo de trabajo** | El ritmo intenso rinde más durante un tiempo; luego cae el ánimo y con él la productividad. |
+| **Conducir en baja gravedad** | El róver pesa una sexta parte en la Luna, pero su masa es la misma: las ruedas agarran menos y frenar lleva mucha más distancia |
 
 ## Rigor científico
 
@@ -140,6 +147,10 @@ Detalles técnicos que sostienen el diseño:
 - **Brillo de oposición**: mirando en dirección contraria al Sol, el regolito se aclara alrededor del punto antisolar, como en las fotos del Apolo.
 - **Aire de Marte**: la neblina se ilumina hacia el Sol (el polvo dispersa la luz hacia delante) y con el Sol bajo aparecen haces de luz entre los módulos. En la Luna no hay nada de esto: no hay aire.
 - **Lámpara del casco con sombras** (calidades alta y ultra): de noche cada roca proyecta la suya.
+- **Róver con suspensión** (`src/game/vehicle.ts`, sin gráficos y con pruebas): un sólido rígido sobre cuatro ruedas con muelle y amortiguador independientes. Cada neumático solo puede empujar hasta μ·N, donde N es la carga que soporta: de ahí salen solos el derrape, las frenadas largas en baja gravedad y los saltos sobre los baches. Los muelles se dimensionan para la gravedad local.
+- **Reflejos de la escena real** (calidades alta y ultra): una cámara cúbica fotografía el entorno desde el casco del comandante y ese mapa, filtrado, es lo que reflejan el visor, el metal y los paneles. Además tiñe las piezas con el color del suelo que tienen debajo.
+- **Luz volumétrica en Marte** (alta y ultra): el polvo del aire se ilumina paso a paso a lo largo de cada línea de visión, consultando el mapa de sombras del Sol y el relieve. La sombra del módulo de descenso o de un borde de cráter se ve en el propio aire, y las tormentas levantan una capa de polvo que se mueve con el viento. En la Luna no se aplica: no hay aire que iluminar.
+- **Iluminación global de un rebote** (media, alta y ultra): dos pasadas en la GPU sobre el mapa de alturas calculan dónde cae el Sol y, para cada punto, cuánto cielo deja libre el relieve y cuánto suelo iluminado tiene a la vista. Con eso el fondo de los cráteres recibe menos luz de cielo y las sombras junto a terreno soleado se rellenan con la luz que este devuelve.
 - **Motor de física propio** (`src/game/physics.ts`, sin gráficos y con pruebas): gravedad de cada mundo, arrastre aerodinámico ½·ρ·Cd·A·v², viento, rebote con restitución, fricción de Coulomb y la energía que absorbe el suelo suelto. Mueve las rocas lanzadas y el experimento del martillo y la pluma.
 - **Simulación determinista y serializable**: una semilla reproduce una misión; el estado es JSON, lo que hace triviales el guardado y las pruebas.
 - **Polvo según la física**: en la Luna cada grano sigue una parábola; en Marte el aire lo frena y lo deja flotando.
@@ -151,7 +162,7 @@ Detalles técnicos que sostienen el diseño:
 
 ## Pruebas
 
-`npm test` ejecuta 34 pruebas. Veintidós cubren la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, y misiones completas con la carga recomendada. Doce cubren el motor de física frente a las fórmulas: tiempo de caída √(2h/g), velocidad terminal, alcance de un proyectil, deriva por el viento, pérdida de energía en los rebotes y deslizamiento en pendientes.
+`npm test` ejecuta 44 pruebas. Veintidós cubren la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, y misiones completas con la carga recomendada. Doce cubren el motor de física frente a las fórmulas: tiempo de caída √(2h/g), velocidad terminal, alcance de un proyectil, deriva por el viento, pérdida de energía en los rebotes y deslizamiento en pendientes. Diez cubren el róver: hundimiento estático de la suspensión y carga por rueda en ambos mundos, velocidad máxima, giro, tracción, distancia de frenado frente a v²/(2·μ·g), pendientes, obstáculos y terreno irregular.
 
 ## Créditos y licencias
 
@@ -163,7 +174,7 @@ Detalles técnicos que sostienen el diseño:
 
 ## English summary
 
-**Helios Outpost** is a browser-based 3D mission trainer for young students. You command an outpost at the lunar south pole or in a Martian crater: plan the cargo within a mass budget, place modules on procedurally generated terrain, allocate crew time, walk the surface on EVA, and ride out long lunar nights, Martian dust storms and solar particle events. A debrief with telemetry explains which engineering trade-offs decided the mission.
+**Helios Outpost** is a browser-based 3D mission trainer for young students. You command an outpost at the lunar south pole or in a Martian crater: plan the cargo within a mass budget, place modules on procedurally generated terrain, allocate crew time, walk the surface on EVA, drive a rover on sprung wheels, and ride out long lunar nights, Martian dust storms and solar particle events. A debrief with telemetry explains which engineering trade-offs decided the mission.
 
 Human consumables, measured surface radiation, gravity, solar irradiance and dose limits are real figures; simplifications are listed with sources in [`docs/SCIENCE.md`](docs/SCIENCE.md). The interface is fully bilingual (Spanish / English). Everything — terrain, models, textures, sound — is generated by code at run time.
 

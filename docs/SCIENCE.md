@@ -46,6 +46,8 @@ Este documento separa tres cosas: **valores reales** que el simulador usa tal cu
 
 **Objetos sueltos (física de EVA).** Las rocas lanzadas, el martillo y la pluma se integran a 240 pasos por segundo con gravedad, arrastre aerodinámico F = ½·ρ·C_d·A·v² respecto al aire (incluido el viento), rebote con coeficiente de restitución y fricción de Coulomb contra el terreno. Densidad del aire: 0 en la Luna, 0,020 kg/m³ en Marte (≈ 1,6 % de los 1,225 kg/m³ de la Tierra). El martillo (1,32 kg) y la pluma (0,03 kg) son los de la demostración de David Scott en el Apolo 15; el área (0,012 m²) y el coeficiente de arrastre (1,3) de la pluma son estimaciones nuestras. Con esos valores, desde 1,6 m: en la Luna ambos tardan 1,40 s; en Marte la pluma llega unos 0,001 s después; en la Tierra, unos 0,05 s después. Una pluma real revolotea y tarda más: el modelo no incluye sustentación ni rotación acoplada. El viento marciano se toma como 3 m/s en calma y hasta 25 m/s en tormenta.
 
+**Róver.** Sólido rígido de 620 kg con tripulante (el LRV del Apolo pesaba unos 210 kg vacío y unos 700 kg cargado) sobre cuatro ruedas con muelle y amortiguador independientes, integrado a 240 pasos por segundo. La fuerza de cada neumático, longitudinal y lateral juntas, está limitada por un círculo de fricción de radio μ·N con μ = 0,72 (estimación para rueda de malla sobre regolito); la resistencia a la rodadura es el 6 % de la carga. Los muelles se dimensionan para un hundimiento de 7 cm bajo el peso local y un amortiguamiento del 55 % del crítico. La distancia de frenado resultante sigue v²/(2·μ·g): desde 6 m/s, unos 15 m en la Luna y unos 7 m en Marte (en la Tierra serían 2,5 m). La batería es de 9 kWh; consume la potencia mecánica dividida por un rendimiento de 0,8 más 120 W de electrónica, y se recarga con su panel (0,45 kW a pleno Sol) o junto a la base (2,5 kW). Capacidad, rendimiento y potencias son valores nuestros, no de un vehículo concreto.
+
 **Esfuerzo en EVA.** La potencia metabólica se estima con un ajuste sencillo (≈ 125 W en reposo, ≈ 190 W a paso lento, ≈ 345 W al paso largo del juego y ≈ 660 W corriendo), del orden de lo medido en las EVA del Apolo (medias de 230–300 W, picos por encima de 500 W). La reserva del traje se consume en proporción a ella: dura lo previsto caminando, más si te quedas quieto y casi la mitad si corres. Es una regla de juego, no un modelo fisiológico.
 
 ## 3. Ajustes de jugabilidad
@@ -60,12 +62,14 @@ Este documento separa tres cosas: **valores reales** que el simulador usa tal cu
 | Paneles de 10 kW y reactor de 10 kW como unidades redondas | Diseños reales con otras potencias | Comparaciones mentales fáciles para estudiantes. |
 | El tiempo corre 60× en EVA y hasta 4 320× en la consola | — | Que quepan 30–180 días en una sesión. |
 | Los objetos lanzados y soltados se mueven en tiempo real | El reloj de la misión corre 60× en EVA | Una caída de 1,4 s tiene que verse durar 1,4 s. |
+| El róver alcanza 34 km/h | El LRV del Apolo rodaba a 13–18 km/h | Que conducir compense claramente frente a caminar. |
+| Si el róver vuelca, la tripulación lo endereza al momento | Sería una emergencia seria | Público joven: se paga con salud y reserva del traje, no con el fin de la misión. |
 | Lanzamiento a 11 m/s con traje | Depende del traje y del astronauta | Valor único y moderado para poder comparar mundos. |
 | Evacuación en lugar de fallecimiento | — | Público joven: la misión se aborta, nadie muere. |
 
 ## 4. Cómo comprobarlo
 
-Las pruebas de `tests/physics.test.ts` comparan el motor de física con las fórmulas (caída libre, velocidad terminal, alcance, deriva por viento). Las pruebas de `tests/sim.test.ts` verifican que el simulador cumple lo que este documento afirma: tasas de consumo, efecto del reciclaje, prioridades de carga, atenuación por polvo, diferencia entre blindaje para protones y para rayos cósmicos, dosis por cercanía del reactor y misiones completas.
+Las pruebas de `tests/vehicle.test.ts` comprueban la suspensión, la tracción y la distancia de frenado del róver. Las pruebas de `tests/physics.test.ts` comparan el motor de física con las fórmulas (caída libre, velocidad terminal, alcance, deriva por viento). Las pruebas de `tests/sim.test.ts` verifican que el simulador cumple lo que este documento afirma: tasas de consumo, efecto del reciclaje, prioridades de carga, atenuación por polvo, diferencia entre blindaje para protones y para rayos cósmicos, dosis por cercanía del reactor y misiones completas.
 
 ```bash
 npm test
