@@ -3,6 +3,7 @@ import { check as checkAchievements } from './achievements';
 import { avatarSvg, ROLE_COLOR } from './avatar';
 import { controlRoundTripH, emergencyOptions } from '../sim/emergency';
 import { addressee } from '../sim/team';
+import { RESERVE, verdict } from '../sim/route';
 import { clamp01 } from '../core/math';
 import type { Game } from '../game/game';
 import { advise, type Advice } from '../sim/advisor';
@@ -795,7 +796,55 @@ export class Hud {
       seg.append(b);
     }
     this.corner = h('div.hud-corner', h('div.mapsw.panel', icon('map', 16), seg));
-    this.el.append(this.corner);
+    // the route planner sits beside the vitals column, not over it
+    this.el.append(this.corner, h('div.hud-route', this.routeBox));
+    this.renderRoute();
+  }
+
+  /** The EVA route planner: draw a traverse in the command view and see what it would cost. */
+  private readonly routeBox = h('div.routebox.panel');
+  private renderRoute(): void {
+    const g = this.game;
+    const box = this.routeBox;
+    clear(box);
+    const editing = g.routeEdit;
+    box.classList.toggle('open', editing || g.route.length > 0);
+    box.append(
+      h(
+        'div.rhead',
+        icon('eva', 16),
+        h('b', t('route.title')),
+        h('span.grow'),
+        h(`button.btn.small${editing ? '.on' : ''}`, { onclick: () => g.setRouteEdit(!editing), 'aria-pressed': String(editing) }, editing ? t('route.done') : g.route.length ? t('route.edit') : t('route.draw')),
+      ),
+    );
+    if (editing && !g.route.length) {
+      box.append(h('div.note', t('route.hint')));
+      return;
+    }
+    const plan = g.routePlan();
+    if (!plan) return;
+    const pct = (v: number): string => `${Math.round(v * 100)} %`;
+    const vWalk = verdict(plan, false);
+    const vRover = verdict(plan, true);
+    const bar = (v: number, cls: string): HTMLElement => h(`div.bar.${cls}`, h('i', { style: { width: `${Math.min(100, v * 100)}%` } }));
+    const cls = (v: 'ok' | 'warn' | 'bad'): string => (v === 'ok' ? 'ok' : v === 'warn' ? 'sun' : 'bad');
+    box.append(
+      h('div.rstats', t('route.stats', { n: g.route.length, out: fmt(plan.outbound), total: fmt(plan.total), climb: fmt(plan.climb) })),
+      h('div.rrow', h('span', t('route.walk')), bar(plan.suitWalk, cls(vWalk)), h('b', pct(plan.suitWalk))),
+      h('div.rrow', h('span', t('route.rover')), bar(plan.suitRover, cls(vRover)), h('b', pct(plan.suitRover))),
+      h('div.rrow', h('span', t('route.battery')), bar(plan.battery, plan.battery > 0.9 ? 'bad' : plan.battery > 0.6 ? 'sun' : 'ok'), h('b', pct(plan.battery))),
+      h('div.rnote', t('route.time', { min: fmt(plan.walkS, 0), slope: fmt(plan.maxSlope, 0) })),
+    );
+    const notes: Array<[string, 'ok' | 'warn' | 'bad']> = [];
+    if (plan.tooSteepM > 8) notes.push([t('route.tooSteep', { m: fmt(plan.tooSteepM) }), 'bad']);
+    else if (plan.steepM > 20) notes.push([t('route.steep', { m: fmt(plan.steepM) }), 'warn']);
+    if (plan.suitWalk > 1 - RESERVE) notes.push([t('route.walkNo', { r: pct(RESERVE) }), 'bad']);
+    else if (plan.suitWalk > 0.65) notes.push([t('route.walkTight'), 'warn']);
+    if (!plan.walkbackOk) notes.push([t('route.walkback', { m: fmt(plan.farthest) }), 'bad']);
+    if (!notes.length) notes.push([t('route.ok'), 'ok']);
+    for (const [txt, sev] of notes) box.append(h(`div.rmsg.${sev}`, icon(sev === 'ok' ? 'check' : 'warn', 14), h('span', txt)));
+    box.append(h('div.row', h('button.btn.small.ghost', { onclick: () => g.undoRoute() }, t('route.undo')), h('button.btn.small.ghost', { onclick: () => g.clearRoute() }, t('route.clear'))));
   }
 
   /* ------------------------------------------------------------ eva */
@@ -916,6 +965,7 @@ export class Hud {
         if (on) this.buildPhotoPanel();
         else this.photoPanel?.remove();
       }),
+      g.events.on('route', () => this.renderRoute()),
       g.events.on('mode', (mode) => {
         if (mode === 'eva') this.tutorial.eva = true;
         else if (this.tutorial.eva) this.tutorial.back = true;
@@ -943,6 +993,7 @@ export class Hud {
     this.leftEl?.classList.toggle('compact', evaMode);
     this.inspectorEl.classList.toggle('hidden', evaMode);
     this.corner.classList.toggle('hidden', evaMode);
+    this.routeBox.parentElement?.classList.toggle('hidden', evaMode);
     setText(this.evaBtn.lastElementChild!, evaMode ? t('hud.evaBack') : t('hud.eva'));
     this.evaBtn.classList.toggle('on', evaMode);
   }
@@ -1467,7 +1518,7 @@ export class Hud {
       el.style.display = '';
       el.style.left = `${Math.max(20, Math.min(window.innerWidth - 20, pr.x))}px`;
       el.style.top = `${Math.max(90, Math.min(window.innerHeight - 60, pr.y))}px`;
-      setText(el.lastElementChild!, `${fmt(pr.dist)} m`);
+      setText(el.lastElementChild!, m.kind === 'route' ? `${t('route.marker', { n: m.label ?? '' })} · ${fmt(pr.dist)} m` : `${fmt(pr.dist)} m`);
     }
     for (const [id, el] of this.markers) {
       if (!seen.has(id)) {

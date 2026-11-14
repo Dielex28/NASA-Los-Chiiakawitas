@@ -2,6 +2,8 @@ import * as THREE from 'three';
 import { AudioEngine } from '../audio/audio';
 import { Emitter } from '../core/events';
 import { closeTeam, createTeam, shiftDue } from '../sim/team';
+import { MUSCLE_EFF, SUITED_KG, planRoute, type RoutePlan, type RoutePoint } from '../sim/route';
+import { RouteView } from './routeview';
 import { siteOf, siteSun, type RealSiteId, type SiteSun } from '../sim/sites';
 import { clamp01, damp, dampAngle } from '../core/math';
 import { Orbi } from '../entities/astronaut';
@@ -35,7 +37,7 @@ import type { CargoItem, LogEntry, ModuleState, ModuleType, SimState, WorldId } 
 import { Footprints } from '../world/footprints';
 import { World } from '../world/world';
 import { BaseView } from './base';
-import { BuildSystem, type ScanCircle } from './build';
+import { BuildSystem, type ScanCircle, raycastTerrain } from './build';
 import { CameraBlend, FollowCamera, TacticalCamera } from './cameras';
 import { CargoLanders } from './cargo';
 import { AIRLOCK } from './colliders';
@@ -65,7 +67,7 @@ export interface Prompt {
 
 export interface Marker {
   id: string;
-  kind: 'base' | 'site' | 'alert' | 'rover' | 'goal';
+  kind: 'base' | 'site' | 'alert' | 'rover' | 'goal' | 'route';
   x: number;
   y: number;
   z: number;
@@ -86,6 +88,8 @@ export interface GameEvents extends Record<string, unknown> {
   photo: boolean;
   /** Team mode: a shift has ended and the group hands over. */
   shift: number;
+  /** The planned EVA route changed. */
+  route: number;
 }
 
 /** Game hours that pass per real second at each command-console speed. */
@@ -154,6 +158,13 @@ export class Game {
   scans: ScanCircle[] = [];
   prompt: Prompt | null = null;
   markers: Marker[] = [];
+  /** EVA route: waypoints drawn in the command view, followed outside. */
+  route: RoutePoint[] = [];
+  routeEdit = false;
+  /** Index of the next waypoint while on EVA. */
+  routeNext = 0;
+  readonly routeView = new RouteView();
+  private lastFootY = 0;
   /** Remaining suit consumables, 0..1. */
   suit = 1;
   /** Metabolic power of the commander on EVA, watts. */
@@ -400,6 +411,11 @@ export class Game {
     st.prints.clear();
     st.props.clear();
     st.crewmates.clear();
+    st.world.scene.add(this.routeView.group);
+    if (fresh) this.route = [];
+    this.routeEdit = false;
+    this.routeNext = 0;
+    this.refreshRoute();
     this.driving = false;
     st.player.astronaut.seated = false;
     const parked = this.pendingRover;
@@ -538,7 +554,73 @@ export class Game {
     this.select(id);
   }
 
+  /* -------------------------------------------------------- EVA route */
+
+  /** Where an EVA through this module's hatch starts. */
+  private airlockExit(door: ModuleState): RoutePoint {
+    const [lx, lz] = AIRLOCK[door.type] ?? [0, 6];
+    const c = Math.cos(door.rot);
+    const s = Math.sin(door.rot);
+    return { x: door.x + lx * c + lz * s, z: door.z - lx * s + lz * c };
+  }
+
+  /** The airlock the route starts from: the one nearest its first waypoint. */
+  routeStart(): RoutePoint {
+    const sim = this.sim!;
+    const first = this.route[0] ?? { x: 0, z: 0 };
+    let best = sim.modules[0];
+    let bd = Infinity;
+    for (const m of sim.modules) {
+      if (!AIRLOCK[m.type] || !isBuilt(m)) continue;
+      const d = (m.x - first.x) ** 2 + (m.z - first.z) ** 2;
+      if (d < bd) {
+        bd = d;
+        best = m;
+      }
+    }
+    return this.airlockExit(best);
+  }
+
+  /** The plan for the current route (null without waypoints). */
+  routePlan(): RoutePlan | null {
+    if (!this.sim || !this.stage || !this.route.length) return null;
+    const w = this.stage.world;
+    return planRoute(this.routeStart(), this.route, (x, z) => w.ground(x, z), WORLDS[w.id].gravity);
+  }
+
+  private refreshRoute(): void {
+    const st = this.stage;
+    if (!st || !this.sim) return;
+    this.routeView.set(this.routeStart(), this.route, (x, z) => st.world.ground(x, z));
+    this.routeView.group.visible = this.route.length > 0;
+    this.events.emit('route', this.route.length);
+  }
+
+  /** Start or stop drawing the route in the command view. */
+  setRouteEdit(on: boolean): void {
+    if (on && this.mode !== 'command') return;
+    this.routeEdit = on;
+    if (on) {
+      this.stage?.build.cancel();
+      this.select(null);
+    }
+    this.audio.ui(on ? 'open' : 'close');
+    this.events.emit('route', this.route.length);
+  }
+
+  undoRoute(): void {
+    if (this.route.pop()) this.audio.ui('close');
+    this.refreshRoute();
+  }
+
+  clearRoute(): void {
+    this.route = [];
+    this.routeNext = 0;
+    this.refreshRoute();
+  }
+
   startBuild(type: ModuleType): void {
+    this.routeEdit = false;
     if (!this.sim || !this.stage) return;
     if ((this.sim.inventory[type] ?? 0) <= 0) {
       this.audio.ui('error');
@@ -589,6 +671,8 @@ export class Game {
       return;
     }
     st.build.cancel();
+    this.routeEdit = false;
+    this.routeNext = 0;
     // leave by the airlock closest to where the commander is looking
     let door: ModuleState = sim.modules[0];
     let best = Infinity;
@@ -921,6 +1005,7 @@ export class Game {
     }
     tac.update(input, dt, this.camera, allowInput);
     this.focus.copy(tac.target);
+    if (this.route.length) this.routeView.setNext(-1, this.time, Math.max(1, Math.min(10, tac.distance / 45)));
     if (!allowInput) return;
 
     const build = st.build;
@@ -931,6 +1016,20 @@ export class Game {
       build.update(sim, ray.origin, ray.direction, this.time);
       if (input.click(0) && input.overView) this.confirmBuild(st, sim);
       if (input.hit('Escape') || input.click(2)) this.cancelBuild();
+    } else if (this.routeEdit) {
+      // drawing the EVA route: click the ground to add a waypoint, right-click to take one back
+      this.hoverId = null;
+      if (input.click(0) && input.overView && this.route.length < 12) {
+        const ray = this.cursorRay(false);
+        const hit = new THREE.Vector3();
+        if (raycastTerrain(ray.origin, ray.direction, (x, z) => st.world.ground(x, z), 3000, hit) && Math.hypot(hit.x, hit.z) < 2900) {
+          this.route.push({ x: hit.x, z: hit.z });
+          this.audio.ui('tick');
+          this.refreshRoute();
+        }
+      }
+      if (input.click(2)) this.undoRoute();
+      if (input.hit('Escape')) this.setRouteEdit(false);
     } else {
       const ray = this.cursorRay(false);
       const hit = input.overView ? st.base.pick(ray.origin, ray.direction, sim) : null;
@@ -1065,7 +1164,10 @@ export class Game {
     // suit consumables drain with effort: a resting astronaut uses far less oxygen and cooling
     // water than one who is running
     const speedNow = Math.hypot(player.vel.x, player.vel.z);
-    this.metabolic = damp(this.metabolic, metabolicWatts(speedNow, player.thrust, player.working), 2.5, dt);
+    // climbing costs work too: lifting body and suit, at about 25 % muscle efficiency
+    const climbW = player.grounded && dt > 0 ? (SUITED_KG * WORLDS[st.world.id].gravity * Math.max(0, (player.pos.y - this.lastFootY) / dt)) / MUSCLE_EFF : 0;
+    this.lastFootY = player.pos.y;
+    this.metabolic = damp(this.metabolic, metabolicWatts(speedNow, player.thrust, player.working) + Math.min(900, climbW), 2.5, dt);
     this.suit = Math.max(0, this.suit - (dt / SUIT_SECONDS) * (this.metabolic / NOMINAL_WATTS));
     if (this.suit < 0.2 && !this.suitWarned) {
       this.suitWarned = true;
@@ -1126,6 +1228,21 @@ export class Game {
     if (!this.driving && rover.distanceTo(player.pos.x, player.pos.z) > 14) {
       this.markers.push({ id: 'rover', kind: 'rover', x: rover.vehicle.pos[0], y: rover.vehicle.pos[1] + 2.4, z: rover.vehicle.pos[2] });
     }
+    // the planned route: head for the next waypoint, tick it off on arrival
+    const wp = this.route[this.routeNext];
+    if (wp) {
+      const px = this.driving ? rover.vehicle.pos[0] : player.pos.x;
+      const pz = this.driving ? rover.vehicle.pos[2] : player.pos.z;
+      if (Math.hypot(wp.x - px, wp.z - pz) < (this.driving ? 14 : 8)) {
+        this.routeNext++;
+        const done = this.routeNext >= this.route.length;
+        this.events.emit('toast', { key: done ? 'toast.routeDone' : 'toast.routePoint', params: { n: this.routeNext, total: this.route.length }, sev: 'good' });
+        this.audio.ui('good');
+      } else {
+        this.markers.push({ id: 'route', kind: 'route', x: wp.x, y: st.world.ground(wp.x, wp.z) + 8, z: wp.z, label: `${this.routeNext + 1}/${this.route.length}` });
+      }
+    }
+    this.routeView.setNext(this.routeNext, this.time);
   }
 
   /* -------------------------------------------------------------- rover */
