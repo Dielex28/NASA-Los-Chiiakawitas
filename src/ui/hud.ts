@@ -1,3 +1,5 @@
+import { doExtinguish, doFault, doRequest, doTask } from './actions';
+import { faultsPanel, injuryLine, insideJobs, jobsPanel } from './jobs';
 import { speak } from './voice';
 import { check as checkAchievements } from './achievements';
 import { avatarSvg, ROLE_COLOR } from './avatar';
@@ -367,10 +369,13 @@ export class Hud {
     const isTut = this.game.mission!.tutorial;
     this.tabBody.append(goalsEl);
     if (isTut) this.tabBody.append(h('div.section', t('tut.title')), tutEl);
+    const jobs = jobsPanel(this.app);
+    this.tabBody.append(jobs.el);
     const tipsHead = h('div.section', t('hud.orbi'));
     this.tabBody.append(tipsHead, tipsEl);
     let sig = '';
     this.tabUpdate = () => {
+      jobs.update();
       const goals = this.goalsList();
       const steps = isTut ? this.tutorialSteps() : [];
       // the ORBI panel below already carries the most pressing tip: list only the others here
@@ -399,6 +404,7 @@ export class Hud {
     const p: Record<string, string | number> = { ...(a.params ?? {}) };
     if (typeof p.type === 'string' && has(`mod.${p.type}`)) p.type = t(`mod.${p.type}`);
     if (typeof p.crop === 'string' && has(`crop.${p.crop}`)) p.crop = t(`crop.${p.crop}`);
+    if (typeof p.what === 'string' && has(p.what)) p.what = t(p.what);
     return this.forWhom(`tip.${a.key}`, a.sev) + t(`tip.${a.key}`, p);
   }
 
@@ -452,7 +458,8 @@ export class Hud {
     // pressurised rooms can be visited
     if (['hab', 'lab', 'greenhouse', 'lander'].includes(m0.type) && m0.built >= 1)
       wrap.append(h('button.btn.small', { onclick: () => g.enterInterior(m0.id) }, icon('eye', 14), t('inside.enter')));
-    wrap.append(h('div.label', t('insp.condition')), condBar, dl);
+    const faults = faultsPanel(this.app, m0.id);
+    wrap.append(h('div.label', t('insp.condition')), condBar, faults.el, dl);
     const isLoad = def.opKw + def.keepKw + def.heatKw > 0;
     const draw = isLoad || def.genKw > 0 ? row(def.genKw > 0 && m0.type !== 'lander' ? t('insp.output') : t('insp.draw')) : null;
     const rows: Array<() => void> = [];
@@ -538,7 +545,7 @@ export class Hud {
         setText(growth, `${fmt(m.growth * 100)} %`);
         const rate = m.mode === 'full' ? TUNE.farmAutomation + (1 - TUNE.farmAutomation) * this.sim.flows.farmSat : 0;
         const left = rate > 0 ? (crop.cycleSols * (1 - m.growth)) / rate : Infinity;
-        const a = isFinite(left) ? t('insp.harvestIn', { d: fmt(left), unit: unitDays(this.sim.world) }) : t('insp.status.off');
+        const a = m.ripe ? t('insp.ripe') : m.fallow ? t('insp.fallow') : isFinite(left) ? t('insp.harvestIn', { d: fmt(left), unit: unitDays(this.sim.world) }) : t('insp.status.off');
         setText(harvest, `${a} · ${t('insp.cropYield', { r: fmt(crop.rationsPerSol * crop.cycleSols), d: crop.realDays })}`);
       });
     }
@@ -588,6 +595,7 @@ export class Hud {
       if (draw) setText(draw, `${fmt(m.type === 'lander' ? m.kw : m.kw, 1)} kW${conditionEff(m) < 1 ? ` · ${fmt(conditionEff(m) * 100)} %` : ''}`);
       power.classList.toggle('on', m.enabled);
       prioBtns.forEach((b, i) => b.classList.toggle('on', m.priority === i + 1));
+      faults.update();
       for (const r of rows) r();
     };
   }
@@ -667,7 +675,8 @@ export class Hud {
         r.hf.style.width = `${c.health}%`;
         r.mf.style.width = `${c.morale}%`;
         setText(r.dose, t('crew.dose', { v: fmt(totalDose(c), 1) }));
-        setText(r.loc, `${t(`role.${c.role}`)} · ${t(`crew.loc.${c.location}`)}`);
+        setText(r.loc, `${t(`role.${c.role}`)} · ${c.injury ? injuryLine(c.injury.kind, c.injury.healH) : t(`crew.loc.${c.location}`)}`);
+        r.loc.classList.toggle('hurt', !!c.injury);
         setText(r.bm, t('crew.bm', { b: fmt(c.bone ?? 100, 1), m: fmt(c.muscle ?? 100, 0) }));
         r.bm.classList.toggle('warn', (c.muscle ?? 100) < 90 || (c.bone ?? 100) < 98);
       });
@@ -699,7 +708,7 @@ export class Hud {
           const mass = manifestMass(win.manifest);
           resupply.append(head, h('div.bar.thick.sun', h('i', { style: { width: `${(mass / win.capacityKg) * 100}%` } })), h('div.note', `${fmt(mass)} / ${fmt(win.capacityKg)} kg`));
           if (!win.locked) {
-            const items: CargoItem[] = ['food', 'water', 'o2', ...MODULE_ORDER.filter((k) => MODULES[k].worlds.includes(sim.world))];
+            const items: CargoItem[] = ['food', 'water', 'o2', 'spares', ...MODULE_ORDER.filter((k) => MODULES[k].worlds.includes(sim.world))];
             for (const item of items) {
               const c = win.manifest[item] ?? 0;
               const step = (d: number): void => {
@@ -815,6 +824,16 @@ export class Hud {
 
   /** Inside a module: the room's name, how to look around, and the way out. */
   private interiorBar: HTMLElement | null = null;
+  private insideSig = '';
+  /** Latest catastrophe the commander has acknowledged. */
+  private catAck = 0;
+
+  /** What can be done in a room right now (to rebuild the bar when it changes). */
+  private insideJobsSig(id: number): string {
+    const s = this.sim;
+    const m = s.modules.find((x) => x.id === id);
+    return JSON.stringify([m?.faults?.map((f) => f.id), s.tasks?.list.filter((x) => !x.done && x.moduleId === id).map((x) => x.id)]);
+  }
   private showInteriorBar(id: number | null): void {
     this.interiorBar?.remove();
     this.interiorBar = null;
@@ -827,6 +846,9 @@ export class Hud {
       h('div.grow', h('b', t('inside.title', { what: m ? t(`mod.${m.type}`) : '' })), h('span', t(this.game.input.touch ? 'inside.help.touch' : 'inside.help'))),
       h('button.btn.small', { onclick: () => this.game.exitInterior() }, t('inside.exit')),
     );
+    const jobs = insideJobs(this.app, id);
+    if (jobs) this.interiorBar.append(jobs);
+    this.insideSig = this.insideJobsSig(id);
     this.el.append(this.interiorBar);
   }
 
@@ -1030,6 +1052,11 @@ export class Hud {
       }),
       g.events.on('route', () => this.renderRoute()),
       g.events.on('interior', (id) => this.showInteriorBar(id)),
+      g.events.on('action', ({ kind, id }) => {
+        if (kind === 'fault') void doFault(this.app, id);
+        else if (kind === 'task') void doTask(this.app, id);
+        else void doRequest(this.app, id);
+      }),
       g.events.on('mode', (mode) => {
         if (mode === 'eva') this.tutorial.eva = true;
         else if (this.tutorial.eva) this.tutorial.back = true;
@@ -1183,6 +1210,9 @@ export class Hud {
       this.slow = 0;
       this.updateFast(s);
       this.tabUpdate?.();
+      // the jobs in the room the commander is in
+      const inId = g.interiorId();
+      if (inId !== null && this.interiorBar && this.insideJobsSig(inId) !== this.insideSig) this.showInteriorBar(inId);
     }
     // the first few frames run before layout has settled, so refresh eagerly then
     this.frames++;
@@ -1202,7 +1232,8 @@ export class Hud {
     const ck = clockText(s);
     const d = s.cfg.commsDelayMin ?? 0;
     const conj = inConjunction(s);
-    setText(this.linkEl, conj ? t('link.conj') : !s.flows.comms ? t('link.none') : d < 1 ? t('link.sec', { s: fmt(d * 60, 1) }) : t('link.min', { m: fmt(d, d < 10 ? 1 : 0) }));
+    const offTarget = s.modules.some((m) => m.type === 'antenna' && m.faults?.some((f) => f.kind === 'misaligned' && f.size >= 6));
+    setText(this.linkEl, conj ? t('link.conj') : !s.flows.comms ? t(offTarget ? 'link.misaligned' : 'link.none') : d < 1 ? t('link.sec', { s: fmt(d * 60, 1) }) : t('link.min', { m: fmt(d, d < 10 ? 1 : 0) }));
     this.linkEl.className = s.flows.comms && !conj ? '' : 'warn';
     if (s.team) {
       const tm = s.team;
@@ -1356,6 +1387,7 @@ export class Hud {
   private updateAlert(s: SimState): void {
     const g = this.game;
     const spe = s.schedule.find((e) => e.kind === 'spe' && e.warned && !e.ended);
+    const cat = s.catastrophes?.at(-1);
     let key = '';
     let build: (() => void) | null = null;
     const set = (cls: string, iconName: string, title: string, body: string, actions: HTMLElement[]): void => {
@@ -1392,12 +1424,19 @@ export class Hud {
             ),
           );
           if (emg.askedH === undefined && !inConjunction(s)) opts.push(h('button.btn.small.ghost', { onclick: () => g.askControl(), title: t('emg.ctl.ask.d') }, icon('antenna', 14), t('emg.ctl.ask')));
-          set('', emg.kind === 'eclss' ? 'air' : 'warn', t(`emg.${emg.kind}.title`, { what }), t(`emg.${emg.kind}.body`, { min: mins }), opts);
+          if (emg.kind === 'fire') opts.unshift(h('button.btn.small.danger', { onclick: () => void doExtinguish(this.app) }, icon('flame', 14), t('emg.fire.hand')));
+          set('', emg.kind === 'eclss' ? 'air' : emg.kind === 'fire' ? 'flame' : 'warn', t(`emg.${emg.kind}.title`, { what }), t(`emg.${emg.kind}.body`, { min: mins }), opts);
           this.alert.querySelector('.grow')?.append(h('p.ctl', ctlText()));
           const bar = h('div.emgbar', h('i'));
           this.alert.querySelector('.grow')?.append(bar, h('div.emgopts', ...emergencyOptions(s).map((c) => h('span', h('b', t(`emg.opt.${c}`)), ' · ', t(`emg.opt.${c}.d`)))));
         } else {
-          set('info', 'gear', t(`emg.work.${emg.choice}`, { what }), emg.doneH ? t('emg.work.left', { h: fmt(Math.max(0, emg.doneH - s.timeH), 1) }) : '', []);
+          set(
+            'info',
+            'gear',
+            t(`emg.work.${emg.choice}`, { what }),
+            emg.doneH ? t('emg.work.left', { h: fmt(Math.max(0, emg.doneH - s.timeH), 1) }) : '',
+            emg.kind === 'fire' && emg.choice === 'extinguish' ? [h('button.btn.small.danger', { onclick: () => void doExtinguish(this.app) }, icon('flame', 14), t('emg.fire.hand'))] : [],
+          );
         }
       };
       if (this.alertKey === key) {
@@ -1408,6 +1447,20 @@ export class Hud {
         const ctl = this.alert.querySelector('p.ctl');
         if (ctl) setText(ctl, ctlText());
       }
+    } else if (cat && cat.id !== this.catAck && s.timeH - cat.atH < 10 && cat.kind !== 'fire') {
+      key = `cat:${cat.id}`;
+      const mod = cat.moduleId !== undefined ? s.modules.find((m) => m.id === cat.moduleId) : undefined;
+      const what = mod ? t(`mod.${mod.type}`) : '';
+      const ref = s.modules[0];
+      const dist = ref ? Math.hypot(cat.x - ref.x, cat.z - ref.z) : 0;
+      const hit = mod ?? s.modules.find((m) => m.faults?.some((f) => f.cause === cat.kind && Math.abs(f.atH - cat.atH) < 0.2));
+      build = () => {
+        const acts = [h('button.btn.small.ghost', { onclick: () => (this.catAck = cat.id) }, t('cat.ok'))];
+        if (hit) acts.unshift(h('button.btn.small', { onclick: () => g.focusModule(hit.id) }, icon('target', 14), t('cat.see')));
+        if (cat.kind === 'impact') set('', 'warn', t('cat.impact.title'), t('cat.impact.body', { d: fmt(cat.mag), m: fmt(dist), n: cat.faults }), acts);
+        else if (cat.kind === 'quake') set('', 'warn', t(`cat.quake.${s.world}`, { m: fmt(cat.mag, 1) }), t(s.world === 'moon' ? 'cat.quake.body' : 'cat.quake.bodyMars', { n: cat.faults }), acts);
+        else set('', cat.kind === 'runaway' ? 'flame' : 'rad', t(`cat.${cat.kind}.title`, { what }), t(`cat.${cat.kind}.body`), acts);
+      };
     } else if (spe && spe.kind === 'spe') {
       const started = spe.started;
       const hrs = Math.max(0, spe.startH - s.timeH);
@@ -1435,6 +1488,9 @@ export class Hud {
       const pct = Math.round(100 * Math.exp(-0.3 * (s.env.tau - 0.45)));
       key = `storm:${Math.round(pct / 5)}`;
       build = () => set('info', 'wind', t('alert.storm', { pct }), '', []);
+    } else if (s.upgradeOffer?.length) {
+      key = `upg:${s.upgradeOffer.join(',')}`;
+      build = () => set('info', 'star', t('upg.ready'), t('upg.lead'), [h('button.btn.small', { onclick: () => this.app.openUpgrades() }, icon('star', 14), t('upg.pick'))]);
     }
     if (key !== this.alertKey) {
       this.alertKey = key;
@@ -1533,7 +1589,7 @@ export class Hud {
     const p = g.prompt;
     if (p && !g.build?.active) {
       this.prompt.classList.remove('hidden');
-      const what = has(`mod.${p.subject}`) ? t(`mod.${p.subject}`) : has(`min.${p.subject}`) ? t(`min.${p.subject}`) : p.subject;
+      const what = has(`mod.${p.subject}`) ? t(`mod.${p.subject}`) : has(`min.${p.subject}`) ? t(`min.${p.subject}`) : has(p.subject) ? t(p.subject) : p.subject;
       setText(this.promptText, t(`prompt.${p.kind}`, { what }));
       this.promptBar.classList.toggle('hidden', !p.hold);
       this.promptFill.style.width = `${p.progress * 100}%`;
@@ -1598,7 +1654,10 @@ export class Hud {
       el.style.display = '';
       el.style.left = `${Math.max(20, Math.min(window.innerWidth - 20, pr.x))}px`;
       el.style.top = `${Math.max(90, Math.min(window.innerHeight - 60, pr.y))}px`;
-      setText(el.lastElementChild!, m.kind === 'route' ? `${t('route.marker', { n: m.label ?? '' })} · ${fmt(pr.dist)} m` : `${fmt(pr.dist)} m`);
+      setText(
+        el.lastElementChild!,
+        m.kind === 'route' ? `${t('route.marker', { n: m.label ?? '' })} · ${fmt(pr.dist)} m` : m.label && m.label.includes('.') && has(m.label) ? `${t(m.label)} · ${fmt(pr.dist)} m` : `${fmt(pr.dist)} m`,
+      );
     }
     for (const [id, el] of this.markers) {
       if (!seen.has(id)) {

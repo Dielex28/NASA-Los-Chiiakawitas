@@ -770,3 +770,56 @@ h3.sec { font-family: var(--mono); font-weight: 400; letter-spacing: 0.16em; tex
 .insidebar .grow { display: flex; flex-direction: column; gap: 0.15em; }
 .insidebar span { color: var(--text-2); font-size: 0.86em; }
 #ui .hud.inside .hud-right, #ui .hud.inside .hud-bottom, #ui .hud.inside .hud-corner, #ui .hud.inside .hud-route, #ui .hud.inside .forecast { display: none; }
+
+/* ------------------------------------------------------------ minigames */
+.mgmodal { z-index: 60; }
+.sheet.mg { width: min(46em, 100%); max-height: calc(100vh - 2em); }
+.sheet.mg .sheet-head { padding: 1.1em 1.4em 0.9em; }
+.sheet.mg .sheet-head h2 { font-size: 1.35em; }
+.mg-stage { position: relative; padding: 0.8em 1.4em 0; }
+.mg-canvas { display: block; width: 100%; aspect-ratio: 640 / 400; border: 1px solid var(--line); border-radius: 6px; background: #0a0d11; touch-action: none; cursor: crosshair; user-select: none; }
+.mg-result { position: absolute; inset: 0.8em 1.4em 0; display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 0.35em; background: rgba(6, 8, 11, 0.72); border-radius: 6px; animation: fade 0.2s ease both; }
+.mg-result b { font-size: 1.6em; letter-spacing: 0.04em; }
+.mg-result span { color: var(--text-2); font-family: var(--mono); }
+.mg-result.good .ico { color: var(--ok); }
+.mg-result.ok .ico { color: var(--accent); }
+.mg-foot { display: flex; gap: 1.2em; align-items: flex-start; padding: 0.8em 1.4em 1.1em; }
+.mg-fact { flex: 1; color: var(--text-2); font-size: 0.92em; line-height: 1.45; }
+.mg-fact b { color: var(--info); text-transform: uppercase; letter-spacing: 0.08em; font-size: 0.85em; }
+.mg-side { display: flex; flex-direction: column; align-items: flex-end; gap: 0.3em; min-width: 9em; }
+.mg-status { font-family: var(--mono); color: var(--accent); font-size: 1em; }
+.mg-keys { color: var(--text-2); font-size: 0.78em; text-align: right; }
+@media (max-width: 700px) {
+  .mg-foot { flex-direction: column; }
+  .mg-side { align-items: flex-start; }
+  .mg-keys { display: none; }
+}
+
+/* ------------------------------------------- damage, tasks, requests, upgrades */
+.faults { display: flex; flex-direction: column; gap: 0.45em; margin: 0.6em 0 0.2em; }
+.faults .label { display: flex; align-items: center; gap: 0.3em; color: var(--bad-text); }
+.faults .label .spares { margin-left: auto; color: var(--text-2); font-family: var(--mono); text-transform: none; letter-spacing: 0; }
+.fault, .job { display: flex; gap: 0.6em; align-items: center; padding: 0.55em 0.7em; border: 1px solid var(--line); background: rgba(255, 255, 255, 0.02); font-size: 0.86em; line-height: 1.35; }
+.fault { border-color: rgba(255, 107, 94, 0.45); }
+.fault .grow, .job .grow { display: flex; flex-direction: column; gap: 0.1em; min-width: 0; }
+.fault span, .job span { color: var(--text-2); }
+.fault small, .job small { color: var(--text-2); font-family: var(--mono); font-size: 0.85em; }
+.fault .btn, .job .btn { flex: none; }
+.jobs { display: flex; flex-direction: column; gap: 0.45em; }
+.jobs .section { display: flex; align-items: baseline; gap: 0.6em; }
+.jobs .section .count { margin-left: auto; color: var(--accent); font-family: var(--mono); text-transform: none; letter-spacing: 0; }
+.jobs .bar { margin: 0 0 0.2em; }
+.job .ico { color: var(--accent); flex: none; }
+.job.out .ico { color: var(--info); }
+.job.req { border-color: rgba(91, 200, 232, 0.4); }
+.job.req .ico { color: var(--info); }
+.insidejobs { display: flex; flex-wrap: wrap; align-items: center; gap: 0.4em; flex-basis: 100%; }
+.insidebar { flex-wrap: wrap; }
+.crewrow .rl.hurt { color: var(--bad-text); }
+.marker.task { color: #8fd3ff; }
+.marker.request { color: #ffb347; }
+.marker.request i { width: 1.1em; height: 1.1em; border-width: 2px; border-radius: 50%; transform: none; }
+.upgrades { display: grid; grid-template-columns: repeat(auto-fit, minmax(14em, 1fr)); gap: 1em; }
+.upg { display: flex; flex-direction: column; gap: 0.6em; padding: 1.1em 1.2em; }
+.upg h3 { margin: 0; font-size: 1.1em; }
+.upg p { margin: 0; color: var(--text-2); line-height: 1.5; flex: 1; }

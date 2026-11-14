@@ -1,6 +1,7 @@
 import { CROPS, MODULES, TUNE } from './catalog';
 import { isBuilt, isUp, rehabMonths, totalDose } from './sim';
 import { WORLDS } from './worlds';
+import { canImprovise, partsFor } from './faults';
 import type { ModuleState, SimState } from './types';
 
 export interface Advice {
@@ -33,6 +34,26 @@ export function advise(s: SimState): Advice[] {
 
   // ---- emergencies first: the clock is running
   if (s.emergency && !s.emergency.choice) add(`emg.${s.emergency.kind}`, 'bad', 130);
+
+  // ---- damage, the day's tasks and Control's requests
+  let breach: ModuleState | null = null;
+  let faults = 0;
+  let stuck = 0;
+  for (const m of s.modules) {
+    for (const f of m.faults ?? []) {
+      faults++;
+      if (f.kind === 'breach' && !m.down) breach = m;
+      if (partsFor(f) > (s.stores.spares ?? 0) && !canImprovise(f)) stuck++;
+    }
+  }
+  if (breach) add('breach', 'bad', 97, { type: breach.type }, breach.id);
+  else if (faults > 0) add('faults', 'warn', 66, { n: faults });
+  if (stuck > 0) add('noSpares', 'warn', 62, { n: stuck });
+  if (s.upgradeOffer?.length) add('upgrade', 'info', 40);
+  const solH = WORLDS[s.world].solH;
+  const soon = s.requests?.list.find((r) => r.status === 'open' && r.dueH - s.timeH < solH);
+  if (soon) add('requestSoon', 'warn', 48, { what: `req.${soon.kind}` });
+  if (s.crew.some((c) => c.injury && !c.injury.treated)) add('injured', 'warn', 58);
 
   // ---- space weather
   const spe = s.schedule.find((e) => e.kind === 'spe' && e.warned && !e.ended);

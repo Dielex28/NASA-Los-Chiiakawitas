@@ -28,6 +28,7 @@ import {
   playerBuild,
   playerClean,
   playerRepair,
+  pushLog,
   removeModule,
   setShelterOrder,
   step,
@@ -52,10 +53,15 @@ import { DOCK_RANGE, RoverUnit } from './rover';
 import type { VehicleEnv, VehicleInput } from './vehicle';
 import type { EmergencyChoice } from '../sim/emergency';
 import { Sites, type Site } from './sites';
+import { HazardView } from './hazards';
+import { OUTSIDE, faultWorld } from '../sim/faults';
+import { TASK_OUTSIDE } from '../sim/tasks';
+import { completeRequest, openRequests } from '../sim/requests';
+import { SUIT_GAIN, hasUpgrade } from '../sim/upgrades';
 
 export type GamePhase = 'boot' | 'menu' | 'loading' | 'playing' | 'ended';
 export type GameMode = 'command' | 'eva';
-export type PromptKind = 'assemble' | 'repair' | 'clean' | 'enter' | 'sample' | 'drive';
+export type PromptKind = 'assemble' | 'repair' | 'clean' | 'enter' | 'sample' | 'drive' | 'fault' | 'task' | 'request';
 
 export interface Prompt {
   kind: PromptKind;
@@ -68,7 +74,7 @@ export interface Prompt {
 
 export interface Marker {
   id: string;
-  kind: 'base' | 'site' | 'alert' | 'rover' | 'goal' | 'route';
+  kind: 'base' | 'site' | 'alert' | 'rover' | 'goal' | 'route' | 'task' | 'request';
   x: number;
   y: number;
   z: number;
@@ -93,6 +99,8 @@ export interface GameEvents extends Record<string, unknown> {
   route: number;
   /** Stepped inside a module (its id) or back out (null). */
   interior: number | null;
+  /** The commander pressed E at a fault, an outdoor task or a request's spot. */
+  action: { kind: 'fault' | 'task' | 'request'; id: number };
 }
 
 /** Game hours that pass per real second at each command-console speed. */
@@ -128,6 +136,8 @@ interface Stage {
   bounce: BounceMap | null;
   /** Crew members working outside. */
   crewmates: Crewmates;
+  /** Damage, craters and instruments. */
+  hazards: HazardView;
 }
 
 interface SaveFile {
@@ -161,6 +171,10 @@ export class Game {
   scans: ScanCircle[] = [];
   prompt: Prompt | null = null;
   markers: Marker[] = [];
+  /** Last catastrophe drawn (-1: not yet looked at this mission), and the camera shake it left. */
+  private catSeen = -1;
+  private shake = 0;
+  private quakeT = 0;
   /** EVA route: waypoints drawn in the command view, followed outside. */
   route: RoutePoint[] = [];
   routeEdit = false;
@@ -314,6 +328,7 @@ export class Game {
         props: this.makeProps(world, kit, dust),
         rover: this.makeRover(world, kit),
         crewmates: new Crewmates(kit),
+        hazards: new HazardView(world, kit),
         bounce: this.renderer.quality.bounce ? new BounceMap(world.uniforms, this.renderer.quality.level === 'medium' ? 192 : 256) : null,
       };
       world.atmosphere.bounce = !!st.bounce;
@@ -333,6 +348,8 @@ export class Game {
     const st = await this.ensureStage(world, mission.startLocalH);
     this.menuSim = this.demoBase(st, mission);
     st.base.clear();
+    st.hazards.clear();
+    this.catSeen = -1;
     st.cargo.clear();
     st.sites.restore([], []);
     st.build.cancel();
@@ -408,6 +425,8 @@ export class Game {
     this.suit = 1;
     st.build.cancel();
     st.base.clear();
+    st.hazards.clear();
+    this.catSeen = -1;
     st.base.sync(sim);
     st.sites.restore(scannedSites, sim.discoveries);
     st.cargo.clear();
@@ -573,9 +592,16 @@ export class Game {
     st.build.cancel();
     this.routeEdit = false;
     this.interior = new Interior(m, st.world.id);
+    this.interiorModule = moduleId;
     this.audio.ui('open');
     this.events.emit('interior', moduleId);
   }
+
+  /** The module whose inside the camera is in (null: outside views). */
+  interiorId(): number | null {
+    return this.interior ? this.interiorModule : null;
+  }
+  private interiorModule = -1;
 
   exitInterior(): void {
     if (!this.interior) return;
@@ -707,6 +733,14 @@ export class Game {
     this.route = [];
     this.routeNext = 0;
     this.refreshRoute();
+  }
+
+  /** Head outside with a one-point route to a job (a fault, a task, a request's spot). */
+  guideTo(x: number, z: number): void {
+    this.route = [{ x, z }];
+    this.routeNext = 0;
+    this.refreshRoute();
+    if (this.mode !== 'eva') this.enterEva();
   }
 
   startBuild(type: ModuleType): void {
@@ -923,6 +957,7 @@ export class Game {
       }
       else this.updateCommand(dt, st, sim, allowInput);
       this.blend.apply(this.camera, dt);
+      this.applyShake(dt);
     }
 
     // ---- scanner pulse
@@ -973,6 +1008,15 @@ export class Game {
     c.darkness = atm.darkness;
     c.simRate = rate * 3600;
     st.base.update(sim, c, this.focus);
+    st.hazards.sync(sim, st.base);
+    st.hazards.update(dt, this.time, sim, st.dust, st.sparks);
+    const lastCat = playing ? sim.catastrophes?.at(-1) : undefined;
+    if (lastCat && lastCat.id !== this.catSeen) {
+      // a save loaded or a mission started: what happened before is already in the world
+      if (this.catSeen >= 0 || sim.timeH - lastCat.atH < 0.5) this.catastrophe(lastCat.kind, st.hazards.strike(lastCat, sim, st.dust, st.sparks), st);
+      this.catSeen = lastCat.id;
+    } else if (playing && !lastCat) this.catSeen = 0;
+    if (playing) this.placeRequests(st, sim);
     st.sites.update(this.time);
     if (playing) st.cargo.sync(sim, true);
     st.cargo.update(dt, this.time);
@@ -1285,7 +1329,7 @@ export class Game {
     const climbW = player.grounded && dt > 0 ? (SUITED_KG * WORLDS[st.world.id].gravity * Math.max(0, (player.pos.y - this.lastFootY) / dt)) / MUSCLE_EFF : 0;
     this.lastFootY = player.pos.y;
     this.metabolic = damp(this.metabolic, metabolicWatts(speedNow, player.thrust, player.working) + Math.min(900, climbW), 2.5, dt);
-    this.suit = Math.max(0, this.suit - (dt / SUIT_SECONDS) * (this.metabolic / NOMINAL_WATTS));
+    this.suit = Math.max(0, this.suit - (dt / (SUIT_SECONDS * (hasUpgrade(sim, 'suit') ? SUIT_GAIN : 1))) * (this.metabolic / NOMINAL_WATTS));
     if (this.suit < 0.2 && !this.suitWarned) {
       this.suitWarned = true;
       this.events.emit('toast', { key: 'toast.suitLow', sev: 'warn' });
@@ -1341,6 +1385,23 @@ export class Game {
     }
     for (const m of sim.modules) {
       if (m.down || (m.type === 'solar' && m.dust > 0.3)) this.markers.push({ id: `m${m.id}`, kind: 'alert', x: m.x, y: m.y + 5, z: m.z, label: m.type });
+      for (const f of m.faults ?? []) {
+        if (!OUTSIDE[f.kind]) continue;
+        const [fx, fy, fz] = faultWorld(m, f);
+        this.markers.push({ id: `f${f.id}`, kind: 'alert', x: fx, y: fy + 1.2, z: fz, label: `fault.${f.kind}` });
+      }
+    }
+    for (const task of sim.tasks?.list ?? []) {
+      if (task.done || !TASK_OUTSIDE[task.kind]) continue;
+      const m = sim.modules.find((x) => x.id === task.moduleId);
+      if (m) this.markers.push({ id: `t${task.id}`, kind: 'task', x: m.x, y: m.y + 4.2, z: m.z, label: `task.${task.kind}` });
+    }
+    for (const r of openRequests(sim)) {
+      if (r.kind === 'photo' || r.kind === 'harvest') continue;
+      const m = r.kind === 'inspect' ? sim.modules.find((x) => x.id === r.moduleId) : undefined;
+      const x = m ? m.x : r.x;
+      const z = m ? m.z : r.z;
+      this.markers.push({ id: `q${r.id}`, kind: 'request', x, y: st.world.ground(x, z) + 5, z, label: `req.${r.kind}` });
     }
     if (!this.driving && rover.distanceTo(player.pos.x, player.pos.z) > 14) {
       this.markers.push({ id: 'rover', kind: 'rover', x: rover.vehicle.pos[0], y: rover.vehicle.pos[1] + 2.4, z: rover.vehicle.pos[2] });
@@ -1436,6 +1497,9 @@ export class Game {
     const rover = st.rover;
     const world = st.world;
     const v = rover.vehicle;
+    // wire-mesh wheels (an upgrade) grip the regolith better
+    const grip = 0.72 * (hasUpgrade(sim, 'wheels') ? 1.25 : 1);
+    if (v.spec.grip !== grip) v.spec.grip = grip;
     let control: VehicleInput | null = null;
     if (this.driving) {
       const input = this.input;
@@ -1562,6 +1626,88 @@ export class Game {
       void saveFile(`helios-${st.world.id}-${stamp}.png`, blob);
     }, 'image/png');
     this.audio.ui('place');
+    this.photoRequest(st);
+  }
+
+  /** A photo Control asked for: Earth in the frame, a Martian sunset, or the base from afar. */
+  private photoRequest(st: Stage): void {
+    const sim = this.sim;
+    const r = sim && openRequests(sim).find((x) => x.kind === 'photo');
+    if (!sim || !r) return;
+    const fwd = new THREE.Vector3();
+    this.camera.getWorldDirection(fwd);
+    const within = (dir: THREE.Vector3, deg: number): boolean => fwd.angleTo(dir) < (deg * Math.PI) / 180;
+    let ok = false;
+    if (r.photo === 'earth') ok = this.ctx.earthDir.y > -0.02 && within(this.ctx.earthDir, 26);
+    else if (r.photo === 'sunset') ok = sim.env.sunEl < 0.12 && sim.env.sunEl > -0.03 && within(st.world.atmosphere.sunDir, 30);
+    else ok = this.camera.position.distanceTo(new THREE.Vector3(sim.modules[0].x, sim.modules[0].y, sim.modules[0].z)) > 80;
+    if (ok && completeRequest(sim, r.id, 1, pushLog)) this.events.emit('toast', { key: 'req.photoDone', sev: 'good' });
+  }
+
+  /** Kinds of the minerals the commander has picked up this mission (for the lab's microscope). */
+  collectedKinds(): string[] {
+    return this.stage?.sites.list.filter((x) => x.collected).map((x) => x.poi.kind) ?? [];
+  }
+
+  /** An instrument set down: a puff of dust where it now stands. */
+  placeInstrument(kind: string, x: number, z: number): void {
+    const st = this.stage;
+    if (!st) return;
+    const y = st.world.ground(x, z);
+    const [r, g, b] = st.world.id === 'moon' ? [0.62, 0.61, 0.6] : [0.78, 0.47, 0.28];
+    for (let i = 0; i < 24; i++) {
+      const a = Math.random() * Math.PI * 2;
+      st.dust.spawn(x, y + 0.05, z, Math.cos(a) * 1.2, 0.4 + Math.random(), Math.sin(a) * 1.2, 1.2, 0.3, r, g, b, 0.5);
+    }
+    this.audio.ui('place');
+    void kind;
+  }
+
+  /** Move the spots Control picked onto walkable ground (not inside a crater wall). */
+  private placeRequests(st: Stage, sim: SimState): void {
+    for (const r of sim.requests?.list ?? []) {
+      if (r.placed || r.status !== 'open' || r.kind === 'inspect' || r.kind === 'photo' || r.kind === 'harvest') continue;
+      r.placed = true;
+      const flat = (x: number, z: number): boolean => st.world.mesh.normal(x, z, this.tmpN).y > 0.96 && Math.hypot(x, z) < 1000;
+      if (flat(r.x, r.z)) continue;
+      for (let k = 1; k < 60; k++) {
+        const a = k * 2.4;
+        const d = 3 * Math.sqrt(k) * 2;
+        const x = r.x + Math.cos(a) * d;
+        const z = r.z + Math.sin(a) * d;
+        if (flat(x, z)) {
+          r.x = x;
+          r.z = z;
+          break;
+        }
+      }
+    }
+  }
+
+  /** React to a catastrophe: shake the camera, and knock the commander over if outside in a quake. */
+  private catastrophe(kind: string, shake: number, st: Stage): void {
+    this.shake = Math.max(this.shake, shake);
+    if (kind === 'quake') this.quakeT = 7;
+    if (kind === 'impact' || kind === 'quake') this.audio.land(1);
+    if (kind === 'quake' && this.mode === 'eva' && !this.driving) {
+      st.player.vel.x += (Math.random() - 0.5) * 3;
+      st.player.vel.z += (Math.random() - 0.5) * 3;
+      this.events.emit('toast', { key: 'toast.quakeFall', sev: 'warn' });
+    }
+  }
+
+  /** Camera shake after an impact or during a quake (a dry, cold Moon rings for minutes). */
+  private applyShake(dt: number): void {
+    if (this.quakeT > 0) {
+      this.quakeT -= dt;
+      this.shake = Math.max(this.shake, 0.25 * Math.min(1, this.quakeT / 3));
+    }
+    if (this.shake < 0.002) return;
+    const k = this.shake * (this.mode === 'eva' ? 0.09 : 0.45);
+    this.camera.position.x += (Math.random() - 0.5) * k;
+    this.camera.position.y += (Math.random() - 0.5) * k;
+    this.camera.position.z += (Math.random() - 0.5) * k;
+    this.shake *= Math.exp(-dt * 1.6);
   }
 
   /** Ask Mission Control for help with the running emergency. */
@@ -1604,6 +1750,42 @@ export class Game {
     }
     const site = st.sites.nearest(p.pos.x, p.pos.z, 3.4);
     if (site && (!best || best.kind === 'enter')) best = { kind: 'sample', site, d: 0 };
+    // concrete damage, outdoor chores and Control's requests beat the general upkeep of a module
+    let job: { kind: 'fault' | 'task' | 'request'; id: number; subject: string; d: number; x: number; y: number; z: number } | null = null;
+    const consider = (kind: 'fault' | 'task' | 'request', id: number, subject: string, x: number, y: number, z: number, reach: number): void => {
+      const d = Math.hypot(x - p.pos.x, z - p.pos.z);
+      if (d <= reach && (!job || d < job.d)) job = { kind, id, subject, d, x, y, z };
+    };
+    for (const m of sim.modules) {
+      for (const f of m.faults ?? []) {
+        if (!OUTSIDE[f.kind]) continue;
+        const [fx, fy, fz] = faultWorld(m, f);
+        consider('fault', f.id, `fault.${f.kind}`, fx, fy, fz, 3.4);
+      }
+    }
+    for (const task of sim.tasks?.list ?? []) {
+      if (task.done || !TASK_OUTSIDE[task.kind]) continue;
+      const m = sim.modules.find((x) => x.id === task.moduleId);
+      if (m) consider('task', task.id, `task.${task.kind}`, m.x, m.y, m.z, MODULES[m.type].radius * 0.78 + 2.6);
+    }
+    for (const r of openRequests(sim)) {
+      if (r.kind === 'photo' || r.kind === 'harvest') continue;
+      const m = r.kind === 'inspect' ? sim.modules.find((x) => x.id === r.moduleId) : undefined;
+      if (r.kind === 'inspect' && m) consider('request', r.id, `req.${r.kind}`, m.x, m.y, m.z, MODULES[m.type].radius * 0.78 + 2.6);
+      else if (r.kind !== 'inspect') consider('request', r.id, `req.${r.kind}`, r.x, st.world.ground(r.x, r.z), r.z, 4);
+    }
+    const found = job as { kind: 'fault' | 'task' | 'request'; id: number; subject: string; d: number; x: number; y: number; z: number } | null;
+    if (found && (!best || best.kind === 'enter' || best.kind === 'repair' || best.kind === 'clean' || best.kind === 'sample')) {
+      this.holdProgress = 0;
+      p.working = damp(p.working, 0, 10, dt);
+      this.setTool(false);
+      this.prompt = { kind: found.kind, subject: found.subject, hold: false, progress: 0 };
+      if (allowInput && this.input.hit('KeyE')) {
+        p.faceTarget = this.tmpV.set(found.x, found.y, found.z);
+        this.events.emit('action', { kind: found.kind, id: found.id });
+      }
+      return;
+    }
 
     if (!best) {
       this.prompt = null;

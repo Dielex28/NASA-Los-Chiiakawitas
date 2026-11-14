@@ -1,3 +1,5 @@
+import { minigamePanel, type MinigameSpec } from './minigames';
+import { upgradeScreen } from './jobs';
 import { setVoice } from './voice';
 import { ensureMissionStrings } from './achievements';
 import { Game } from '../game/game';
@@ -248,6 +250,32 @@ export class App {
 
   openSettings(): void {
     this.modal((close) => settingsScreen(this, close));
+  }
+
+  /**
+   * Play a minigame over the mission (paused while it is open). Resolves with the quality
+   * (0..1), or null if the player gave up.
+   */
+  openMinigame(spec: MinigameSpec): Promise<number | null> {
+    return new Promise((resolve) => {
+      if (!this.inMission()) {
+        resolve(null);
+        return;
+      }
+      const el = minigamePanel(spec, (k) => this.game.audio.ui(k), (q) => {
+        this.closeOverlay();
+        resolve(q);
+      });
+      this.overlayThunk = null;
+      this.showOverlay(el);
+    });
+  }
+
+  /** The choice of technology at a science milestone. */
+  openUpgrades(): void {
+    if (!this.inMission() || !this.game.sim?.upgradeOffer?.length) return;
+    this.overlayThunk = () => this.showOverlay(upgradeScreen(this));
+    this.overlayThunk();
   }
 
   openPause(): void {

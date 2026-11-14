@@ -233,6 +233,21 @@ export const MECH: Record<string, Four> = {
   'task.firstaid': ['Primeros auxilios', 'First aid', 'Primeiros socorros', 'Premiers soins'],
   'task.firstaid.d': ['{name} se recuperará mucho antes.', '{name} will recover much sooner.', '{name} vai se recuperar bem antes.', '{name} guérira bien plus vite.'],
 
+  'tip.emg.fire': ['¡Fuego! Elige ya: combatirlo, despresurizar el módulo o apagarlo tú mismo.', 'Fire! Choose now: fight it, vent the module or put it out yourself.', 'Fogo! Escolha já: combater, despressurizar o módulo ou apagá-lo você mesmo.', 'Le feu ! Choisis vite : le combattre, dépressuriser le module ou l’éteindre toi-même.'],
+  'tip.breach': ['{type} pierde aire por un agujero: repáralo desde dentro antes de que se acabe el oxígeno.', '{type} is losing air through a hole: repair it from inside before the oxygen runs out.', '{type} está perdendo ar por um furo: conserte por dentro antes que o oxigênio acabe.', '{type} perd de l’air par un trou : répare-le de l’intérieur avant que l’oxygène ne s’épuise.'],
+  'tip.faults': ['Hay {n} daño(s) sin reparar. La tripulación se ocupa, pero tú lo arreglas al momento.', 'There are {n} item(s) of damage still to repair. The crew is on it, but you can fix them at once.', 'Há {n} dano(s) sem conserto. A tripulação cuida disso, mas você resolve na hora.', 'Il reste {n} dégât(s) à réparer. L’équipage s’en occupe, mais toi tu le fais tout de suite.'],
+  'tip.noSpares': ['Faltan repuestos para {n} reparación(es). Pídelos en el próximo envío o elige la impresora 3D.', 'Spare parts are missing for {n} repair(s). Order them on the next resupply or choose the 3D printer.', 'Faltam peças para {n} conserto(s). Peça no próximo envio ou escolha a impressora 3D.', 'Il manque des pièces pour {n} réparation(s). Commande-les au prochain ravitaillement ou choisis l’imprimante 3D.'],
+  'tip.upgrade': ['Hay una mejora tecnológica esperando: elígela en el aviso de arriba.', 'A technology upgrade is waiting: choose it in the notice above.', 'Há uma melhoria tecnológica esperando: escolha no aviso acima.', 'Une amélioration technologique attend : choisis-la dans l’avis en haut.'],
+  'tip.requestSoon': ['Queda menos de un día para el encargo «{what}».', 'Less than a day left for the request “{what}”.', 'Falta menos de um dia para o pedido “{what}”.', 'Moins d’un jour pour la mission « {what} ».'],
+  'tip.injured': ['Hay un herido: los primeros auxilios (tarea del día) acortan su recuperación.', 'Someone is hurt: first aid (a daily task) shortens their recovery.', 'Há um ferido: os primeiros socorros (tarefa do dia) encurtam a recuperação.', 'Quelqu’un est blessé : les premiers soins (tâche du jour) raccourcissent sa guérison.'],
+  'link.misaligned': ['antena desviada', 'dish off target', 'antena desviada', 'antenne déviée'],
+  'jobs.go': ['Ir', 'Go', 'Ir', 'Y aller'],
+  'jobs.goInside': ['Vuelve a la base para hacerlo', 'Go back inside to do it', 'Volte para a base para fazer', 'Rentre dans la base pour le faire'],
+  'inside.jobs': ['Aquí dentro:', 'In here:', 'Aqui dentro:', 'Ici :'],
+  'insp.ripe': ['Cosecha madura: recógela tú (tarea) o la tripulación lo hará pronto.', 'Ripe crop: pick it yourself (a task) or the crew will soon.', 'Colheita madura: colha você (tarefa) ou a tripulação fará em breve.', 'Récolte mûre : cueille-la toi-même (tâche) ou l’équipage le fera bientôt.'],
+  'insp.fallow': ['Bandejas vacías: hay que sembrar.', 'Empty trays: time to sow.', 'Bandejas vazias: é hora de semear.', 'Bacs vides : il faut semer.'],
+  'crew.injured': ['Herido ({what}) · {h} h de reposo', 'Injured ({what}) · {h} h of rest', 'Ferido ({what}) · {h} h de repouso', 'Blessé ({what}) · {h} h de repos'],
+
   /* ------------------------------------------------------------- requests */
   'req.title': ['Encargos de Control', 'Mission Control requests', 'Pedidos do Controle', 'Missions du Contrôle'],
   'req.due': ['plazo: {n} {unit}', 'due in {n} {unit}', 'prazo: {n} {unit}', 'délai : {n} {unit}'],

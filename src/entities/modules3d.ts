@@ -38,6 +38,10 @@ const CROP_COLORS: Record<CropId, number> = {
 
 type Updater = (m: ModuleState, c: ViewContext) => void;
 
+const DEG = Math.PI / 180;
+/** Size of a module's fault of one kind (0 if it has none). */
+const fault = (m: ModuleState, kind: 'misaligned' | 'cells'): number => m.faults?.find((f) => f.kind === kind)?.size ?? 0;
+
 /** 3D representation of one base module: procedural mesh, status beacon and animations. */
 export class ModuleView {
   readonly group = new THREE.Group();
@@ -377,7 +381,10 @@ const BUILDERS: Record<ModuleType, Builder> = {
         // local +z of the head faces the Sun's azimuth
         const target = Math.atan2(c.sunDir.x, c.sunDir.z) - v.group.rotation.y;
         head.rotation.y = dampAngle(head.rotation.y, target, 0.8, c.dt);
-        cells.color.setRGB(1 - 0.5 * m.dust, 1 - 0.58 * m.dust, 1 - 0.68 * m.dust);
+        // a quake can leave the mast leaning; shattered cells go dark
+        head.rotation.x = damp(head.rotation.x, fault(m, 'misaligned') * DEG, 2, c.dt);
+        const broken = 1 - 0.75 * fault(m, 'cells');
+        cells.color.setRGB((1 - 0.5 * m.dust) * broken, (1 - 0.58 * m.dust) * broken, (1 - 0.68 * m.dust) * broken);
       });
     } else {
       // two-axis tracker close to the ground (easy to brush the dust off)
@@ -403,7 +410,9 @@ const BUILDERS: Record<ModuleType, Builder> = {
         // tilt so the panel normal (+y) points at the Sun; stow flat at night
         const want = up ? Math.PI / 2 - Math.max(0.12, c.sunEl) : 0;
         tilt.rotation.x = damp(tilt.rotation.x, Math.min(want, 1.15), 0.9, c.dt);
-        cells.color.setRGB(1 - 0.35 * m.dust, 1 - 0.55 * m.dust, 1 - 0.75 * m.dust);
+        tilt.rotation.z = damp(tilt.rotation.z, fault(m, 'misaligned') * DEG, 2, c.dt);
+        const broken = 1 - 0.75 * fault(m, 'cells');
+        cells.color.setRGB((1 - 0.35 * m.dust) * broken, (1 - 0.55 * m.dust) * broken, (1 - 0.75 * m.dust) * broken);
       });
     }
   },
@@ -729,9 +738,11 @@ const BUILDERS: Record<ModuleType, Builder> = {
     v.onUpdate((m, c) => {
       // +y of the dish points at Earth
       const e = c.earthDir;
-      const az = Math.atan2(e.x, e.z) - v.group.rotation.y;
+      // knocked off Earth by a quake or ejecta, the dish points that many degrees away
+      const off = fault(m, 'misaligned') * DEG;
+      const az = Math.atan2(e.x, e.z) - v.group.rotation.y + off;
       yaw.rotation.y = dampAngle(yaw.rotation.y, az, 0.8, c.dt);
-      const el = Math.max(0.1, Math.asin(clamp01(Math.max(e.y, 0))));
+      const el = Math.max(0.1, Math.asin(clamp01(Math.max(e.y, 0)))) - off * 0.6;
       tilt.rotation.x = damp(tilt.rotation.x, Math.PI / 2 - el, 0.8, c.dt);
     });
   },

@@ -1,5 +1,6 @@
 import { FR } from './i18n/fr';
 import { MECH } from './i18n/mechanics';
+import { MG } from './i18n/minigames';
 import { PT } from './i18n/pt';
 
 /**
@@ -1014,7 +1015,7 @@ const S: Record<string, Entry> = {
     'Listen to ORBI. Watch the sunlight strip to know when darkness is coming. Use the maps to see where the Sun shines most. And read the codex: everything here really happens.',
   ],
 };
-Object.assign(S, MECH);
+Object.assign(S, MECH, MG);
 
 let lang: Lang = 'es';
 

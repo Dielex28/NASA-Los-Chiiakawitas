@@ -556,7 +556,7 @@ export function planningScreen(app: App, missionId: string): HTMLElement {
   const manifest: Partial<Record<CargoItem, number>> = { ...m.recommended };
   const world = m.world;
   const missionDays = m.endless ? 30 : (m.durationSols * WORLDS[world].solH) / 24;
-  const items: CargoItem[] = [...MODULE_ORDER.filter((k) => MODULES[k].worlds.includes(world)), 'food', 'water', 'o2'];
+  const items: CargoItem[] = [...MODULE_ORDER.filter((k) => MODULES[k].worlds.includes(world)), 'food', 'water', 'o2', 'spares'];
 
   const list = h('div.plan-list');
   const side = h('div.plan-side');
@@ -577,7 +577,7 @@ export function planningScreen(app: App, missionId: string): HTMLElement {
   for (const item of items) {
     if (item === 'food') list.append(groupHead(t('plan.supplies')));
     const n = h('span.n', '0');
-    const desc = isSupply(item) ? '' : t(`desc.${item}`);
+    const desc = item === 'spares' ? t('desc.spares') : isSupply(item) ? '' : t(`desc.${item}`);
     const row = h(
       'div.item',
       h('div.glyph', icon(cargoIcon(item), 20)),
