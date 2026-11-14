@@ -367,6 +367,26 @@ export class Sky {
   /**
    * @param timeH mission clock in hours (drives sky rotation and moon orbits)
    */
+/**
+   * Run `fn` with the solar disc and its glare switched off — for reflection captures, where
+   * the direct light already accounts for the Sun and a second copy would double every highlight.
+   */
+  withoutSun(fn: () => void): void {
+    const disc = this.palette.sunDisc;
+    const r = disc.r;
+    const g = disc.g;
+    const b = disc.b;
+    const glare = this.glare.visible;
+    disc.setRGB(0, 0, 0);
+    this.glare.visible = false;
+    try {
+      fn();
+    } finally {
+      disc.setRGB(r, g, b);
+      this.glare.visible = glare;
+    }
+  }
+
   update(camera: THREE.Camera, sunDir: THREE.Vector3, timeH: number, realTime: number): void {
     const p = this.palette;
     this.sunDir.copy(sunDir);

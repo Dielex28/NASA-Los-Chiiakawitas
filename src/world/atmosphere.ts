@@ -47,6 +47,13 @@ export class Atmosphere {
   /** How strongly dust in the air shows shafts of light, 0..1 (always 0 without an atmosphere). */
   shafts = 0;
   readonly shaftTint = new THREE.Color(1, 1, 1);
+  /** Light scattered by each metre of air (0 on an airless world). */
+  scatter = 0;
+  /** Sunlight reaching the dust, and the skylight that fills it. */
+  readonly airSun = new THREE.Color();
+  readonly airAmbient = new THREE.Color();
+  /** A terrain bounce map supplies the fill light, so the uniform ground glow of the hemisphere light steps back. */
+  bounce = false;
   private tmp = new THREE.Color();
   private tmp2 = new THREE.Color();
   private probeTimer = 0;
@@ -126,7 +133,10 @@ export class Atmosphere {
       // light bounced off sunlit regolith fills the shadows a little; in a dark crater only earthshine remains
       this.hemi.color.setRGB(0.02, 0.02, 0.025);
       this.hemi.groundColor.setRGB(0.5, 0.49, 0.47);
-      this.hemi.intensity = 0.85 * lit + 0.03;
+      this.hemi.intensity = this.bounce ? 0.16 * lit + 0.03 : 0.85 * lit + 0.03;
+      // sunlight returned by the surrounding regolith (albedo and geometry folded into one gain)
+      this.uniforms.uBounce.value.set(0.56, 0.55, 0.53, this.uniforms.uBounce.value.w);
+      this.uniforms.uBounceFar.value = 0.7 * lit;
       // earthshine: faint and bluish, but enough to find your way around a dark base
       this.fill.color.setRGB(0.5, 0.58, 0.8);
       this.fill.intensity = 0.13 + 0.09 * (1 - lit);
@@ -139,6 +149,7 @@ export class Atmosphere {
       this.env.glow.setRGB(1, 0.98, 0.94).multiplyScalar(1.6 * lit);
       this.env.horizonPow = 3;
       this.shafts = 0;
+      this.scatter = 0;
     } else {
       const mu = Math.sin(env.sunEl);
       const day = smoothstep(-0.1, 0.16, mu);
@@ -173,6 +184,10 @@ export class Atmosphere {
       this.hemi.color.copy(p.horizon).lerp(p.zenith, 0.4);
       this.hemi.groundColor.setRGB(0.32, 0.18, 0.1).multiplyScalar(0.6 + 0.4 * day);
       this.hemi.intensity = 1.6 * skylight + 0.05;
+      // Mars is lit mostly by its sky; the ground adds a warm fill in proportion to the direct Sun
+      const back = 0.5 * direct * day;
+      this.uniforms.uBounce.value.set(0.62 * back, 0.34 * back, 0.19 * back, this.uniforms.uBounce.value.w);
+      this.uniforms.uBounceFar.value = 0.7;
       this.fill.color.setRGB(0.3, 0.36, 0.55);
       this.fill.intensity = 0.05 + 0.03 * (1 - day);
       this.darkness = 1 - clamp01(day * (0.35 + 0.65 * Math.max(direct, 0.35)));
@@ -193,6 +208,12 @@ export class Atmosphere {
       // light shafts are strongest with a low Sun and dusty (but not opaque) air
       this.shafts = clamp01((0.35 + 0.5 * env.tau) * (1 - smoothstep(0.3, 0.75, mu)) * smoothstep(-0.06, 0.03, mu) * Math.max(direct, 0.1) * (1 - 0.7 * storm));
       mix(this.shaftTint, MARS.glowDay, MARS.glowDusk, dusk);
+      // volumetric light: clear Martian air scatters little per metre; a storm, many times more
+      this.scatter = (0.00012 + 0.0003 * Math.min(env.tau, 3) + 0.003 * storm) * smoothstep(-0.1, 0.02, mu);
+      // the dust is butterscotch, not white: it tints the sunlight it scatters (bluish only around the setting Sun)
+      this.airSun.copy(this.sun.color).multiply(this.tmp2.setRGB(0.9, 0.68, 0.48)).multiplyScalar(this.sun.intensity * 0.5);
+      this.airSun.lerp(this.tmp2.copy(MARS.glowDusk).multiplyScalar(1.6 * Math.max(direct, 0.1)), dusk * 0.5);
+      this.airAmbient.copy(p.horizon).multiplyScalar(0.12 * day);
       void timeH;
     }
 

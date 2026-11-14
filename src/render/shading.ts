@@ -40,6 +40,12 @@ export interface WorldUniforms {
   uSunShadow: { value: THREE.Vector4 };
   /** Light scattered toward the viewer by airborne dust. rgb: colour added to the haze when looking at the Sun · a: lobe exponent */
   uFogGlow: { value: THREE.Vector4 };
+  /** One-bounce solution on the terrain: R sky left open by the relief · G sunlit ground in view. */
+  uBounceMap: { value: THREE.Texture | null };
+  /** rgb: light a fully sunlit surrounding sends back · a: 1 / side of the area the map covers (0 = no map) */
+  uBounce: { value: THREE.Vector4 };
+  /** Sunlit ground in view assumed outside the map, 0..1. */
+  uBounceFar: { value: number };
 }
 
 export function createWorldUniforms(): WorldUniforms {
@@ -65,6 +71,9 @@ export function createWorldUniforms(): WorldUniforms {
     uOpposition: { value: new THREE.Vector2(0, 0.07) },
     uSunShadow: { value: new THREE.Vector4(160, 1390, 0.00465, 0.9) },
     uFogGlow: { value: new THREE.Vector4(0, 0, 0, 8) },
+    uBounceMap: { value: null },
+    uBounce: { value: new THREE.Vector4(0, 0, 0, 0) },
+    uBounceFar: { value: 0 },
   };
 }
 
@@ -317,6 +326,24 @@ float sunShadow(sampler2D shadowMap, vec2 mapSize, float intensity, float bias, 
 #endif
 `;
 
+/**
+ * Indirect light from the terrain solution: skylight is cut where the relief closes the sky,
+ * and sunlit ground in view adds its light — mostly to surfaces that face sideways or down,
+ * which is where ground light arrives from.
+ */
+const BOUNCE_GLSL = /* glsl */ `
+#if defined( RE_IndirectDiffuse )
+  if (uBounce.a > 0.0) {
+    vec2 bUv = vHfWorld.xz * uBounce.a + 0.5;
+    vec4 bMap = texture2D(uBounceMap, bUv);
+    float bIn = step(max(abs(bUv.x - 0.5), abs(bUv.y - 0.5)), 0.5);
+    float bUp = inverseTransformDirection(geometryNormal, viewMatrix).y;
+    irradiance *= mix(0.4, 1.0, mix(1.0, bMap.r, bIn));
+    irradiance += uBounce.rgb * mix(uBounceFar, bMap.g, bIn) * mix(1.0, 0.3, 0.5 + 0.5 * bUp);
+  }
+#endif
+`;
+
 /** Haze that brightens toward the Sun: airborne dust scatters light forward, so distance glows instead of greying out. */
 const FOG_GLSL = /* glsl */ `
 #ifdef USE_FOG
@@ -357,9 +384,10 @@ export function patchWorldMaterial<T extends THREE.Material>(mat: T, u: WorldUni
       .replace('getDirectionalLightInfo( directionalLight, directLight );', 'getDirectionalLightInfo( directionalLight, directLight ); directLight.color *= hfShadow;')
       .replace('getShadow( directionalShadowMap[ i ],', 'sunShadow( directionalShadowMap[ i ],');
     shader.fragmentShader = shader.fragmentShader
-      .replace('#include <common>', `#include <common>\n#define HF_STEPS ${steps}\n#define HF_GROW ${grow}\n#define SUN_TAPS ${taps}\nuniform vec4 uFogGlow;\n${HF_GLSL_PARS}`)
+      .replace('#include <common>', `#include <common>\n#define HF_STEPS ${steps}\n#define HF_GROW ${grow}\n#define SUN_TAPS ${taps}\nuniform vec4 uFogGlow;\nuniform sampler2D uBounceMap;\nuniform vec4 uBounce;\nuniform float uBounceFar;\n${HF_GLSL_PARS}`)
       .replace('#include <shadowmap_pars_fragment>', `#include <shadowmap_pars_fragment>\n${SUN_SHADOW_GLSL}`)
       .replace('#include <lights_fragment_begin>', `float hfShadow = hfShadowAt(vHfWorld);\n${lights}`)
+      .replace('#include <lights_fragment_end>', `${BOUNCE_GLSL}\n#include <lights_fragment_end>`)
       .replace('#include <fog_fragment>', FOG_GLSL);
     extra?.(shader);
   };

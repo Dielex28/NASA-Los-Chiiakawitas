@@ -29,13 +29,19 @@ export interface QualitySettings {
   rays: number;
   /** The helmet lamp casts shadows. */
   lampShadows: boolean;
+  /** Side of the cube map photographed from the real scene for reflections and bounce light (0 = painted sky only). */
+  probeSize: number;
+  /** Ray-marched light and dust in the air (needs the depth buffer of the ambient-occlusion pass). */
+  volumetric: number;
+  /** One bounce of sunlight off the terrain, solved on the height map. */
+  bounce: boolean;
 }
 
 export const QUALITY: Record<QualityLevel, Omit<QualitySettings, 'level'>> = {
-  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false, sunTaps: 0, textureSize: 256, anisotropy: 1, rays: 0, lampShadows: false },
-  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false, sunTaps: 10, textureSize: 512, anisotropy: 2, rays: 20, lampShadows: false },
-  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true, sunTaps: 16, textureSize: 1024, anisotropy: 8, rays: 32, lampShadows: true },
-  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 48, bloom: true, msaa: 4, rocks: 1.5, particles: 1.4, ao: true, sunTaps: 24, textureSize: 1024, anisotropy: 16, rays: 48, lampShadows: true },
+  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false, sunTaps: 0, textureSize: 256, anisotropy: 1, rays: 0, lampShadows: false, probeSize: 0, volumetric: 0, bounce: false },
+  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false, sunTaps: 10, textureSize: 512, anisotropy: 2, rays: 20, lampShadows: false, probeSize: 0, volumetric: 0, bounce: true },
+  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true, sunTaps: 16, textureSize: 1024, anisotropy: 8, rays: 32, lampShadows: true, probeSize: 128, volumetric: 16, bounce: true },
+  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 48, bloom: true, msaa: 4, rocks: 1.5, particles: 1.4, ao: true, sunTaps: 24, textureSize: 1024, anisotropy: 16, rays: 48, lampShadows: true, probeSize: 256, volumetric: 28, bounce: true },
 };
 
 /** Final grade applied after tone mapping: vignette, grain, radiation speckle, dust tint. */
@@ -127,7 +133,97 @@ const RaysShader = {
   `,
 };
 
-/** WebGL renderer with an HDR pipeline: MSAA → ambient occlusion → light shafts → bloom → ACES tone map → grade. */
+/**
+ * Volumetric light. Dust hanging in the air is lit by the Sun wherever the Sun can reach it,
+ * so the air itself shows the shadow of everything standing in the light: the lander, a crater
+ * rim, the commander. For every pixel the shader walks from the eye to the surface it sees and,
+ * at each step, asks the Sun's shadow map and the terrain height map whether that point of air
+ * is lit; lit dust adds light according to how strongly it scatters toward the eye (forward, for
+ * dust). Only worlds with air get this — on the Moon there is nothing to light.
+ */
+const VolumeShader = {
+  uniforms: {
+    tDiffuse: { value: null as THREE.Texture | null },
+    tDepth: { value: null as THREE.Texture | null },
+    uShadowMap: { value: null as THREE.Texture | null },
+    uHeightMap: { value: null as THREE.Texture | null },
+    uNoise: { value: null as THREE.Texture | null },
+    uShadowMatrix: { value: new THREE.Matrix4() },
+    uProjInv: { value: new THREE.Matrix4() },
+    uCamWorld: { value: new THREE.Matrix4() },
+    uCamPos: { value: new THREE.Vector3() },
+    uSunDir: { value: new THREE.Vector3(0, 1, 0) },
+    uSunColor: { value: new THREE.Color(1, 1, 1) },
+    uAmbient: { value: new THREE.Color(0, 0, 0) },
+    uHf: { value: new THREE.Vector4() },
+    /** x: scattering per metre · y: storm 0..1 · z: time · w: farthest distance marched, m */
+    uAir: { value: new THREE.Vector4(0, 0, 0, 420) },
+  },
+  vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
+  fragmentShader: /* glsl */ `
+    precision highp float;
+    #include <packing>
+    varying vec2 vUv;
+    uniform sampler2D tDiffuse, tDepth, uShadowMap, uHeightMap, uNoise;
+    uniform mat4 uShadowMatrix, uProjInv, uCamWorld;
+    uniform vec3 uCamPos, uSunDir, uSunColor, uAmbient;
+    uniform vec4 uHf, uAir;
+    float terrain(vec2 xz) { return texture2D(uHeightMap, xz * uHf.x + 0.5).r + uHf.y; }
+    // is this point of air in sunlight?
+    float lit(vec3 p) {
+      vec4 sc = uShadowMatrix * vec4(p, 1.0);
+      sc.xyz /= sc.w;
+      float v = 1.0;
+      if (sc.x > 0.0 && sc.x < 1.0 && sc.y > 0.0 && sc.y < 1.0 && sc.z < 1.0) {
+        v = step(sc.z - 0.0015, unpackRGBAToDepth(texture2D(uShadowMap, sc.xy)));
+      }
+      // hills and crater rims far outside the shadow map
+      for (int j = 0; j < 3; j++) {
+        float t = 45.0 * pow(3.6, float(j));
+        vec3 q = p + uSunDir * t;
+        v *= smoothstep(-2.0, 3.0 + 0.02 * t, q.y - terrain(q.xz));
+      }
+      return v;
+    }
+    void main() {
+      vec4 base = texture2D(tDiffuse, vUv);
+      float depth = texture2D(tDepth, vUv).x;
+      vec4 view = uProjInv * vec4(vUv * 2.0 - 1.0, depth * 2.0 - 1.0, 1.0);
+      view /= view.w;
+      vec3 world = (uCamWorld * view).xyz;
+      vec3 ray = world - uCamPos;
+      bool sky = depth > 0.99995;
+      float dist = sky ? uAir.w : min(length(ray), uAir.w);
+      vec3 dir = normalize(ray);
+      // dust scatters forward: brightest looking toward the Sun (Henyey–Greenstein, g = 0.62)
+      float mu = dot(dir, uSunDir);
+      float phase = 0.2365 / pow(1.3844 - 1.24 * mu, 1.5);
+      phase = min(phase / 0.1452, 4.5);
+      float jitter = fract(52.9829189 * fract(dot(gl_FragCoord.xy, vec2(0.06711056, 0.00583715))));
+      vec2 wind = vec2(uAir.z * 2.2, uAir.z * 0.8);
+      float ground = terrain(uCamPos.xz);
+      vec3 sum = vec3(0.0);
+      float prev = 0.0;
+      for (int i = 0; i < VOL_STEPS; i++) {
+        // steps grow with distance: detail where shadows are sharp, reach where they are not
+        float f = (float(i) + jitter) / float(VOL_STEPS);
+        float t = dist * f * f;
+        float dt = t - prev;
+        prev = t;
+        vec3 p = uCamPos + dir * t;
+        // storms raise a layer of dust that hugs the ground and drifts with the wind
+        float n = texture2D(uNoise, (p.xz + wind) * 0.006).r * texture2D(uNoise, (p.xz - wind * 0.6) * 0.021 + p.y * 0.004).g;
+        float layer = exp(-max(p.y - ground, 0.0) / 55.0);
+        float dens = uAir.x * (1.0 + uAir.y * (0.4 + 9.0 * n) * layer * 3.0);
+        sum += dens * dt * (uSunColor * phase * lit(p) + uAmbient);
+      }
+      // the sky dome already contains the light scattered by the whole atmosphere above the scene
+      gl_FragColor = vec4(base.rgb + sum * (sky ? 0.4 : 1.0), base.a);
+    }
+  `,
+};
+
+/** WebGL renderer with an HDR pipeline: MSAA → ambient occlusion → volumetric light → light shafts → bloom → ACES tone map → grade. */
 export class Renderer {
   readonly renderer: THREE.WebGLRenderer;
   readonly composer: EffectComposer;
@@ -135,6 +231,7 @@ export class Renderer {
   readonly ao: GTAOPass | null = null;
   readonly final: ShaderPass;
   readonly rays: ShaderPass | null = null;
+  readonly volume: ShaderPass | null = null;
   private renderPass: RenderPass;
   private sunNdc = new THREE.Vector3();
   quality: QualitySettings;
@@ -173,6 +270,11 @@ export class Renderer {
       };
       this.ao = ao;
       this.composer.addPass(ao);
+    }
+    if (this.quality.volumetric > 0 && this.ao) {
+      this.volume = new ShaderPass({ ...VolumeShader, defines: { VOL_STEPS: this.quality.volumetric } });
+      this.volume.enabled = false;
+      this.composer.addPass(this.volume);
     }
     if (this.quality.rays > 0) {
       this.rays = new ShaderPass({ ...RaysShader, defines: { RAY_STEPS: this.quality.rays } });
@@ -232,6 +334,46 @@ export class Renderer {
     this.composer.setPixelRatio(dpr);
     this.composer.setSize(width, height);
     this.final.uniforms.uAspect.value = width / Math.max(1, height);
+  }
+
+  /**
+   * Light the air. `scatter` is how much each metre of air scatters (0 switches the pass off);
+   * `sunColor` and `ambient` are the light that dust receives directly and from the sky.
+   * Returns true when the volumetric pass is doing the job (so the cheaper screen-space shafts can rest).
+   */
+  setVolume(
+    camera: THREE.PerspectiveCamera,
+    sun: THREE.DirectionalLight,
+    sunDir: THREE.Vector3,
+    sunColor: THREE.Color,
+    ambient: THREE.Color,
+    scatter: number,
+    storm: number,
+    time: number,
+    heightMap: THREE.Texture | null,
+    hf: THREE.Vector4,
+    noise: THREE.Texture | null,
+  ): boolean {
+    const pass = this.volume;
+    if (!pass || !this.ao) return false;
+    const shadow = sun.shadow.map;
+    pass.enabled = scatter > 1e-6 && this.ao.enabled && !!shadow && !!heightMap;
+    if (!pass.enabled) return false;
+    const u = pass.uniforms;
+    u.tDepth.value = this.ao.depthTexture;
+    u.uShadowMap.value = shadow!.texture;
+    u.uHeightMap.value = heightMap;
+    u.uNoise.value = noise;
+    (u.uShadowMatrix.value as THREE.Matrix4).copy(sun.shadow.matrix);
+    (u.uProjInv.value as THREE.Matrix4).copy(camera.projectionMatrixInverse);
+    (u.uCamWorld.value as THREE.Matrix4).copy(camera.matrixWorld);
+    (u.uCamPos.value as THREE.Vector3).setFromMatrixPosition(camera.matrixWorld);
+    (u.uSunDir.value as THREE.Vector3).copy(sunDir);
+    (u.uSunColor.value as THREE.Color).copy(sunColor);
+    (u.uAmbient.value as THREE.Color).copy(ambient);
+    (u.uHf.value as THREE.Vector4).copy(hf);
+    (u.uAir.value as THREE.Vector4).set(scatter, storm, time, 420);
+    return true;
   }
 
   /**

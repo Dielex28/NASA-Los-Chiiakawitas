@@ -105,8 +105,44 @@ export class EnvProbe {
     return true;
   }
 
+  private cubeTarget: THREE.WebGLCubeRenderTarget | null = null;
+  private cubeCamera: THREE.CubeCamera | null = null;
+
+  /**
+   * Photograph the real scene from `center` in all six directions and use that as the
+   * reflection map. Unlike the painted sky above, this one contains the terrain, the base and
+   * every shadow as they are right now, so the visor mirrors the lander it is facing and white
+   * hardware picks up the colour of the ground it stands on (one bounce of indirect light).
+   * `around` runs the capture with whatever must not appear in it hidden.
+   */
+  capture(scene: THREE.Scene, center: THREE.Vector3, size: number, around: (shoot: () => void) => void): void {
+    if (!this.cubeTarget || this.cubeTarget.width !== size) {
+      this.cubeTarget?.dispose();
+      this.cubeTarget = new THREE.WebGLCubeRenderTarget(size, { type: THREE.HalfFloatType, generateMipmaps: false });
+      this.cubeCamera = new THREE.CubeCamera(0.25, 9000, this.cubeTarget);
+    }
+    const cam = this.cubeCamera!;
+    cam.position.copy(center);
+    const r = this.renderer;
+    // the shadow map of the last frame is still valid: no need to redraw it six times
+    const auto = r.shadowMap.autoUpdate;
+    r.shadowMap.autoUpdate = false;
+    const target = r.getRenderTarget();
+    around(() => cam.update(r, scene));
+    r.shadowMap.autoUpdate = auto;
+    r.setRenderTarget(target);
+    const old = this.target;
+    this.target = this.pmrem.fromCubemap(this.cubeTarget.texture);
+    this.texture = this.target.texture;
+    this.version++;
+    old?.dispose();
+    // the painted map must be redrawn if it is ever needed again
+    this.signature = '';
+  }
+
   dispose(): void {
     this.target?.dispose();
+    this.cubeTarget?.dispose();
     this.pmrem.dispose();
   }
 }

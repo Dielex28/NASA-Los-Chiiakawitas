@@ -5,6 +5,7 @@ import { clamp01, damp, dampAngle } from '../core/math';
 import { Orbi } from '../entities/astronaut';
 import { Kit } from '../entities/kit';
 import type { ViewContext } from '../entities/modules3d';
+import { BounceMap } from '../render/bounce';
 import { EnvProbe } from '../render/envprobe';
 import { Particles } from '../render/particles';
 import { Renderer, type QualityLevel } from '../render/renderer';
@@ -106,6 +107,8 @@ interface Stage {
   prints: Footprints;
   props: Props;
   rover: RoverUnit;
+  /** One-bounce light solution on the terrain (absent on the lowest preset). */
+  bounce: BounceMap | null;
 }
 
 interface SaveFile {
@@ -153,6 +156,8 @@ export class Game {
   private roverFlatTold = false;
   private flipT = 0;
   private roverFocus = new THREE.Vector3();
+  private probeT = 0;
+  private probeAt = new THREE.Vector3();
   private roverQuat = new THREE.Quaternion();
   overlay: OverlayKind = 'none';
   /** UI sets this while a modal screen is open so the world ignores input. */
@@ -269,7 +274,9 @@ export class Game {
         prints,
         props: this.makeProps(world, kit, dust),
         rover: this.makeRover(world, kit),
+        bounce: this.renderer.quality.bounce ? new BounceMap(world.uniforms, this.renderer.quality.level === 'medium' ? 192 : 256) : null,
       };
+      world.atmosphere.bounce = !!st.bounce;
       this.stages[id] = st;
     }
     this.stage = st;
@@ -701,10 +708,29 @@ export class Game {
     st.world.update(dt, env, this.camera, this.focus, sim.timeH, this.time, this.phase === 'menu' ? 8 : 4.5);
     const atm = st.world.atmosphere;
     // reflections follow the light: rebuild the environment map when the sky or the Sun has changed
+    st.bounce?.update(this.renderer.renderer, atm.sunDir, dt);
     const worldChanged = this.envWorld !== st.world.id;
-    if (this.env.update(dt, atm.env, worldChanged) || worldChanged) {
+    const probeSize = this.renderer.quality.probeSize;
+    this.probeT -= dt;
+    if (probeSize > 0 && !worldChanged && this.probeT <= 0) {
+      // photograph the surroundings: from the commander's helmet on foot, from above the base otherwise
+      const onFoot = this.mode === 'eva' && playing;
+      this.probeT = onFoot ? 0.9 : 2.5;
+      if (onFoot) this.probeAt.copy(st.player.pos).setY(st.player.pos.y + (this.driving ? 1.9 : 1.7));
+      else this.probeAt.set(this.focus.x, st.world.ground(this.focus.x, this.focus.z) + 3, this.focus.z);
+      const hide = [st.player.astronaut.group, st.orbi.group, st.dust.points, st.sparks.points, st.props.group];
+      if (this.driving) hide.push(st.rover.view.group);
+      this.env.capture(st.world.scene, this.probeAt, probeSize, (shoot) => {
+        const was = hide.map((o) => o.visible);
+        for (const o of hide) o.visible = false;
+        st.world.sky.withoutSun(shoot);
+        hide.forEach((o, i) => (o.visible = was[i]));
+      });
+      st.kit.setEnvironment(this.env.texture);
+    } else if ((probeSize === 0 || worldChanged) && (this.env.update(dt, atm.env, worldChanged) || worldChanged)) {
       this.envWorld = st.world.id;
       st.kit.setEnvironment(this.env.texture);
+      this.probeT = 0.3;
     }
     const c = this.ctx;
     c.dt = dt;
@@ -764,7 +790,9 @@ export class Game {
     this.alarmT = emergency ? this.alarmT + dt : 0;
     this.audio.setAlarm(emergency && this.alarmT < 9 && (this.mode === 'eva' || this.speed > 0));
 
-    this.renderer.setRays(this.camera, atm.sunDir, atm.shafts, atm.shaftTint);
+    const wu = st.world.uniforms;
+    const airLit = this.renderer.setVolume(this.camera, atm.sun, atm.sunDir, atm.airSun, atm.airAmbient, atm.scatter, env.storm, this.time, wu.uHeightMap.value, wu.uHf.value, wu.uNoise.value);
+    this.renderer.setRays(this.camera, atm.sunDir, airLit ? 0 : atm.shafts, atm.shaftTint);
     this.renderer.render(st.world.scene, this.camera, atm.exposure, this.time);
 
     // ---- housekeeping
