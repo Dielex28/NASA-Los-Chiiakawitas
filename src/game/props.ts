@@ -94,8 +94,8 @@ export class Props {
   private rockGeo = rockGeometry();
   onDrop?: (r: DropResult) => void;
   onThrow?: (r: ThrowResult) => void;
-  /** Something hit the ground at `speed` m/s. */
-  onImpact?: (speed: number, kind: string) => void;
+  /** Something hit the ground at `speed` m/s, at (x, y, z). */
+  onImpact?: (speed: number, kind: string, x: number, y: number, z: number) => void;
 
   constructor(private kit: Kit) {
     this.group.name = 'props';
@@ -203,7 +203,7 @@ export class Props {
     for (const e of events) {
       const b = e.body;
       if (e.type === 'landed') {
-        this.onImpact?.(b.impactSpeed, b.kind);
+        this.onImpact?.(b.impactSpeed, b.kind, b.landX, b.y - b.radius, b.landZ);
         const th = this.throws.get(b.id);
         if (th) {
           this.throws.delete(b.id);

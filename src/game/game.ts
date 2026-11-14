@@ -1075,10 +1075,17 @@ export class Game {
       this.events.emit('toast', { key: 'toast.throw', params, sev: 'info' });
       if (sim && recordExperiment(sim, 'throw')) this.audio.ui('good');
     };
-    props.onImpact = (speed, kind) => {
+    props.onImpact = (speed, kind, x, y, z) => {
       if (kind === 'feather') return;
       this.audio.land(Math.min(1, speed / 9) * 0.5);
-      void dust;
+      // ejecta: a ring of dust thrown outward and up, faster for a harder hit
+      const [r, g, b] = world.id === 'moon' ? [0.62, 0.61, 0.6] : [0.78, 0.47, 0.28];
+      const n = Math.min(26, Math.round(4 + speed * 2.2));
+      for (let i = 0; i < n; i++) {
+        const a = Math.random() * Math.PI * 2;
+        const v = (0.25 + Math.random() * 0.5) * Math.min(speed, 9) * 0.45;
+        dust.spawn(x, y + 0.03, z, Math.cos(a) * v, (0.3 + Math.random() * 0.7) * v, Math.sin(a) * v, 1.6 + Math.random(), 0.28, r, g, b, 0.45);
+      }
     };
     return props;
   }
