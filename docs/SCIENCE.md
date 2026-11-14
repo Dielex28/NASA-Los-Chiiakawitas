@@ -44,6 +44,10 @@ Este documento separa tres cosas: **valores reales** que el simulador usa tal cu
 
 **Tripulación.** Salud y ánimo son índices de 0 a 100. La salud responde a hipoxia, CO₂, sed, hambre, frío y dosis aguda; el ánimo, a comida fresca, comunicaciones, hacinamiento, carga de trabajo y sustos recientes. Ambos multiplican las horas útiles. Son reglas de juego inspiradas en estudios de factores humanos (p. ej. CHAPEA), no un modelo fisiológico.
 
+**Objetos sueltos (física de EVA).** Las rocas lanzadas, el martillo y la pluma se integran a 240 pasos por segundo con gravedad, arrastre aerodinámico F = ½·ρ·C_d·A·v² respecto al aire (incluido el viento), rebote con coeficiente de restitución y fricción de Coulomb contra el terreno. Densidad del aire: 0 en la Luna, 0,020 kg/m³ en Marte (≈ 1,6 % de los 1,225 kg/m³ de la Tierra). El martillo (1,32 kg) y la pluma (0,03 kg) son los de la demostración de David Scott en el Apolo 15; el área (0,012 m²) y el coeficiente de arrastre (1,3) de la pluma son estimaciones nuestras. Con esos valores, desde 1,6 m: en la Luna ambos tardan 1,40 s; en Marte la pluma llega unos 0,001 s después; en la Tierra, unos 0,05 s después. Una pluma real revolotea y tarda más: el modelo no incluye sustentación ni rotación acoplada. El viento marciano se toma como 3 m/s en calma y hasta 25 m/s en tormenta.
+
+**Esfuerzo en EVA.** La potencia metabólica se estima con un ajuste sencillo (≈ 125 W en reposo, ≈ 190 W a paso lento, ≈ 345 W al paso largo del juego y ≈ 660 W corriendo), del orden de lo medido en las EVA del Apolo (medias de 230–300 W, picos por encima de 500 W). La reserva del traje se consume en proporción a ella: dura lo previsto caminando, más si te quedas quieto y casi la mitad si corres. Es una regla de juego, no un modelo fisiológico.
+
 ## 3. Ajustes de jugabilidad
 
 | Ajuste | Realidad | Motivo |
@@ -55,11 +59,13 @@ Este documento separa tres cosas: **valores reales** que el simulador usa tal cu
 | Un solo valor de dosis por tripulante | Dosis por órgano, calidad de la radiación | Sencillez. |
 | Paneles de 10 kW y reactor de 10 kW como unidades redondas | Diseños reales con otras potencias | Comparaciones mentales fáciles para estudiantes. |
 | El tiempo corre 60× en EVA y hasta 4 320× en la consola | — | Que quepan 30–180 días en una sesión. |
+| Los objetos lanzados y soltados se mueven en tiempo real | El reloj de la misión corre 60× en EVA | Una caída de 1,4 s tiene que verse durar 1,4 s. |
+| Lanzamiento a 11 m/s con traje | Depende del traje y del astronauta | Valor único y moderado para poder comparar mundos. |
 | Evacuación en lugar de fallecimiento | — | Público joven: la misión se aborta, nadie muere. |
 
 ## 4. Cómo comprobarlo
 
-Las pruebas de `tests/sim.test.ts` verifican que el simulador cumple lo que este documento afirma: tasas de consumo, efecto del reciclaje, prioridades de carga, atenuación por polvo, diferencia entre blindaje para protones y para rayos cósmicos, dosis por cercanía del reactor y misiones completas.
+Las pruebas de `tests/physics.test.ts` comparan el motor de física con las fórmulas (caída libre, velocidad terminal, alcance, deriva por viento). Las pruebas de `tests/sim.test.ts` verifican que el simulador cumple lo que este documento afirma: tasas de consumo, efecto del reciclaje, prioridades de carga, atenuación por polvo, diferencia entre blindaje para protones y para rayos cósmicos, dosis por cercanía del reactor y misiones completas.
 
 ```bash
 npm test

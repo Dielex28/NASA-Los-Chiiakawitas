@@ -137,6 +137,8 @@ export class Hud {
   private promptBar = h('div.bar.ok', this.promptFill);
   private suitFill = h('i');
   private jetFill = h('i');
+  private effortFill = h('i');
+  private effortVal = h('span.vl', '');
   private geiger = h('div.geiger', h('span.muted', ''), h('span', ''));
   private lockMsg = h('div.eva-lock', t('eva.clickToLook'));
   private evaHint = h('div.eva-hint', t('eva.hint'));
@@ -729,6 +731,7 @@ export class Hud {
       'div.eva-meters.panel',
       h('div.meter', h('span.lb', t('eva.suit')), h('div.bar.ok', this.suitFill), h('span.vl')),
       h('div.meter', h('span.lb', t('eva.jet')), h('div.bar', this.jetFill), h('span.vl')),
+      h('div.meter', h('span.lb', t('eva.effort')), h('div.bar', this.effortFill), this.effortVal),
       this.geiger,
       h('div.note', t('eva.timeNote')),
     );
@@ -850,8 +853,10 @@ export class Hud {
     const el = h(`div.toast.${sev}`, icon(sev === 'good' ? 'check' : sev === 'info' ? 'info' : 'warn', 15), h('span', text));
     this.toasts.prepend(el);
     while (this.toasts.children.length > 5) this.toasts.lastElementChild?.remove();
-    setTimeout(() => el.classList.add('out'), sev === 'bad' ? 9000 : 6000);
-    setTimeout(() => el.remove(), sev === 'bad' ? 9500 : 6500);
+    // long messages stay long enough to be read
+    const life = Math.max(sev === 'bad' ? 9000 : 6000, 2500 + text.length * 60);
+    setTimeout(() => el.classList.add('out'), life);
+    setTimeout(() => el.remove(), life + 500);
   }
 
   private showScan(ice: number, illum: number, found: number): void {
@@ -1183,6 +1188,10 @@ export class Hud {
     this.suitFill.style.width = `${g.suit * 100}%`;
     (this.suitFill.parentElement as HTMLElement).className = `bar ${g.suit < 0.2 ? 'bad' : g.suit < 0.4 ? 'warn' : 'ok'}`;
     this.jetFill.style.width = `${g.jetFuel() * 100}%`;
+    const watts = g.metabolic;
+    this.effortFill.style.width = `${Math.min(100, (watts / 700) * 100)}%`;
+    (this.effortFill.parentElement as HTMLElement).className = `bar ${watts > 580 ? 'bad' : watts > 420 ? 'warn' : 'ok'}`;
+    setText(this.effortVal, `${Math.round(watts / 10) * 10} W`);
     const rate = (s.flows.doseRateEvaMsvDay / 24) * 1000;
     setText(this.geiger.firstElementChild!, t('hud.rad'));
     setText(this.geiger.lastElementChild!, t('eva.dose', { v: fmt(rate, rate < 100 ? 0 : 0) }));

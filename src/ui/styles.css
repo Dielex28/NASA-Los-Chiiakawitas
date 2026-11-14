@@ -462,9 +462,9 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 18px; background: v
 .prompt { position: absolute; left: 50%; bottom: 16%; transform: translateX(-50%); padding: 0.85em 1.2em; min-width: 20em; text-align: center; font-size: 1.05em; font-weight: 700; letter-spacing: 0.03em; border-color: var(--text); display: flex; flex-direction: column; gap: 0.6em; }
 .prompt .bar { height: 4px; }
 .eva-meters { position: absolute; left: 12px; bottom: 12px; width: 19.5em; padding: 0.9em 1em; display: flex; flex-direction: column; gap: 0.6em; }
-.meter { display: grid; grid-template-columns: 7.2em minmax(0, 1fr) 3em; gap: 0.7em; align-items: center; font-family: var(--mono); font-size: 0.8em; }
+.meter { display: grid; grid-template-columns: 7.2em minmax(0, 1fr) 4.2em; gap: 0.7em; align-items: center; font-family: var(--mono); font-size: 0.8em; }
 .meter .lb { color: var(--text-2); letter-spacing: 0.1em; text-transform: uppercase; }
-.meter .vl { text-align: right; }
+.meter .vl { text-align: right; white-space: nowrap; }
 .meter .bar { height: 4px; }
 .geiger { display: flex; justify-content: space-between; align-items: baseline; gap: 1em; padding-top: 0.6em; border-top: 1px solid var(--line-soft); font-family: var(--mono); font-size: 1.35em; font-weight: 700; }
 .geiger .muted { font-family: var(--ui); font-size: 0.55em; font-weight: 400; letter-spacing: 0.12em; text-transform: uppercase; }

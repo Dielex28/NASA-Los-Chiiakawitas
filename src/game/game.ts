@@ -13,6 +13,7 @@ import { MODULES } from '../sim/catalog';
 import { missionById, type MissionDef } from '../sim/missions';
 import {
   collectSample,
+  recordExperiment,
   createMission,
   isBuilt,
   placeModule,
@@ -34,7 +35,9 @@ import { CameraBlend, FollowCamera, TacticalCamera } from './cameras';
 import { CargoLanders } from './cargo';
 import { AIRLOCK } from './colliders';
 import { Input } from './input';
+import { AIR_DENSITY, metabolicWatts, type PhysEnv } from './physics';
 import { Player } from './player';
+import { Props } from './props';
 import { Sites, type Site } from './sites';
 
 export type GamePhase = 'boot' | 'menu' | 'loading' | 'playing' | 'ended';
@@ -79,6 +82,10 @@ const EVA_RATE = 1 / 60;
 const SAVE_KEY = 'helios-outpost-save-v1';
 const TERRAIN_SEED: Record<WorldId, number> = { moon: 19690720, mars: 20210218 };
 const SUIT_SECONDS = 540;
+/** Effort at which the suit lasts exactly SUIT_SECONDS: the steady loping walk of the game (3.1 m/s). */
+const NOMINAL_WATTS = 345;
+/** Touchdown speed above which a landing hurts, m/s (a 2 m drop on Earth is about 6 m/s). */
+const HARD_LANDING = 6.5;
 const INTRO_S = 6;
 
 interface Stage {
@@ -93,6 +100,7 @@ interface Stage {
   build: BuildSystem;
   cargo: CargoLanders;
   prints: Footprints;
+  props: Props;
 }
 
 interface SaveFile {
@@ -126,6 +134,10 @@ export class Game {
   markers: Marker[] = [];
   /** Remaining suit consumables, 0..1. */
   suit = 1;
+  /** Metabolic power of the commander on EVA, watts. */
+  metabolic = 0;
+  private throwCooldown = 0;
+  private poseT = 0;
   overlay: OverlayKind = 'none';
   /** UI sets this while a modal screen is open so the world ignores input. */
   uiBlocking = false;
@@ -239,6 +251,7 @@ export class Game {
         build: new BuildSystem(world, kit, () => this.scans),
         cargo: new CargoLanders(world, kit, dust, sparks),
         prints,
+        props: this.makeProps(world, kit, dust),
       };
       this.stages[id] = st;
     }
@@ -329,6 +342,7 @@ export class Game {
     st.cargo.clear();
     st.cargo.sync(sim, false);
     st.prints.clear();
+    st.props.clear();
     st.player.astronaut.group.visible = false;
     st.orbi.group.visible = false;
     sim.playerOutside = false;
@@ -860,6 +874,7 @@ export class Game {
         onStep: (s) => this.audio.step(s, world.id === 'mars'),
         onPrint: (x, z, yaw) => st.prints.add(x, world.ground(x, z), z, yaw, world.mesh.normal(x, z, this.tmpN)),
         onLand: (s) => this.audio.land(s),
+        onImpact: (v) => this.hardLanding(v, sim),
         onJet: (on) => this.audio.setJet(on),
       },
       world.atmosphere.darkness,
@@ -869,8 +884,54 @@ export class Game {
     this.focus.copy(player.pos);
     st.orbi.update(dt, player.pos, follow.yaw, (x, z) => world.ground(x, z), this.camera.position);
 
-    // suit consumables
-    this.suit = Math.max(0, this.suit - dt / SUIT_SECONDS);
+    // loose objects: thrown rocks, the hammer and the feather
+    const wind = world.id === 'mars' ? 3 + 22 * sim.env.storm : 0;
+    this.physEnv.gravity = WORLDS[world.id].gravity;
+    this.physEnv.airDensity = AIR_DENSITY[world.id];
+    this.physEnv.windX = wind * 0.94;
+    this.physEnv.windZ = wind * 0.34;
+    this.physEnv.ground = (x, z) => world.ground(x, z);
+    this.physEnv.normal = (x, z) => {
+      const n = world.mesh.normal(x, z, this.tmpN);
+      return [n.x, n.y, n.z];
+    };
+    this.physEnv.colliders = colliders;
+    st.props.update(dt, this.physEnv);
+    this.throwCooldown = Math.max(0, this.throwCooldown - dt);
+    if (allowInput && !st.build.active && player.grounded && player.working < 0.2) {
+      if (input.hit('KeyG') && !st.props.dropping) {
+        st.props.startDrop(player.pos.x, player.pos.z, player.yaw, (x, z) => world.ground(x, z));
+        this.poseT = 0.7;
+        this.audio.ui('tick');
+      }
+      if (input.hit('KeyR') && this.throwCooldown <= 0) {
+        // aim with the camera: looking up lofts the throw, looking down flattens it
+        const elevation = Math.min(1.05, Math.max(0.15, 0.75 - follow.pitch * 0.9));
+        const speed = 11;
+        const fx = -Math.sin(follow.yaw);
+        const fz = -Math.cos(follow.yaw);
+        const h = Math.cos(elevation) * speed;
+        st.props.throwRock(
+          player.pos.x + fx * 0.5,
+          player.pos.y + 1.55,
+          player.pos.z + fz * 0.5,
+          fx * h + player.vel.x,
+          Math.sin(elevation) * speed,
+          fz * h + player.vel.z,
+          (x, z) => world.ground(x, z),
+        );
+        this.throwCooldown = 1.1;
+        this.poseT = 0.35;
+        this.audio.ui('tick');
+      }
+    }
+    if (this.poseT > 0) this.poseT -= dt;
+
+    // suit consumables drain with effort: a resting astronaut uses far less oxygen and cooling
+    // water than one who is running
+    const speedNow = Math.hypot(player.vel.x, player.vel.z);
+    this.metabolic = damp(this.metabolic, metabolicWatts(speedNow, player.thrust, player.working), 2.5, dt);
+    this.suit = Math.max(0, this.suit - (dt / SUIT_SECONDS) * (this.metabolic / NOMINAL_WATTS));
     if (this.suit < 0.2 && !this.suitWarned) {
       this.suitWarned = true;
       this.events.emit('toast', { key: 'toast.suitLow', sev: 'warn' });
@@ -902,6 +963,8 @@ export class Game {
       this.setTool(false);
       player.working = 0;
     } else this.updateInteraction(dt, st, sim, allowInput);
+    // arms out while releasing or throwing something
+    if (this.poseT > 0) player.working = Math.max(player.working, 0.45);
 
     if (allowInput) {
       if (input.hit('KeyF')) this.scan();
@@ -991,6 +1054,44 @@ export class Game {
   }
   private tmpV = new THREE.Vector3();
   private tmpN = new THREE.Vector3();
+  private physEnv: PhysEnv = { gravity: 1.62, airDensity: 0, windX: 0, windZ: 0, ground: () => 0, normal: () => [0, 1, 0] };
+
+  /** Loose objects for one world, with their results reported to the player. */
+  private makeProps(world: World, kit: Kit, dust: Particles): Props {
+    const props = new Props(kit);
+    world.scene.add(props.group);
+    // numbers in the reader's own notation (decimal comma or point)
+    const num = (v: number, digits: number): string => v.toLocaleString(undefined, { minimumFractionDigits: digits, maximumFractionDigits: digits });
+    const ms = (s: number): string => num(s * 1000, 0);
+    props.onDrop = (r) => {
+      const sim = this.sim;
+      const params = { h: num(r.hammer, 2), f: num(r.feather, 2), d: ms(Math.abs(r.feather - r.hammer)), w: num(r.drift * 100, 0), e: ms(r.earthLag) };
+      this.events.emit('toast', { key: world.id === 'moon' ? 'toast.drop.moon' : 'toast.drop.mars', params, sev: 'good' });
+      if (sim && recordExperiment(sim, 'drop')) this.audio.ui('good');
+    };
+    props.onThrow = (r) => {
+      const sim = this.sim;
+      const params = { r: num(r.range, 0), t: num(r.time, 1), a: num(r.apex, 1), e: num(r.earthRange, 0) };
+      this.events.emit('toast', { key: 'toast.throw', params, sev: 'info' });
+      if (sim && recordExperiment(sim, 'throw')) this.audio.ui('good');
+    };
+    props.onImpact = (speed, kind) => {
+      if (kind === 'feather') return;
+      this.audio.land(Math.min(1, speed / 9) * 0.5);
+      void dust;
+    };
+    return props;
+  }
+
+  /** Coming down too fast damages the suit and bruises the commander, whatever the gravity. */
+  private hardLanding(speed: number, sim: SimState): void {
+    if (speed < HARD_LANDING) return;
+    const over = speed - HARD_LANDING;
+    this.suit = Math.max(0.02, this.suit - 0.05 * over);
+    for (const c of sim.crew) if (c.isPlayer) c.health = Math.max(5, c.health - 4 * over);
+    this.events.emit('toast', { key: 'toast.hardLanding', params: { v: speed.toLocaleString(undefined, { maximumFractionDigits: 1 }) }, sev: 'warn' });
+    this.audio.ui('warn');
+  }
 
   /** Project a world position to screen pixels; returns null when behind the camera. */
   project(x: number, y: number, z: number): { x: number; y: number; dist: number } | null {

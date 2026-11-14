@@ -339,7 +339,11 @@ const S: Record<string, [string, string]> = {
   'eva.suit': ['Traje', 'Suit'],
   'eva.jet': ['Propulsor', 'Jet pack'],
   'eva.dose': ['{v} µSv/h', '{v} µSv/h'],
-  'eva.hint': ['WASD mover · Mayús correr · Espacio saltar / propulsor · F escáner · B construir · Tab volver', 'WASD move · Shift run · Space jump / jet · F scanner · B build · Tab go back'],
+  'eva.hint': [
+    'WASD mover · Mayús correr · Espacio saltar / propulsor · F escáner · B construir · G martillo y pluma · R lanzar roca · Tab volver',
+    'WASD move · Shift run · Space jump / jet · F scanner · B build · G hammer and feather · R throw a rock · Tab go back',
+  ],
+  'eva.effort': ['Esfuerzo', 'Effort'],
   'eva.clickToLook': ['Haz clic para controlar la cámara', 'Click to control the camera'],
   'eva.timeNote': ['En EVA 1 segundo = 1 minuto de misión', 'On EVA 1 second = 1 mission minute'],
   'prompt.assemble': ['Mantén E · Montar {what}', 'Hold E · Assemble {what}'],
@@ -357,6 +361,19 @@ const S: Record<string, [string, string]> = {
 
   'toast.suitLow': ['Reserva del traje al 20 %. Vuelve a una esclusa.', 'Suit reserve at 20 %. Head back to an airlock.'],
   'toast.suitEmpty': ['Traje agotado: ORBI te remolca a la base. Has pasado un mal rato.', 'Suit depleted: ORBI tows you back to base. That was a rough one.'],
+  'toast.drop.moon': [
+    'Martillo {h} s · pluma {f} s. Sin aire caen a la vez: la gravedad acelera por igual a todas las masas (Galileo; Apolo 15 lo comprobó aquí en 1971).',
+    'Hammer {h} s · feather {f} s. With no air they land together: gravity accelerates every mass alike (Galileo; Apollo 15 showed it here in 1971).',
+  ],
+  'toast.drop.mars': [
+    'Martillo {h} s · pluma {f} s: {d} ms de diferencia y {w} cm de deriva por el viento. El aire de Marte es tan tenue que apenas frena la pluma; en la Tierra se retrasaría {e} ms.',
+    'Hammer {h} s · feather {f} s: {d} ms apart and {w} cm of wind drift. Martian air is so thin it barely slows the feather; on Earth it would lag by {e} ms.',
+  ],
+  'toast.throw': [
+    'Lanzamiento: {r} m en {t} s, altura máxima {a} m. Con el mismo impulso en la Tierra: unos {e} m.',
+    'Throw: {r} m in {t} s, peak height {a} m. The same throw on Earth: about {e} m.',
+  ],
+  'toast.hardLanding': ['Aterrizaje brusco a {v} m/s: el traje ha sufrido. La gravedad baja no quita la inercia.', 'Hard landing at {v} m/s: the suit took damage. Low gravity does not remove inertia.'],
   'toast.bounds': ['Estás saliendo del alcance de las comunicaciones.', 'You are leaving communications range.'],
   'toast.evaSheltered': ['La tripulación está a cubierto. Levanta la orden de refugio para salir.', 'The crew is sheltering. Lift the shelter order before going out.'],
   'toast.saved': ['Partida guardada', 'Game saved'],
@@ -372,6 +389,7 @@ const S: Record<string, [string, string]> = {
   'log.dustdevil': ['Un remolino de polvo ha limpiado los paneles. ¡Gracias, Marte!', 'A dust devil swept the arrays clean. Thanks, Mars!'],
   'log.harvest': ['¡Cosecha de {crop}! +{rations} raciones frescas.', '{crop} harvest! +{rations} fresh rations.'],
   'log.croplost': ['El cultivo de {crop} se ha helado y se ha perdido.', 'The {crop} crop froze and was lost.'],
+  'log.experiment': ['Experimento de física registrado en la superficie.', 'Surface physics experiment recorded.'],
   'log.sample': ['Muestra geológica catalogada.', 'Geological sample catalogued.'],
   'log.blackout': ['APAGÓN: sistemas críticos sin energía.', 'BLACKOUT: critical systems unpowered.'],
   'log.blackout.end': ['Energía restablecida en los sistemas críticos.', 'Power restored to critical systems.'],
@@ -517,8 +535,8 @@ const S: Record<string, [string, string]> = {
   ],
   'help.eva': ['Modo EVA', 'EVA mode'],
   'help.eva.body': [
-    'Tab para salir y entrar. WASD: caminar · Mayús: correr · Espacio: saltar (mantén en el aire para el propulsor) · F: escáner · E: usar · B: construir.',
-    'Tab to go out and back in. WASD: walk · Shift: run · Space: jump (hold in the air for the jet pack) · F: scanner · E: use · B: build.',
+    'Tab para salir y entrar. WASD: caminar · Mayús: correr · Espacio: saltar (mantén en el aire para el propulsor) · F: escáner · E: usar · B: construir · G: soltar martillo y pluma · R: lanzar una roca (apunta con la cámara). Correr gasta la reserva del traje más deprisa.',
+    'Tab to go out and back in. WASD: walk · Shift: run · Space: jump (hold in the air for the jet pack) · F: scanner · E: use · B: build · G: drop a hammer and a feather · R: throw a rock (aim with the camera). Running drains the suit reserve faster.',
   ],
   'help.tips': ['Consejos', 'Tips'],
   'help.tips.body': [

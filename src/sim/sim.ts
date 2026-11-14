@@ -434,6 +434,19 @@ export function playerBuild(s: SimState, id: number, hours: number): void {
   advanceBuild(s, m, hours);
 }
 
+/**
+ * A physics demonstration carried out on EVA. Each kind earns science once per mission:
+ * repeating it teaches the player something, but not mission control.
+ */
+export function recordExperiment(s: SimState, kind: string): boolean {
+  const key = `exp.${kind}`;
+  if (s.flags[key]) return false;
+  s.flags[key] = 1;
+  s.science += TUNE.experimentScience;
+  pushLog(s, 'log.experiment', 'good', { kind });
+  return true;
+}
+
 export function collectSample(s: SimState, discoveryId: string): boolean {
   if (s.discoveries.includes(discoveryId)) return false;
   s.discoveries.push(discoveryId);

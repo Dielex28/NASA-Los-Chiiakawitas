@@ -338,6 +338,8 @@ export const TUNE = {
   sampleBonus: 2.0,
   sampleHours: 6,
   discoveryScience: 4,
+  /** Science credited the first time each physics demonstration is done on EVA. */
+  experimentScience: 2,
   /** Regolith piled per sol by one RASSOR depot, g/cm². */
   regolithPerSol: 14,
   regolithMax: 300,

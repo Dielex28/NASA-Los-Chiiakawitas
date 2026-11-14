@@ -69,7 +69,7 @@ export function createWorldUniforms(): WorldUniforms {
 }
 
 /** Tileable RGBA noise used by the terrain shader for albedo and bump detail. */
-export function makeNoiseTexture(seed: number, size = 256): THREE.DataTexture {
+export function makeNoiseTexture(seed: number, size = 256, anisotropy = 4): THREE.DataTexture {
   const data = new Uint8Array(size * size * 4);
   const rng = new Rng(seed);
   const lattices: Float32Array[][] = [];
@@ -129,7 +129,7 @@ export function makeNoiseTexture(seed: number, size = 256): THREE.DataTexture {
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
-  tex.anisotropy = 16;
+  tex.anisotropy = anisotropy;
   tex.needsUpdate = true;
   return tex;
 }

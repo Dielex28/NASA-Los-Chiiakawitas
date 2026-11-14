@@ -66,7 +66,7 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 1. **Elige misión.** Entrenamiento de 8 días en la Luna, 30 días en la cresta Shackleton, 60 o 180 soles en Marte, o modo libre.
 2. **Planifica la carga.** Tienes un límite de masa. ¿Agua para todo el viaje o una máquina que la recicla? ¿Paneles o reactor? ¿Refugio o excavadora? ORBI, tu dron asistente, te avisa de lo que falta.
 3. **Construye la base** desde la consola de mando: los módulos se conectan solos a la red de servicios y la tripulación los monta.
-4. **Sal a la superficie (EVA).** Camina y salta con la gravedad real de cada mundo, escanea el terreno en busca de hielo y muestras, repara averías, limpia el polvo de los paneles.
+4. **Sal a la superficie (EVA).** Camina y salta con la gravedad real de cada mundo, escanea el terreno en busca de hielo y muestras, repara averías, limpia el polvo de los paneles. Suelta un martillo y una pluma como en el Apolo 15, o lanza una roca y compara con lo que habría pasado en la Tierra. Correr gasta la reserva del traje más deprisa, y una caída dura lo daña.
 5. **Sobrevive a los eventos** y completa los objetivos. Al final, un informe con telemetría explica qué decisiones marcaron la misión.
 
 ### Controles
@@ -88,6 +88,8 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 | `F` | Escáner |
 | `E` | Usar: montar, reparar, limpiar, recoger muestra, entrar |
 | `B` | Abrir el menú de construcción |
+| `G` | Experimento de Galileo: soltar un martillo y una pluma a la vez |
+| `R` | Lanzar una roca (la cámara apunta: mirar arriba la eleva) |
 | `Tab` | Volver a la base |
 
 ## Las disyuntivas que enseña
@@ -132,7 +134,13 @@ electron/     Envoltorio de escritorio: ventana, pantalla completa, salir (la p�
 Detalles técnicos que sostienen el diseño:
 
 - **Una sola función de terreno** alimenta la malla, la física, las sombras y la simulación. El horizonte que ve cada panel solar se calcula marchando sobre ese terreno; por eso lo que se ve en pantalla es exactamente lo que cobra la red eléctrica.
-- **Sombras de largo alcance** por *ray-marching* de un mapa de alturas en el sombreador, combinadas con un mapa de sombras clásico cerca de la cámara. Con el Sol a 5° sobre el horizonte, las sombras miden cientos de metros.
+- **Sombras de largo alcance** por *ray-marching* de un mapa de alturas en el sombreador, combinadas con un mapa de sombras cerca de la cámara. Con el Sol a 5° sobre el horizonte, las sombras miden cientos de metros.
+- **Penumbra física**: el Sol es un disco, no un punto. Las sombras son nítidas donde el objeto toca el suelo y se difuminan con la distancia según el radio angular del Sol (0,27° en la Luna, 0,17° en Marte), con la técnica PCSS. La comparación de profundidad sigue la pendiente de la superficie que recibe la sombra, lo que permite un filtro ancho con luz rasante sin artefactos.
+- **Texturas calculadas, no pintadas** (`src/render/surface.ts`): regolito con guijarros y microcráteres, pintura con rayaduras y desconchones, metal cepillado, lámina aislante arrugada, goma y tela manchada. Cada mapa lleva relieve, rugosidad y tono, y se proyecta en tres ejes sobre cada pieza, sin costuras ni UV.
+- **Brillo de oposición**: mirando en dirección contraria al Sol, el regolito se aclara alrededor del punto antisolar, como en las fotos del Apolo.
+- **Aire de Marte**: la neblina se ilumina hacia el Sol (el polvo dispersa la luz hacia delante) y con el Sol bajo aparecen haces de luz entre los módulos. En la Luna no hay nada de esto: no hay aire.
+- **Lámpara del casco con sombras** (calidades alta y ultra): de noche cada roca proyecta la suya.
+- **Motor de física propio** (`src/game/physics.ts`, sin gráficos y con pruebas): gravedad de cada mundo, arrastre aerodinámico ½·ρ·Cd·A·v², viento, rebote con restitución, fricción de Coulomb y la energía que absorbe el suelo suelto. Mueve las rocas lanzadas y el experimento del martillo y la pluma.
 - **Simulación determinista y serializable**: una semilla reproduce una misión; el estado es JSON, lo que hace triviales el guardado y las pruebas.
 - **Polvo según la física**: en la Luna cada grano sigue una parábola; en Marte el aire lo frena y lo deja flotando.
 - **Reflejos del entorno sin una sola imagen**: una sonda genera el cielo y el suelo de cada instante (Sol incluido) y los filtra con PMREM; por eso el visor dorado, el aluminio y las mantas térmicas reflejan el paisaje real y cambian con la hora.
@@ -143,7 +151,7 @@ Detalles técnicos que sostienen el diseño:
 
 ## Pruebas
 
-`npm test` ejecuta 22 pruebas sobre la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, y misiones completas con la carga recomendada.
+`npm test` ejecuta 34 pruebas. Veintidós cubren la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, y misiones completas con la carga recomendada. Doce cubren el motor de física frente a las fórmulas: tiempo de caída √(2h/g), velocidad terminal, alcance de un proyectil, deriva por el viento, pérdida de energía en los rebotes y deslizamiento en pendientes.
 
 ## Créditos y licencias
 

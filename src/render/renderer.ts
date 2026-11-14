@@ -23,6 +23,8 @@ export interface QualitySettings {
   sunTaps: number;
   /** Side of the generated detail textures, pixels. */
   textureSize: number;
+  /** Anisotropic filtering of ground and detail textures (sharper at grazing angles, costlier). */
+  anisotropy: number;
   /** Samples for the light shafts through dusty air (0 = off). */
   rays: number;
   /** The helmet lamp casts shadows. */
@@ -30,10 +32,10 @@ export interface QualitySettings {
 }
 
 export const QUALITY: Record<QualityLevel, Omit<QualitySettings, 'level'>> = {
-  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false, sunTaps: 0, textureSize: 256, rays: 0, lampShadows: false },
-  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false, sunTaps: 10, textureSize: 512, rays: 20, lampShadows: false },
-  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true, sunTaps: 16, textureSize: 1024, rays: 32, lampShadows: true },
-  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 48, bloom: true, msaa: 4, rocks: 1.5, particles: 1.4, ao: true, sunTaps: 24, textureSize: 1024, rays: 48, lampShadows: true },
+  low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false, sunTaps: 0, textureSize: 256, anisotropy: 1, rays: 0, lampShadows: false },
+  medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false, sunTaps: 10, textureSize: 512, anisotropy: 2, rays: 20, lampShadows: false },
+  high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true, sunTaps: 16, textureSize: 1024, anisotropy: 8, rays: 32, lampShadows: true },
+  ultra: { pixelRatio: 2, shadowSize: 4096, hfSteps: 48, bloom: true, msaa: 4, rocks: 1.5, particles: 1.4, ao: true, sunTaps: 24, textureSize: 1024, anisotropy: 16, rays: 48, lampShadows: true },
 };
 
 /** Final grade applied after tone mapping: vignette, grain, radiation speckle, dust tint. */

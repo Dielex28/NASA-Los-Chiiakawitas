@@ -51,7 +51,7 @@ export class World {
     const w = new World(id, seed);
     setHeightfieldQuality(quality.hfSteps);
     setSunShadowQuality(quality.sunTaps);
-    setSurfaceQuality(quality.textureSize);
+    setSurfaceQuality(quality.textureSize, quality.anisotropy);
     w.terrain = createTerrain(id, seed);
     w.hf = new Heightfield(w.terrain, id);
 
@@ -70,7 +70,7 @@ export class World {
     }
 
     onProgress(0.8, 'surface');
-    w.uniforms.uNoise.value = makeNoiseTexture(seed, quality.textureSize >= 1024 ? 512 : 256);
+    w.uniforms.uNoise.value = makeNoiseTexture(seed, quality.textureSize >= 1024 ? 512 : 256, quality.anisotropy);
     w.uniforms.uGroundN.value = surfaceTexture('ground');
     makeHeightTexture(w.hf, w.uniforms);
     w.overlayTex = makeOverlayTexture(w.hf, 'none', id);

@@ -19,6 +19,8 @@ export interface PlayerEnv {
   /** A boot came down at (x, z) heading `yaw`. */
   onPrint?: (x: number, z: number, yaw: number) => void;
   onLand?: (strength: number) => void;
+  /** Touched down at `speed` m/s (vertical). */
+  onImpact?: (speed: number) => void;
   onJet?: (on: boolean) => void;
 }
 
@@ -174,6 +176,7 @@ export class Player {
       this.pos.y = gy;
       this.vel.y = 0;
       this.grounded = true;
+      env.onImpact?.(impact);
       if (impact > 0.8) {
         env.onLand?.(clamp01(impact / 5));
         this.puff(env, Math.round(8 + impact * 5), 0.9 + impact * 0.35);

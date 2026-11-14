@@ -10,9 +10,11 @@ import { Rng } from '../core/rng';
  */
 
 let surfaceSize = 512;
-/** Resolution of the generated detail maps (pixels per side). */
-export function setSurfaceQuality(size: number): void {
+let surfaceAniso = 4;
+/** Resolution of the generated detail maps (pixels per side) and their anisotropic filtering level. */
+export function setSurfaceQuality(size: number, anisotropy: number): void {
   surfaceSize = size;
+  surfaceAniso = anisotropy;
 }
 
 const smooth = (t: number): number => t * t * (3 - 2 * t);
@@ -94,7 +96,7 @@ function pack(size: number, height: Float32Array, rough: Float32Array | null, al
   tex.magFilter = THREE.LinearFilter;
   tex.minFilter = THREE.LinearMipmapLinearFilter;
   tex.generateMipmaps = true;
-  tex.anisotropy = 16;
+  tex.anisotropy = surfaceAniso;
   tex.needsUpdate = true;
   return tex;
 }
@@ -278,7 +280,7 @@ const cache = new Map<string, THREE.DataTexture>();
 /** A detail map of the given kind at the current quality; generated once and shared. */
 export function surfaceTexture(kind: SurfaceKind, sizeOverride?: number): THREE.DataTexture {
   const size = sizeOverride ?? (kind === 'ground' ? surfaceSize : Math.min(surfaceSize, 512));
-  const key = `${kind}-${size}`;
+  const key = `${kind}-${size}-${surfaceAniso}`;
   let t = cache.get(key);
   if (!t) {
     const rng = new Rng(9100 + kind.length * 131 + kind.charCodeAt(0));
