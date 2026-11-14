@@ -263,7 +263,12 @@ export function editorScreen(app: App, spec: CustomSpec): HTMLElement {
     h('h4.edsec', t('edit.extras')),
     slider('fuelKg', t('edit.fuel'), (v) => (v ? kg(v) : t('edit.none'))),
     slider('resupply', t('edit.resupply'), count),
-    seg<'no' | 'yes'>(t('edit.real'), [['no', t('set.off')], ['yes', t('set.on')]], sp.realSite ? 'yes' : 'no', (v) => set({ realSite: v === 'yes' })),
+    seg<number>(
+      t('edit.real'),
+      (moon ? [0, 1, 2, 3, 4] : [0, 1]).map((v) => [v, t(`edit.terrain.${moon ? 'moon' : 'mars'}.${v}`)] as [number, string]),
+      sp.terrain,
+      (v) => set({ terrain: v }),
+    ),
     h(
       'div.edrow',
       h('span', t('edit.variant')),

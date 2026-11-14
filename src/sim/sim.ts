@@ -17,6 +17,7 @@ import {
 } from './catalog';
 import { computeEnv, heatFactor, horizonAt, sunPosition, sunVisibility } from './environment';
 import { buildSchedule, commsDelay, type MissionDef } from './missions';
+import { siteOf, siteSun } from './sites';
 import { WORLDS } from './worlds';
 import type {
   Allocation,
@@ -253,6 +254,7 @@ export function createMission(
       endless: mission.endless,
       fuelGoalKg: mission.fuelGoalKg ?? 0,
       commsDelayMin: commsDelay(mission),
+      sun: siteSun(siteOf(mission), mission.sunSouthDeg),
       level: opts.level ?? 2,
       hazard: [0.5, 1, 1.35][(opts.level ?? 2) - 1],
     },
@@ -291,7 +293,7 @@ export function createMission(
     science: 0,
     samples: 0,
     discoveries: [],
-    env: computeEnv(mission.world, 0, mission.startLocalH, [], lander.horizon, null, 0),
+    env: computeEnv(mission.world, 0, mission.startLocalH, [], lander.horizon, null, 0, siteSun(siteOf(mission), mission.sunSouthDeg)),
     power: emptyPower(),
     flows: emptyFlows(),
     stats: emptyStats(),
@@ -1373,7 +1375,7 @@ function stepOnce(s: SimState, dtH: number): void {
   const rng = new Rng(s.rng);
   s.timeH += dtH;
   const lander = s.modules[0];
-  s.env = computeEnv(s.world, s.timeH, s.cfg.startLocalH, s.schedule, lander?.horizon ?? null, s.env, dtH);
+  s.env = computeEnv(s.world, s.timeH, s.cfg.startLocalH, s.schedule, lander?.horizon ?? null, s.env, dtH, s.cfg.sun);
   processEvents(s);
   const hours = updateCrewHours(s);
   upkeep(s, dtH, hours, rng);
@@ -1392,7 +1394,7 @@ export function sunForecast(s: SimState, hours: number, samples: number): number
   const mask = s.modules[0]?.horizon ?? null;
   for (let i = 0; i < samples; i++) {
     const t = s.timeH + (hours * i) / (samples - 1);
-    const sun = sunPosition(s.world, t, s.cfg.startLocalH);
+    const sun = sunPosition(s.world, t, s.cfg.startLocalH, s.cfg.sun);
     let v = sunVisibility(sun.el, horizonAt(mask, sun.az), w.sunAngularRadius);
     if (s.world === 'mars') v *= clamp01(Math.sin(sun.el) * 2.5);
     out.push(v);

@@ -1,3 +1,4 @@
+import type { SiteSun } from './sites';
 import { clamp, clamp01, lerp, smoothstep, TAU } from '../core/math';
 import { LUNAR_SYNODIC_H, MARS_DECL, MARS_LAT, MOON_SUN_EL, MOON_SUN_EL_WOBBLE, WORLDS } from './worlds';
 import type { DustStormEvent, EnvState, ScheduledEvent, SpeEvent, WorldId } from './types';
@@ -15,7 +16,15 @@ export interface SunPos {
  *  - Mars (18°N): a regular 24 h 39 m sol.
  * Azimuth is measured clockwise from north; +x is east, −z is north.
  */
-export function sunPosition(world: WorldId, timeH: number, startLocalH: number): SunPos {
+export function sunPosition(world: WorldId, timeH: number, startLocalH: number, site?: SiteSun): SunPos {
+  if (world === 'moon' && site) {
+    // a real site: the Sun moves westwards round the horizon, highest over the site's meridian
+    const turn = (TAU * (startLocalH + timeH)) / LUNAR_SYNODIC_H;
+    const az = site.north - turn;
+    const el = site.el0 + site.wob * Math.cos(turn);
+    const localH = (((startLocalH + timeH) % 24) + 24) % 24;
+    return { az: ((az % TAU) + TAU) % TAU, el, localH };
+  }
   if (world === 'moon') {
     const az = (TAU * (startLocalH + timeH)) / LUNAR_SYNODIC_H;
     const el = MOON_SUN_EL + MOON_SUN_EL_WOBBLE * Math.cos(az - 0.6);
@@ -101,9 +110,10 @@ export function computeEnv(
   baseHorizon: number[] | null,
   prev: EnvState | null,
   dtH: number,
+  site?: SiteSun,
 ): EnvState {
   const w = WORLDS[world];
-  const sun = sunPosition(world, timeH, startLocalH);
+  const sun = sunPosition(world, timeH, startLocalH, site);
   let tau = 0;
   let storm = 0;
   let spe = 0;

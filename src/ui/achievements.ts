@@ -1,6 +1,6 @@
-import { customByCode, dailyMission, scoreMission, type DailyTwist } from '../sim/missions';
+import { customByCode, dailyMission, missionById, scoreMission, type DailyTwist } from '../sim/missions';
 import type { SimState } from '../sim/types';
-import { addStrings } from './strings';
+import { addStrings, t } from './strings';
 
 /** Everything a game can check, mid-mission or at the end. */
 export interface Progress {
@@ -39,7 +39,7 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'year1972', icon: 'rad', test: (p) => success(p, 'moon-1972') },
   { id: 'year2017', icon: 'rad', test: (p) => success(p, 'mars-2017') },
   { id: 'longHaul', icon: 'hab', test: (p) => success(p, 'mars-long') },
-  { id: 'realGround', icon: 'earth', test: (p) => p.sim.missionId.endsWith('-real') && p.sim.timeH > 24 },
+  { id: 'realGround', icon: 'earth', test: (p) => !!missionById(p.sim.missionId).realSite && p.sim.timeH > 24 },
   { id: 'daily', icon: 'sun', test: (p) => success(p) && p.sim.missionId.startsWith('daily-') },
   { id: 'perfect', icon: 'star', test: (p) => success(p) && scoreMission(p.sim).rank === 4 },
   { id: 'scholar', icon: 'book', test: (p) => p.quizRight !== null && p.quizTotal > 0 && p.quizRight === p.quizTotal },
@@ -131,9 +131,10 @@ function ensureCustomStrings(id: string): void {
   }
   es.push(c.resupply ? n(c.resupply, 'reabastecimiento', 'reabastecimientos') : 'sin reabastecimiento');
   en.push(c.resupply ? n(c.resupply, 'resupply', 'resupplies') : 'no resupply');
-  if (c.realSite) {
-    es.push('terreno real de la NASA');
-    en.push('real NASA terrain');
+  if (c.terrain) {
+    const where = t(`edit.terrain.${c.world}.${c.terrain}`);
+    es.push(`terreno real de la NASA (${where})`);
+    en.push(`real NASA terrain (${where})`);
   }
   addStrings({
     [`mission.${id}.name`]: ['Misión del docente', "Teacher's mission"],

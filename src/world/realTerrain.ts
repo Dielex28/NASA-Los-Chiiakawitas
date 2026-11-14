@@ -1,11 +1,13 @@
 import { clamp01, smoothstep } from '../core/math';
 import { Noise2D } from '../core/noise';
 import type { WorldId } from '../sim/types';
+import type { RealSiteId } from '../sim/sites';
+import { MALAPERT, NOBILE, RIDGE } from './data/lunarSites';
 import { JEZERO, SHACKLETON, type RealSite } from './data/realSites';
 import { makePois, type Poi, type Terrain } from './terrain';
 
 /** Sites built from measured topography instead of invented relief. */
-export const REAL_SITES: Record<WorldId, RealSite> = { moon: SHACKLETON, mars: JEZERO };
+export const REAL_SITES: Record<RealSiteId, RealSite> = { shackleton: SHACKLETON, ridge: RIDGE, nobile: NOBILE, malapert: MALAPERT, jezero: JEZERO };
 
 /** Unpack a site's elevation grid: base64 → gzip → row-delta int16 → metres. */
 export async function loadRealSite(site: RealSite): Promise<Float32Array> {

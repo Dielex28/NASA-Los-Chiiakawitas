@@ -18,6 +18,7 @@ import { HF_SIZE, Heightfield, SURVEY_SIZE } from './heightfield';
 import { Rocks } from './rocks';
 import { Sky } from './sky';
 import { loadRealSite, REAL_SITES, RealTerrain } from './realTerrain';
+import type { RealSiteId, SiteSun } from '../sim/sites';
 import { createTerrain, type Terrain } from './terrain';
 import { TerrainMesh } from './terrainMesh';
 
@@ -49,13 +50,15 @@ export class World {
     quality: QualitySettings,
     onProgress: (fraction: number, stage: string) => void,
     /** Use measured topography (LOLA / CTX elevation models) instead of the designed site. */
-    real = false,
+    real: RealSiteId | null = null,
+    /** The Sun at that site (lunar sites; absent: the designed site's Sun). */
+    sun?: SiteSun,
   ): Promise<World> {
     const w = new World(id, seed);
     setHeightfieldQuality(quality.hfSteps);
     setSunShadowQuality(quality.sunTaps);
     setSurfaceQuality(quality.textureSize, quality.anisotropy);
-    w.terrain = real ? new RealTerrain(id, seed, REAL_SITES[id], await loadRealSite(REAL_SITES[id])) : createTerrain(id, seed);
+    w.terrain = real ? new RealTerrain(id, seed, REAL_SITES[real], await loadRealSite(REAL_SITES[real])) : createTerrain(id, seed);
     w.hf = new Heightfield(w.terrain, id);
 
     onProgress(0, 'terrain');
@@ -67,7 +70,7 @@ export class World {
     }
     onProgress(0.5, 'survey');
     for (let r = 0; r < SURVEY_SIZE; r += 6) {
-      w.hf.surveyRows(r, Math.min(SURVEY_SIZE, r + 6), startLocalH);
+      w.hf.surveyRows(r, Math.min(SURVEY_SIZE, r + 6), startLocalH, sun);
       onProgress(0.5 + 0.3 * (r / SURVEY_SIZE), 'survey');
       await nextFrame();
     }

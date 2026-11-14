@@ -23,8 +23,8 @@ export interface CustomSpec {
   /** Return propellant to make on site, kg (0 = no fuel objective). */
   fuelKg: number;
   resupply: number;
-  /** Play on measured NASA / USGS topography. */
-  realSite: boolean;
+  /** Ground: 0 designed site; real NASA topography 1 Shackleton (Moon) or Jezero (Mars), 2 connecting ridge, 3 Nobile, 4 Malapert. */
+  terrain: number;
   /** One-way radio delay to Earth, minutes (Mars only: 3–22 in reality; 0 = use today's typical 12). */
   delayMin: number;
   /** Picks when events happen: two codes that differ only here are the same mission, reshuffled. */
@@ -47,6 +47,7 @@ const FIELDS: Array<{ key: keyof CustomSpec; min: number; max: number; step: num
   { key: 'resupply', min: 0, max: 2, step: 1 },
   { key: 'delayMin', min: 0, max: 22, step: 1 },
   { key: 'variant', min: 0, max: 4095, step: 1 },
+  { key: 'terrain', min: 0, max: 4, step: 1 },
 ];
 
 export const CUSTOM_LIMITS: Record<string, { min: number; max: number; step: number }> = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
@@ -66,7 +67,7 @@ export const DEFAULT_CUSTOM: Record<WorldId, CustomSpec> = {
     emergencies: 1,
     fuelKg: 0,
     resupply: 1,
-    realSite: false,
+    terrain: 0,
     delayMin: 0,
     variant: 1,
   },
@@ -84,7 +85,7 @@ export const DEFAULT_CUSTOM: Record<WorldId, CustomSpec> = {
     emergencies: 1,
     fuelKg: 0,
     resupply: 1,
-    realSite: false,
+    terrain: 0,
     delayMin: 12,
     variant: 1,
   },
@@ -108,6 +109,8 @@ export function clampSpec(s: CustomSpec): CustomSpec {
   if (out.world === 'moon') {
     out.storms = 0;
     out.delayMin = 0;
+  } else {
+    out.terrain = Math.min(out.terrain, 1);
   }
   return out;
 }
@@ -149,7 +152,6 @@ export function encodeCustom(spec: CustomSpec): string {
     const f = FIELDS[i];
     mulAdd(n, steps(f), Math.round((Number(s[f.key]) - f.min) / f.step));
   }
-  mulAdd(n, 2, s.realSite ? 1 : 0);
   mulAdd(n, 2, s.world === 'mars' ? 1 : 0);
   while (n.length < PAYLOAD) n.push(0);
   const digits = n.slice(0, PAYLOAD).reverse();
@@ -175,8 +177,7 @@ export function decodeCustom(code: string): CustomSpec | null {
   if (checksum(digits) !== check) return null;
   const n = digits.slice().reverse();
   const mars = divMod(n, 2) === 1;
-  const real = divMod(n, 2) === 1;
-  const out: Record<string, unknown> = { world: mars ? 'mars' : 'moon', realSite: real };
+  const out: Record<string, unknown> = { world: mars ? 'mars' : 'moon' };
   for (const f of FIELDS) out[f.key] = f.min + divMod(n, steps(f)) * f.step;
   if (n.some((d) => d !== 0)) return null;
   return clampSpec(out as unknown as CustomSpec);

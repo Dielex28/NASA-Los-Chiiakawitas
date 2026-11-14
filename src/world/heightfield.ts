@@ -1,3 +1,4 @@
+import type { SiteSun } from '../sim/sites';
 import { clamp01, TAU } from '../core/math';
 import { TUNE } from '../sim/catalog';
 import { horizonAt, sunPosition, sunVisibility } from '../sim/environment';
@@ -125,14 +126,14 @@ export class Heightfield implements SiteProbe {
    * metres above the ground) and how much ice it can hold. On the Moon ice only
    * survives where the Sun never reaches (a permanently shadowed region).
    */
-  surveyRows(row0: number, row1: number, startLocalH: number): void {
+  surveyRows(row0: number, row1: number, startLocalH: number, site?: SiteSun): void {
     const cell = SURVEY_EXTENT / SURVEY_SIZE;
     const half = SURVEY_EXTENT / 2;
     const w = WORLDS[this.world];
     const steps = this.world === 'moon' ? 96 : 48;
     const period = this.world === 'moon' ? LUNAR_SYNODIC_H : w.solH;
     const suns = [];
-    for (let s = 0; s < steps; s++) suns.push(sunPosition(this.world, (period * s) / steps, startLocalH));
+    for (let s = 0; s < steps; s++) suns.push(sunPosition(this.world, (period * s) / steps, startLocalH, site));
     for (let j = row0; j < row1; j++) {
       const z = (j + 0.5) * cell - half;
       for (let i = 0; i < SURVEY_SIZE; i++) {

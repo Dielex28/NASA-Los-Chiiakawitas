@@ -19,7 +19,7 @@ const extreme: CustomSpec = {
   emergencies: 3,
   fuelKg: 4000,
   resupply: 2,
-  realSite: true,
+  terrain: 1,
   delayMin: 22,
   variant: 4095,
 };
@@ -44,6 +44,15 @@ describe('teacher mission editor', () => {
       expect(decodeCustom(code.slice(0, i) + other + code.slice(i + 1)), `position ${i}`).toBeNull();
     }
     expect(decodeCustom('hello')).toBeNull();
+  });
+
+  it('a Moon mission can be set on any of the four real lunar sites; Mars only on Jezero', () => {
+    for (let terrain = 0; terrain <= 4; terrain++) {
+      const spec = decodeCustom(encodeCustom({ ...DEFAULT_CUSTOM.moon, terrain }))!;
+      expect(spec.terrain).toBe(terrain);
+      expect(customMission(spec).realSite).toBe([undefined, 'shackleton', 'ridge', 'nobile', 'malapert'][terrain]);
+    }
+    expect(decodeCustom(encodeCustom({ ...DEFAULT_CUSTOM.mars, terrain: 4 }))!.terrain).toBe(1);
   });
 
   it('the Moon has no dust storms or radio delay, whatever the code says', () => {

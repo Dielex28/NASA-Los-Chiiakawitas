@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { AudioEngine } from '../audio/audio';
 import { Emitter } from '../core/events';
 import { closeTeam, createTeam, shiftDue } from '../sim/team';
+import { siteOf, siteSun, type RealSiteId, type SiteSun } from '../sim/sites';
 import { clamp01, damp, dampAngle } from '../core/math';
 import { Orbi } from '../entities/astronaut';
 import { Kit } from '../entities/kit';
@@ -263,11 +264,11 @@ export class Game {
 
   /* ------------------------------------------------------------ worlds */
 
-  private async ensureStage(id: WorldId, startLocalH: number, real = false): Promise<Stage> {
-    const key = real ? `${id}:real` : id;
+  private async ensureStage(id: WorldId, startLocalH: number, real: RealSiteId | null = null, sun?: SiteSun): Promise<Stage> {
+    const key = real ? `${id}:${real}` : id;
     let st = this.stages[key];
     if (!st) {
-      const world = await World.create(id, TERRAIN_SEED[id], startLocalH, this.renderer.quality, (fraction, stage) => this.events.emit('loading', { fraction, stage }), real);
+      const world = await World.create(id, TERRAIN_SEED[id], startLocalH, this.renderer.quality, (fraction, stage) => this.events.emit('loading', { fraction, stage }), real, sun);
       const kit = new Kit(id, world.uniforms);
       const g = WORLDS[id].gravity;
       const q = this.renderer.quality.particles;
@@ -374,7 +375,7 @@ export class Game {
     const mission = missionById(missionId);
     this.setPhase('loading');
     this.events.emit('loading', { fraction: 0, stage: 'terrain' });
-    const st = await this.ensureStage(mission.world, mission.startLocalH, !!mission.realSite);
+    const st = await this.ensureStage(mission.world, mission.startLocalH, siteOf(mission), siteSun(siteOf(mission), mission.sunSouthDeg));
     const hf = st.world.hf;
     const sim = createMission(mission, manifest, mission.seed, hf, hf.padHeight(0, 0, 5).top, { level });
     if (team && team.names.filter((n) => n.trim()).length >= 2) createTeam(sim, team.names, team.shiftH);
@@ -485,7 +486,7 @@ export class Game {
     if (!file || file.v !== SIM_VERSION || !file.sim) return false;
     const mission = missionById(file.sim.missionId);
     this.setPhase('loading');
-    const st = await this.ensureStage(mission.world, mission.startLocalH, !!mission.realSite);
+    const st = await this.ensureStage(mission.world, mission.startLocalH, siteOf(mission), siteSun(siteOf(mission), mission.sunSouthDeg));
     file.sim.playerOutside = false;
     this.pendingRover = file.rover ?? null;
     this.beginPlay(st, mission, file.sim, file.scans ?? [], file.scannedSites ?? [], false);

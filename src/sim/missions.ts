@@ -1,5 +1,6 @@
 import type { EmergencyKind } from './emergency';
 import { cargoMass } from './catalog';
+import type { RealSiteId } from './sites';
 import { decodeCustom, encodeCustom, type CustomSpec } from './custom';
 import { Rng } from '../core/rng';
 import { clamp, clamp01 } from '../core/math';
@@ -18,8 +19,10 @@ export interface MissionDef {
   difficulty: 1 | 2 | 3;
   tutorial: boolean;
   endless: boolean;
-  /** Played on measured topography (a NASA / USGS elevation model) instead of the designed site. */
-  realSite?: boolean;
+  /** Played on measured topography (a NASA / USGS elevation model): true = the world's default site. */
+  realSite?: boolean | RealSiteId;
+  /** Real lunar sites: the Sun's southern declination this season, degrees (−1.54…+1.54). */
+  sunSouthDeg?: number;
   /** Built around a real solar storm (see the mission's briefing and docs/SCIENCE.md). */
   historic?: boolean;
   /** Return propellant to make on site, kg: an optional objective worth extra science. */
@@ -313,8 +316,78 @@ for (const [base, id, seed] of [
   MISSIONS.push({ ...MISSIONS.find((m) => m.id === base)!, id, seed, realSite: true });
 }
 
+// Missions on measured south-pole topography, each lit by the Sun as it really moves there
+// (see sites.ts): the closer to the pole, the shorter the lunar night.
+MISSIONS.push(
+  {
+    // LOLA Site01: the ridge between Shackleton and de Gerlache, 70 km from the pole
+    ...MISSIONS.find((m) => m.id === 'moon-base')!,
+    id: 'moon-ridge',
+    realSite: 'ridge',
+    seed: 20260221,
+    difficulty: 2,
+  },
+  {
+    // LOLA Site23: Malapert massif, 4° from the pole. Land at sunrise: 17 days of light, then 12 of night
+    id: 'moon-malapert',
+    world: 'moon',
+    realSite: 'malapert',
+    durationSols: 15,
+    crew: 2,
+    budgetKg: 7000,
+    scienceGoal: 55,
+    doseLimitMsv: 60,
+    // just after sunrise (the Sun rises at about 253° of its monthly turn)
+    startLocalH: 505,
+    difficulty: 2,
+    tutorial: false,
+    endless: false,
+    seed: 20260602,
+    recommended: { hab: 1, solar: 3, battery: 1, lab: 1, antenna: 1, pylon: 3, food: 2, water: 3, o2: 2 },
+    spe: [{ sol: [4, 11], cls: 2 }],
+    storms: [],
+    emergencies: [{ sol: [6, 12], kind: 'meteor' }],
+    resupply: [],
+  },
+  {
+    // LOLA Site06: Nobile rim, 4.7° from the pole: a twelve-day night in the middle of the mission
+    id: 'moon-nobile',
+    world: 'moon',
+    realSite: 'nobile',
+    durationSols: 30,
+    crew: 3,
+    budgetKg: 11000,
+    scienceGoal: 90,
+    doseLimitMsv: 80,
+    startLocalH: 0,
+    difficulty: 3,
+    tutorial: false,
+    endless: false,
+    seed: 20261012,
+    recommended: { hab: 1, eclss: 1, reactor: 1, solar: 3, battery: 2, lab: 1, antenna: 1, rassor: 1, pylon: 4, food: 5, water: 3, o2: 2 },
+    spe: [{ sol: [12, 24], cls: 2 }],
+    storms: [],
+    emergencies: [{ sol: [10, 20], kind: 'eclss' }],
+    resupply: [],
+  },
+);
+
 // order on the mission screen: training, then each world from short to long, then free play
-const ORDER = ['moon-first', 'moon-base', 'moon-1972', 'mars-first', 'mars-2017', 'mars-long', 'moon-sandbox', 'moon-real', 'mars-sandbox', 'mars-real'];
+const ORDER = [
+  'moon-first',
+  'moon-base',
+  'moon-1972',
+  'moon-ridge',
+  'moon-malapert',
+  'moon-nobile',
+  'mars-first',
+  'mars-2017',
+  'mars-long',
+  'moon-sandbox',
+  'moon-real',
+  'mars-sandbox',
+  'mars-real',
+];
 MISSIONS.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
 /** Things that make each day's challenge different. */
@@ -405,7 +478,7 @@ export function customMission(spec: CustomSpec): MissionDef {
     difficulty: hard <= 3 ? 1 : hard <= 8 ? 2 : 3,
     tutorial: false,
     endless: false,
-    realSite: spec.realSite || undefined,
+    realSite: spec.terrain ? (moon ? (['shackleton', 'ridge', 'nobile', 'malapert'] as const)[spec.terrain - 1] : true) : undefined,
     fuelGoalKg: spec.fuelKg > 0 ? spec.fuelKg : undefined,
     commsDelayMin: moon ? undefined : spec.delayMin || 12,
     custom: spec,

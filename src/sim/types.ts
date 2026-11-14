@@ -1,3 +1,4 @@
+import type { SiteSun } from './sites';
 import type { TeamState } from './team';
 import type { Emergency, PlannedEmergency } from './emergency';
 /**
@@ -332,6 +333,8 @@ export interface MissionConfig {
   fuelGoalKg?: number;
   /** One-way light time to Earth, minutes (Moon ≈ 0.02; Mars 3–22). Absent in old saves. */
   commsDelayMin?: number;
+  /** The Sun at a real lunar site (absent: the designed site's Sun). */
+  sun?: SiteSun;
 }
 
 export interface SimState {
