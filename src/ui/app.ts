@@ -7,7 +7,7 @@ import './codexData';
 import { h } from './dom';
 import { Hud } from './hud';
 import { startNextShift } from '../sim/team';
-import { achievementsScreen, codexScreen, debriefScreen, editorScreen, shiftScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
+import { achievementsScreen, campaignScreen, codexScreen, debriefScreen, editorScreen, shiftScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
 import { DEFAULT_CUSTOM, type CustomSpec } from '../sim/custom';
 import { initLang, setLang, type Lang } from './strings';
 import './styles.css';
@@ -159,6 +159,11 @@ export class App {
 
   openMenu(): void {
     this.current = () => this.setScreen(menuScreen(this));
+    this.current();
+  }
+
+  openCampaign(): void {
+    this.current = () => this.setScreen(campaignScreen(this));
     this.current();
   }
 

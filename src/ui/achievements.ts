@@ -1,5 +1,6 @@
 import { customByCode, dailyMission, missionById, scoreMission, type DailyTwist } from '../sim/missions';
 import type { SimState } from '../sim/types';
+import { CHAPTERS, medals } from './campaign';
 import { addStrings, t } from './strings';
 
 /** Everything a game can check, mid-mission or at the end. */
@@ -43,6 +44,8 @@ export const ACHIEVEMENTS: Achievement[] = [
   { id: 'daily', icon: 'sun', test: (p) => success(p) && p.sim.missionId.startsWith('daily-') },
   { id: 'perfect', icon: 'star', test: (p) => success(p) && scoreMission(p.sim).rank === 4 },
   { id: 'scholar', icon: 'book', test: (p) => p.quizRight !== null && p.quizTotal > 0 && p.quizRight === p.quizTotal },
+  { id: 'programme', icon: 'rocket', test: () => CHAPTERS.every((id) => (medals()[id] ?? 0) > 0) },
+  { id: 'goldProgramme', icon: 'star', test: () => CHAPTERS.every((id) => medals()[id] === 3) },
 ];
 
 const KEY = 'helios-achievements';

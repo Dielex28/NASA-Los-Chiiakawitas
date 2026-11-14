@@ -3,6 +3,7 @@ import { MODULES, MODULE_ORDER, SUPPLIES, cargoMass, isSupply } from '../sim/cat
 import { CUSTOM_LIMITS, DEFAULT_CUSTOM, clampSpec, encodeCustom, normalizeCode, type CustomSpec } from '../sim/custom';
 import { MISSIONS, dailyCode, missionById, scoreMission, type MissionDef } from '../sim/missions';
 import { STATIONS, assignStations, type ShiftGoal, type TeamState } from '../sim/team';
+import { CHAPTERS, isChapter, medals, nextChapter, recordChapter, unlockedChapters, type Medal } from './campaign';
 import { manifestMass, planAutonomy } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { CargoItem, ModuleType, SimState, SupplyType } from '../sim/types';
@@ -90,7 +91,8 @@ export function menuScreen(app: App): HTMLElement {
   const rows: HTMLElement[] = [];
   let n = 1;
   if (hasSave) rows.push(menuRow(n++, t('menu.continue'), () => app.continueGame(), { hint: saveLabel, primary: true }));
-  rows.push(menuRow(n++, t('menu.new'), () => app.openMissions(), { primary: !hasSave }));
+  rows.push(menuRow(n++, t('menu.campaign'), () => app.openCampaign(), { primary: !hasSave, hint: t('camp.progress', { n: Object.values(medals()).filter((x) => (x ?? 0) > 0).length, total: CHAPTERS.length }) }));
+  rows.push(menuRow(n++, t('menu.new'), () => app.openMissions()));
   rows.push(menuRow(n++, t('menu.codex'), () => app.openCodex()));
   rows.push(menuRow(n++, t('menu.achievements'), () => app.openAchievements()));
   rows.push(menuRow(n++, t('menu.help'), () => app.openHelp()));
@@ -306,6 +308,44 @@ export function editorScreen(app: App, spec: CustomSpec): HTMLElement {
   return sheet('.wide', t('edit.title'), t('edit.sub'), () => app.openMissions(), h('div.sheet-body.editor', controls, side));
 }
 
+/* -------------------------------------------------------------- campaign */
+
+/** Three medal slots: bronze, silver, gold. */
+export function medalRow(m: Medal): HTMLElement {
+  // one, two or three stars, all in the colour of the medal won
+  return h(`span.medals.m${m}`, { title: m ? t(`camp.medal.${m}`) : t('camp.medal.0') }, ...[1, 2, 3].map((k) => h(`span.medal${m >= k ? '.on' : ''}`, icon('star', 14))));
+}
+
+/** The Helios programme: chapters in order, each opened by the one before. */
+export function campaignScreen(app: App): HTMLElement {
+  const got = medals();
+  const open = unlockedChapters(got);
+  const rows = CHAPTERS.map((id, i) => {
+    const m = missionById(id);
+    const locked = !open.has(id);
+    const medal = (got[id] ?? 0) as Medal;
+    return h(
+      `div.chapter${locked ? '.locked' : ''}${medal ? '.done' : ''}.${m.world}`,
+      h('span.num', String(i + 1).padStart(2, '0')),
+      h(
+        'div.grow',
+        h('span.site', t(`mission.${id}.site`)),
+        h('h3', t(`mission.${id}.name`)),
+        h('p.learn', h('b', t('camp.learn')), ' ', t(`camp.${id}`)),
+      ),
+      h(
+        'div.side',
+        medalRow(medal),
+        locked
+          ? h('span.lockmsg', icon('lock', 15), t('camp.locked'))
+          : h(`button.btn${medal ? '' : '.primary'}`, { onclick: () => app.openPlanning(id) }, icon('rocket'), medal ? t('camp.replay') : t('camp.play')),
+      ),
+    );
+  });
+  const body = h('div.sheet-body.campaign', h('p.lead', t('camp.lead')), ...rows, h('p.note', t('camp.note')));
+  return sheet('.mid', t('camp.title'), t('camp.progress', { n: Object.values(got).filter((x) => (x ?? 0) > 0).length, total: CHAPTERS.length }), () => app.openMenu(), body);
+}
+
 /* ------------------------------------------------------------- team mode */
 
 export const stationName = (st: string): string => t(`team.st.${st}`);
@@ -482,6 +522,8 @@ export function planningScreen(app: App, missionId: string): HTMLElement {
     if (!tips.length) tips.push(['plan.tip.ok', true]);
 
     clear(side);
+    if (isChapter(m.id))
+      side.append(h('div.chapterbox', h('span.site', t('camp.chapter', { n: CHAPTERS.indexOf(m.id) + 1, total: CHAPTERS.length })), h('p', h('b', t('camp.learn')), ' ', t(`camp.${m.id}`))));
     side.append(
       h('p.brief', t(`mission.${m.id}.brief`)),
       h(
@@ -1000,6 +1042,23 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
   const earnedSec = h('div.hidden', h('h3.sec', t('end.ach')), earned);
   body.insertBefore(earnedSec, classroom);
   if (sim.team) body.insertBefore(teamTable(sim.team), earnedSec);
+  const chapter = recordChapter(sim);
+  const next = nextChapter(sim.missionId);
+  if (chapter) {
+    body.insertBefore(
+      h(
+        'div.chapterres',
+        medalRow(chapter.medal),
+        h(
+          'div.grow',
+          h('b', chapter.medal ? t(`camp.medal.${chapter.medal}`) : t('camp.medal.0')),
+          h('span', chapter.opened ? t('camp.opened', { name: t(`mission.${chapter.opened}.name`) }) : chapter.medal ? t('camp.best', { m: t(`camp.medal.${chapter.best}`) }) : t('camp.retry')),
+        ),
+        chapter.medal && next ? h('button.btn.primary', { onclick: () => app.openPlanning(next) }, t('camp.next')) : null,
+      ),
+      body.firstChild,
+    );
+  }
   showEarned(checkAchievements(progress()));
   quiz.addEventListener('click', () => setTimeout(() => showEarned(checkAchievements(progress())), 0));
   if (sim.missionId.startsWith('daily-')) {
