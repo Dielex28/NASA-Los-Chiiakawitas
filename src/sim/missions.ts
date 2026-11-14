@@ -1,3 +1,4 @@
+import type { EmergencyKind } from './emergency';
 import { Rng } from '../core/rng';
 import { clamp, clamp01 } from '../core/math';
 import { WORLDS } from './worlds';
@@ -19,6 +20,8 @@ export interface MissionDef {
   realSite?: boolean;
   /** Built around a real solar storm (see the mission's briefing and docs/SCIENCE.md). */
   historic?: boolean;
+  /** Emergencies that will happen in this mission (window in sols), besides random ones. */
+  emergencies?: Array<{ sol: [number, number]; kind: EmergencyKind }>;
   seed: number;
   recommended: Partial<Record<CargoItem, number>>;
   /**
@@ -80,6 +83,7 @@ export const MISSIONS: MissionDef[] = [
       { sol: [5, 8], cls: 2 },
       { sol: [19, 25], cls: 3 },
     ],
+    emergencies: [{ sol: [10, 14], kind: 'meteor' }],
     storms: [],
     resupply: [{ sol: 15, capacityKg: 2500 }],
   },
@@ -115,6 +119,7 @@ export const MISSIONS: MissionDef[] = [
       { sol: [9, 15], cls: 2 },
       { sol: [44, 54], cls: 3 },
     ],
+    emergencies: [{ sol: [16, 19], kind: 'eclss' }],
     storms: [{ sol: [21, 27], durationSols: [9, 12], tau: [3.2, 4.4] }],
     resupply: [{ sol: 30, capacityKg: 3000 }],
   },
@@ -153,6 +158,10 @@ export const MISSIONS: MissionDef[] = [
       { sol: [14, 30], cls: 2 },
       { sol: [60, 85], cls: 3 },
       { sol: [120, 160], cls: 3 },
+    ],
+    emergencies: [
+      { sol: [35, 45], kind: 'leak' },
+      { sol: [100, 120], kind: 'eclss' },
     ],
     storms: [
       { sol: [35, 50], durationSols: [8, 11], tau: [2.6, 3.6] },

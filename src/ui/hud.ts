@@ -1,3 +1,4 @@
+import { emergencyOptions } from '../sim/emergency';
 import { clamp01 } from '../core/math';
 import type { Game } from '../game/game';
 import { advise, type Advice } from '../sim/advisor';
@@ -1070,7 +1071,32 @@ export class Hud {
       s.shelterOrder
         ? h('button.btn.small.ghost', { onclick: () => g.orderShelter(false) }, t('crew.shelterEnd'))
         : h('button.btn.small.danger', { onclick: () => g.orderShelter(true) }, icon('shield', 14), t('alert.shelter'));
-    if (spe && spe.kind === 'spe') {
+    const emg = s.emergency;
+    if (emg) {
+      const left = Math.max(0, emg.decideByH - s.timeH);
+      const mins = Math.ceil(left * 60);
+      key = `emg:${emg.kind}:${emg.choice ?? ''}:${emergencyOptions(s).join(',')}`;
+      const mod = s.modules.find((m) => m.id === emg.moduleId);
+      const what = mod ? t(`mod.${mod.type}`) : '';
+      build = () => {
+        if (!emg.choice) {
+          const opts = emergencyOptions(s).map((c) =>
+            h(`button.btn.small${c === 'isolate' || c === 'repair' ? '' : '.danger'}`, { onclick: () => g.decideEmergency(c), title: t(`emg.opt.${c}.d`) }, t(`emg.opt.${c}`)),
+          );
+          set('', emg.kind === 'eclss' ? 'air' : 'warn', t(`emg.${emg.kind}.title`, { what }), t(`emg.${emg.kind}.body`, { min: mins }), opts);
+          const bar = h('div.emgbar', h('i'));
+          this.alert.querySelector('.grow')?.append(bar, h('div.emgopts', ...emergencyOptions(s).map((c) => h('span', h('b', t(`emg.opt.${c}`)), ' · ', t(`emg.opt.${c}.d`)))));
+        } else {
+          set('info', 'gear', t(`emg.work.${emg.choice}`, { what }), emg.doneH ? t('emg.work.left', { h: fmt(Math.max(0, emg.doneH - s.timeH), 1) }) : '', []);
+        }
+      };
+      if (this.alertKey === key) {
+        const bar = this.alert.querySelector('.emgbar i') as HTMLElement | null;
+        if (bar) bar.style.width = `${(100 * left) / 1.5}%`;
+        const pEl = this.alert.querySelector('p');
+        if (pEl) setText(pEl, emg.choice ? (emg.doneH ? t('emg.work.left', { h: fmt(Math.max(0, emg.doneH - s.timeH), 1) }) : '') : t(`emg.${emg.kind}.body`, { min: mins }));
+      }
+    } else if (spe && spe.kind === 'spe') {
       const started = spe.started;
       const hrs = Math.max(0, spe.startH - s.timeH);
       const rate = s.env.speMsvH;

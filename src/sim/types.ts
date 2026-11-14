@@ -1,3 +1,4 @@
+import type { Emergency, PlannedEmergency } from './emergency';
 /**
  * Simulation data model. Everything in here is plain JSON-serialisable data so a
  * mission can be saved, restored and unit-tested without the 3D layer.
@@ -271,6 +272,10 @@ export interface Stats {
   moraleN: number;
   massLanded: number;
   evaH: number;
+  /** Emergencies faced, decided by the crew when time ran out, and oxygen lost in them (absent in old saves). */
+  emergencies?: number;
+  emergencyAuto?: number;
+  emergencyO2Lost?: number;
 }
 
 export interface Telemetry {
@@ -351,6 +356,10 @@ export interface SimState {
   outcome: Outcome | null;
   /** Advisor / codex bookkeeping. */
   flags: Record<string, number>;
+  /** The emergency the commander is dealing with, if any (absent in old saves). */
+  emergency?: Emergency | null;
+  /** Scripted emergencies still to come. */
+  emergencyPlan?: PlannedEmergency[];
   /** Last hour a brownout touched a critical load (for morale). */
   lastBlackoutH: number;
 }

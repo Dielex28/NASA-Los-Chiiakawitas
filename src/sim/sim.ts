@@ -1,3 +1,4 @@
+import { chooseEmergency, liohScrub, scrubbersFailed, planEmergencies, triggerEmergency, updateEmergency, type EmergencyChoice } from './emergency';
 import { Rng } from '../core/rng';
 import { clamp, clamp01 } from '../core/math';
 import {
@@ -261,6 +262,8 @@ export function createMission(
     powerSave: 0,
     playerOutside: false,
     schedule: buildSchedule(mission, seed),
+    emergency: null,
+    emergencyPlan: planEmergencies(mission, seed, w.solH),
     resupply: mission.resupply.map((r) => ({
       arrivalH: r.sol * w.solH,
       cutoffH: (r.sol - (mission.world === 'moon' ? 3 : 2)) * w.solH,
@@ -299,6 +302,13 @@ export function pushLog(
 ): void {
   s.log.push({ t: s.timeH, key, sev, params, ref });
   if (s.log.length > 240) s.log.splice(0, s.log.length - 240);
+}
+
+const PRESSURE_SHELLS = new Set(['hab', 'lab', 'greenhouse', 'shelter']);
+
+/** The commander's answer to the running emergency. */
+export function decideEmergency(s: SimState, choice: EmergencyChoice): boolean {
+  return chooseEmergency(s, choice, pushLog);
 }
 
 export const isBuilt = (m: ModuleState): boolean => m.built >= 1;
@@ -899,6 +909,9 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
   const floor = 0.3 * Math.max(0.2, cabinVol / 300);
   s.cabin.co2Kg += co2Prod;
   const removable = Math.max(0, s.cabin.co2Kg - floor);
+  // a life-support failure stops the whole scrubber loop, lander's included, until it is fixed
+  if (scrubbersFailed(s)) scrub = 0;
+  scrub += liohScrub(s);
   s.cabin.co2Kg -= Math.min(removable, scrub * dtD + co2Plants);
   const mmHg = (s.cabin.co2Kg * MMHG_PER_KG_CO2 * 300) / Math.max(60, cabinVol);
 
@@ -1114,9 +1127,14 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
     if (m.type !== 'pylon' && m.type !== 'tank') {
       const p = (0.0035 + 0.06 * (1 - m.condition / 100) ** 2) * hazard * dtSol;
       if (rng.chance(p)) {
-        m.condition = Math.max(4, m.condition - rng.range(18, 38));
         s.stats.failures++;
-        pushLog(s, 'log.failure', 'warn', { type: m.type }, m.id);
+        // some breakdowns become emergencies: a seal that lets go, scrubbers that stop
+        if (!s.emergency && m.type === 'eclss') triggerEmergency(s, 'eclss', rng, pushLog, m);
+        else if (!s.emergency && PRESSURE_SHELLS.has(m.type) && rng.chance(0.5)) triggerEmergency(s, 'leak', rng, pushLog, m);
+        else {
+          m.condition = Math.max(4, m.condition - rng.range(18, 38));
+          pushLog(s, 'log.failure', 'warn', { type: m.type }, m.id);
+        }
       }
     }
   }
@@ -1124,8 +1142,12 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
     const victims = s.modules.filter((m) => isBuilt(m) && m.type !== 'pylon' && m.type !== 'lander');
     if (victims.length) {
       const v = rng.pick(victims);
-      v.condition = Math.max(5, v.condition - 30);
-      pushLog(s, 'log.meteor', 'warn', { type: v.type }, v.id);
+      // a pressurised shell punctured is an emergency; anything else just takes the damage
+      if (!s.emergency && PRESSURE_SHELLS.has(v.type)) triggerEmergency(s, 'meteor', rng, pushLog, v);
+      else {
+        v.condition = Math.max(5, v.condition - 30);
+        pushLog(s, 'log.meteor', 'warn', { type: v.type }, v.id);
+      }
     }
   }
   if (s.world === 'mars' && storm < 0.05 && rng.chance(0.03 * dtSol)) {
@@ -1291,6 +1313,7 @@ function stepOnce(s: SimState, dtH: number): void {
   processEvents(s);
   const hours = updateCrewHours(s);
   upkeep(s, dtH, hours, rng);
+  updateEmergency(s, dtH, rng, pushLog);
   solvePower(s, dtH);
   lifeSupport(s, dtH, hours, rng);
   recordTelemetry(s);

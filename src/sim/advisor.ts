@@ -31,6 +31,9 @@ export function advise(s: SimState): Advice[] {
     out.push({ key, sev, weight, params, ref });
   };
 
+  // ---- emergencies first: the clock is running
+  if (s.emergency && !s.emergency.choice) add(`emg.${s.emergency.kind}`, 'bad', 130);
+
   // ---- space weather
   const spe = s.schedule.find((e) => e.kind === 'spe' && e.warned && !e.ended);
   if (spe && !s.shelterOrder) add('spe', 'bad', 100, { cls: spe.kind === 'spe' ? spe.cls : 1 });
@@ -182,6 +185,10 @@ export function lessons(s: SimState): Array<{ key: string; good: boolean; params
   if (s.crew.some((c) => c.doseReactor > 2)) add('reactor', false);
   if (st.failures > 3 && st.repairsByPlayer === 0) add('maintenance', false, { n: st.failures });
   if (st.samplesCollected >= 3) add('fieldwork', true, { n: st.samplesCollected });
+  if ((st.emergencies ?? 0) > 0) {
+    if ((st.emergencyAuto ?? 0) > 0) add('emgSlow', false, { n: st.emergencyAuto ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
+    else add('emgFast', true, { n: st.emergencies ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
+  }
   const morale = st.moraleN > 0 ? st.moraleSum / st.moraleN : 60;
   if (morale > 74) add('morale', true);
   else if (morale < 50) add('lowMorale', false);

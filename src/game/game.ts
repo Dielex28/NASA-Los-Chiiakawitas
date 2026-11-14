@@ -14,6 +14,7 @@ import { MODULES } from '../sim/catalog';
 import { missionById, type MissionDef } from '../sim/missions';
 import {
   collectSample,
+  decideEmergency,
   recordExperiment,
   createMission,
   isBuilt,
@@ -41,6 +42,7 @@ import { Player } from './player';
 import { Props } from './props';
 import { DOCK_RANGE, RoverUnit } from './rover';
 import type { VehicleEnv, VehicleInput } from './vehicle';
+import type { EmergencyChoice } from '../sim/emergency';
 import { Sites, type Site } from './sites';
 
 export type GamePhase = 'boot' | 'menu' | 'loading' | 'playing' | 'ended';
@@ -832,6 +834,12 @@ export class Game {
         if (this.speed > 2) this.setSpeed(2);
       } else if (e.sev === 'good') this.audio.ui('good');
       if (e.key === 'log.spe.warn' || e.key === 'log.storm.warn' || e.key === 'log.resupply.arrived') this.audio.radio();
+      if (e.key === 'log.emg.leak' || e.key === 'log.emg.meteor' || e.key === 'log.emg.eclss') {
+        // the clock is running: slow time down and free the mouse so the commander can answer
+        if (this.speed > 1) this.setSpeed(1);
+        this.input.unlock();
+        this.audio.radio();
+      }
     }
   }
 
@@ -1193,6 +1201,11 @@ export class Game {
     const lander = this.sim?.modules[0];
     if (!site || !lander) return null;
     return { kind: site.poi.kind, distance: Math.hypot(site.poi.x - lander.x, site.poi.z - lander.z), done: site.collected };
+  }
+
+  /** The commander's answer to the running emergency. */
+  decideEmergency(choice: EmergencyChoice): void {
+    if (this.sim && decideEmergency(this.sim, choice)) this.audio.ui('click');
   }
 
   /** Rover speed for the HUD, km/h. */

@@ -459,6 +459,10 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 18px; background: v
 .alert h4 { margin: 0; font-size: 0.98em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .alert p { margin: 0.25em 0 0; font-size: 0.86em; color: var(--text-2); line-height: 1.4; }
 .alert .acts { display: flex; gap: 0.5em; flex: none; }
+.emgbar { height: 4px; margin-top: 0.6em; background: var(--line); }
+.emgbar i { display: block; height: 4px; width: 100%; background: var(--bad); transition: width 0.3s linear; }
+.emgopts { display: flex; flex-direction: column; gap: 0.2em; margin-top: 0.55em; font-size: 0.82em; color: var(--text-2); line-height: 1.4; }
+.emgopts b { color: var(--text); }
 
 /* EVA visor */
 .eva { position: absolute; inset: 0; pointer-events: none; }
