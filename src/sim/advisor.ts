@@ -1,5 +1,5 @@
 import { CROPS, MODULES, TUNE } from './catalog';
-import { isBuilt, isUp, totalDose } from './sim';
+import { isBuilt, isUp, rehabMonths, totalDose } from './sim';
 import { WORLDS } from './worlds';
 import type { ModuleState, SimState } from './types';
 
@@ -105,6 +105,9 @@ export function advise(s: SimState): Advice[] {
   if (n > f.crewCapacity && s.timeH > 2) add('crowded', 'warn', 44);
   const morale = s.crew.reduce((a, c) => a + c.morale, 0) / Math.max(1, n);
   if (morale < 40) add('morale', 'warn', 54, { pct: morale.toFixed(0) });
+  // deconditioning: worth a word once the base is running and the mission is long enough to matter
+  const muscle = s.crew.reduce((a, c) => Math.min(a, c.muscle ?? 100), 100);
+  if (!(s.exercise ?? 0) && s.timeH > 24 * 4 && muscle < 98) add('exercise', 'warn', 36, { pct: muscle.toFixed(0) });
   const dose = s.crew.reduce((a, c) => Math.max(a, totalDose(c)), 0);
   if (dose > s.cfg.doseLimitMsv * 0.8) add('doseHigh', 'warn', 64, { msv: dose.toFixed(0), limit: s.cfg.doseLimitMsv });
   if (!f.comms && s.timeH > 12) add('noComms', 'info', 35);
@@ -201,6 +204,12 @@ export function lessons(s: SimState): Array<{ key: string; good: boolean; params
   }
   if (delay >= 1) add('delayMars', true, { d: delay.toFixed(0), rt: Math.round(2 * delay + 15) });
   else if ((st.emergencies ?? 0) > 0 && s.world === 'moon') add('delayMoon', true);
+  // what low gravity did to the crew's bodies
+  const bone = s.crew.reduce((a, c) => a + (c.bone ?? 100), 0) / Math.max(1, s.crew.length);
+  const muscle = s.crew.reduce((a, c) => a + (c.muscle ?? 100), 0) / Math.max(1, s.crew.length);
+  const rehab = s.crew.reduce((a, c) => Math.max(a, rehabMonths(c)), 0);
+  if (muscle < 92 || bone < 98.5) add('deconditioned', false, { muscle: muscle.toFixed(0), bone: bone.toFixed(1), months: Math.max(1, Math.round(rehab)) });
+  else if ((s.exercise ?? 0) > 0 && s.timeH > 24 * 20) add('fit', true, { muscle: muscle.toFixed(0), bone: bone.toFixed(1) });
   const morale = st.moraleN > 0 ? st.moraleSum / st.moraleN : 60;
   if (morale > 74) add('morale', true);
   else if (morale < 50) add('lowMorale', false);

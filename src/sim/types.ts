@@ -122,6 +122,9 @@ export interface CrewMember {
   doseReactor: number;
   /** Short-term dose memory (mSv) that decays; drives acute radiation sickness. */
   acute: number;
+  /** Bone mineral density and muscle strength, % of what they were on Earth (absent in old saves). */
+  bone?: number;
+  muscle?: number;
   location: CrewLocation;
   isPlayer: boolean;
 }
@@ -356,6 +359,8 @@ export interface SimState {
   alloc: Allocation;
   /** 0 light, 1 normal, 2 intense */
   workload: 0 | 1 | 2;
+  /** Daily exercise per crew member: 0 none, 1 one hour, 2 two hours as on the ISS (absent: none). */
+  exercise?: 0 | 1 | 2;
   shelterOrder: boolean;
   /** 0 normal · 1 shed low-priority loads · 2 critical systems only. */
   powerSave: 0 | 1 | 2;

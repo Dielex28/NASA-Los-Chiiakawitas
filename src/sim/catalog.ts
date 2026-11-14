@@ -338,6 +338,19 @@ export const CROP_ORDER: CropId[] = ['lettuce', 'radish', 'tomato', 'potato', 'w
 /** Tunable gameplay constants (kept in one place for balancing and for the tests). */
 export const TUNE = {
   workHours: [6, 8, 11] as const,
+  /**
+   * Deconditioning in low gravity, % per 30 days without exercise in weightlessness: bone mineral
+   * density in the hips and spine falls 1–1.5 % a month on the ISS (NASA Human Research Program),
+   * leg muscle much faster. Scaled by (1 − g/9.81): nobody knows yet how much Moon or Mars
+   * gravity protects, so this is the simplest reasonable assumption.
+   */
+  boneLossPerMonth: 1.5,
+  muscleLossPerMonth: 10,
+  /** Fraction of that loss that 0, 1 or 2 hours of daily exercise prevent (ISS crews do ~2 h). */
+  exerciseShield: [0, 0.6, 0.85] as const,
+  muscleShield: [0, 0.7, 0.95] as const,
+  /** Muscle regained per 30 days with two hours a day, once the loss is stopped. */
+  muscleRegainPerMonth: 1.5,
   workMoraleDelta: [6, 0, -14] as const,
   /** Condition points restored per crew-hour of maintenance. */
   repairPerHour: 2.4,

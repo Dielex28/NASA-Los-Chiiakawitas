@@ -34,6 +34,7 @@ export const CODEX: CodexEntry[] = [
   { id: 'earth', group: 'place', icon: 'earth' },
   { id: 'comms', group: 'crew', icon: 'antenna' },
   { id: 'crew', group: 'crew', icon: 'crew' },
+  { id: 'bones', group: 'crew', icon: 'jump' },
   { id: 'honesty', group: 'crew', icon: 'info' },
 ];
 
@@ -196,6 +197,12 @@ addStrings({
   ],
   'codex.comms.g': ['La antena mejora el ánimo y adelanta los avisos de clima espacial.', 'The antenna lifts morale and brings space-weather warnings earlier.'],
 
+  'codex.bones.t': ['Huesos y músculos en baja gravedad', 'Bones and muscles in low gravity'],
+  'codex.bones.b': [
+    'Sin el peso de la gravedad terrestre, el cuerpo deja de mantener lo que no usa. En la Estación Espacial Internacional los astronautas pierden entre un 1 y un 1,5 % de densidad ósea al mes en la cadera y la columna, y los músculos de las piernas se debilitan aún más deprisa. Por eso hacen unas dos horas de ejercicio al día con una cinta, una bicicleta y una máquina de pesas (ARED). Nadie sabe todavía cuánto protege la gravedad de la Luna (un sexto de la terrestre) o la de Marte (un tercio): el simulador supone que la pérdida es proporcional a la gravedad que falta. Al volver, el hueso tarda dos o tres veces más en recuperarse que en perderse.',
+    'Without the load of Earth’s gravity, the body stops maintaining what it does not use. On the International Space Station astronauts lose 1 to 1.5 % of bone density a month in the hips and spine, and leg muscles weaken even faster. That is why they exercise about two hours a day on a treadmill, a bike and a weight machine (ARED). Nobody yet knows how much the Moon’s gravity (a sixth of Earth’s) or Mars’ (a third) protects: the simulator assumes the loss is proportional to the missing gravity. Back home, bone takes two to three times longer to recover than it took to lose.',
+  ],
+  'codex.bones.g': ['En la pestaña Tripulación elige 1 o 2 horas de ejercicio: cuesta horas de trabajo, pero protege a la tripulación y mejora el ánimo.', 'In the Crew tab choose 1 or 2 hours of exercise: it costs work hours, but protects the crew and lifts morale.'],
   'codex.crew.t': ['La tripulación es parte del sistema', 'The crew is part of the system'],
   'codex.crew.b': [
     'Una misión no falla solo por máquinas. En el experimento CHAPEA de NASA, cuatro personas vivieron 378 días en un hábitat impreso en 3D que simulaba Marte, para estudiar cómo afectan el aislamiento, la carga de trabajo y la comida. Un equipo agotado comete errores; uno descansado y motivado resuelve problemas.',

@@ -22,6 +22,7 @@ import {
   sunForecast,
   totalDose,
   propTank,
+  deconditioning,
 } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { Allocation, CargoItem, CrewMember, LogEntry, ModuleState, ModuleType, Priority, SimState } from '../sim/types';
@@ -607,6 +608,15 @@ export class Hud {
       wl.append(b);
     }
     this.tabBody.append(h('div.label', t('crew.workload')), wl);
+    const ex = h('div.seg', { style: { margin: '0' } });
+    const exBtns: HTMLElement[] = [];
+    for (const lvl of [0, 1, 2] as const) {
+      const b = h('button', { onclick: () => (this.sim.exercise = lvl) }, t(`crew.exercise.${lvl}`));
+      exBtns.push(b);
+      ex.append(b);
+    }
+    const exNote = h('div.note', '');
+    this.tabBody.append(h('div.label', t('crew.exercise')), ex, exNote);
     const shelterBtn = h('button.btn.small.danger', { onclick: () => this.game.orderShelter(!this.sim.shelterOrder) }, icon('shield', 14), h('span', ''));
     const shelterNote = h('div.note', '');
     this.tabBody.append(h('div.row', shelterBtn), shelterNote);
@@ -619,9 +629,10 @@ export class Hud {
       const loc = h('div.rl', '');
       const face = h('div.av');
       face.innerHTML = avatarSvg(c, 34);
-      list.append(h('div.crewrow', face, h('div', h('div.nm', c.name), loc), h('div.bar.ok', { title: t('hud.health') }, hf), h('div.bar.violet', { title: t('hud.morale') }, mf), dose));
+      const bm = h('span.bm', '');
+      list.append(h('div.crewrow', face, h('div', h('div.nm', c.name), loc, bm), h('div.bar.ok', { title: t('hud.health') }, hf), h('div.bar.violet', { title: t('hud.morale') }, mf), dose));
       if (!c.isPlayer) list.append(h('div.spec', { style: { borderColor: ROLE_COLOR[c.role] } }, t(`spec.${c.role}`)));
-      return { hf, mf, dose, loc };
+      return { hf, mf, dose, loc, bm };
     });
     this.tabUpdate = () => {
       const sim = this.sim;
@@ -632,6 +643,9 @@ export class Hud {
         if (document.activeElement !== sl.input) sl.input.value = String(Math.round(sim.alloc[k] * 100));
       }
       wlBtns.forEach((b, i) => b.classList.toggle('on', sim.workload === i));
+      exBtns.forEach((b, i) => b.classList.toggle('on', (sim.exercise ?? 0) === i));
+      const loss = deconditioning(sim);
+      setText(exNote, t('crew.exercise.note', { bone: fmt(loss.bone * 30, 1), muscle: fmt(loss.muscle * 30, 1) }));
       setText(shelterBtn.lastElementChild!, sim.shelterOrder ? t('crew.shelterEnd') : t('crew.shelter'));
       shelterBtn.classList.toggle('on', sim.shelterOrder);
       setText(shelterNote, sim.shelterOrder ? t('crew.sheltering') : '');
@@ -641,6 +655,8 @@ export class Hud {
         r.mf.style.width = `${c.morale}%`;
         setText(r.dose, t('crew.dose', { v: fmt(totalDose(c), 1) }));
         setText(r.loc, `${t(`role.${c.role}`)} · ${t(`crew.loc.${c.location}`)}`);
+        setText(r.bm, t('crew.bm', { b: fmt(c.bone ?? 100, 1), m: fmt(c.muscle ?? 100, 0) }));
+        r.bm.classList.toggle('warn', (c.muscle ?? 100) < 90 || (c.bone ?? 100) < 98);
       });
     };
   }

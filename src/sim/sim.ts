@@ -276,6 +276,7 @@ export function createMission(
     cabin: { co2Kg: 0.06, tempC: 21 },
     alloc: { maintain: 0.25, science: 0.3, farm: 0.15, build: 0.3 },
     workload: 1,
+    exercise: 0,
     shelterOrder: false,
     powerSave: 0,
     playerOutside: false,
@@ -329,6 +330,31 @@ export function decideEmergency(s: SimState, choice: EmergencyChoice): boolean {
   return chooseEmergency(s, choice, pushLog);
 }
 
+/** Work capacity left by muscle loss: full down to 90 % strength, two thirds at 60 %. */
+export function strength(c: CrewMember): number {
+  return clamp(1 - Math.max(0, 90 - (c.muscle ?? 100)) / 90, 0.6, 1);
+}
+
+/** Bone and muscle loss per day (%), for this world's gravity and the exercise in place. */
+export function deconditioning(s: SimState): { bone: number; muscle: number } {
+  const f = 1 - WORLDS[s.world].gravity / 9.81;
+  const ex = s.exercise ?? 0;
+  return {
+    bone: (TUNE.boneLossPerMonth / 30) * f * (1 - TUNE.exerciseShield[ex]),
+    muscle: (TUNE.muscleLossPerMonth / 30) * f * (1 - TUNE.muscleShield[ex]),
+  };
+}
+
+/**
+ * Months of rehabilitation a crew member would need back on Earth: bone comes back two to three
+ * times slower than it was lost (studies of ISS crews), muscle in a few weeks.
+ */
+export function rehabMonths(c: CrewMember): number {
+  const bone = 100 - (c.bone ?? 100);
+  const muscle = 100 - (c.muscle ?? 100);
+  return Math.max(bone / TUNE.boneLossPerMonth, 0) * 2.5 + muscle / 20;
+}
+
 /** Ask Mission Control how to handle the running emergency (the answer takes a round trip). */
 export function askMissionControl(s: SimState): boolean {
   return askControl(s, pushLog);
@@ -338,6 +364,11 @@ export function askMissionControl(s: SimState): boolean {
  * Morale lost to distance: from the Moon the crew can talk with home almost live; from Mars
  * every message takes minutes each way, so there are no conversations, only letters.
  */
+/** Months in the same few rooms with the same faces wear morale down (capped). */
+export function monotony(s: SimState): number {
+  return Math.min(8, (s.timeH / 24 / 30) * 2);
+}
+
 export function isolation(s: SimState): number {
   const d = s.cfg.commsDelayMin ?? 0;
   return d < 1 ? 0 : 3 + 0.15 * d;
@@ -769,9 +800,10 @@ export function effectiveAllocation(s: SimState): Allocation {
 }
 
 function updateCrewHours(s: SimState): { maintain: number; science: number; farm: number; build: number } {
-  const workH = TUNE.workHours[s.workload];
+  // the hours spent exercising come out of the working day
+  const workH = Math.max(2, TUNE.workHours[s.workload] - (s.exercise ?? 0));
   let total = 0;
-  for (const c of s.crew) total += workH * (0.4 + (0.6 * c.health) / 100) * (0.5 + (0.5 * c.morale) / 100);
+  for (const c of s.crew) total += workH * (0.4 + (0.6 * c.health) / 100) * (0.5 + (0.5 * c.morale) / 100) * strength(c);
   const sh = s.shelterOrder;
   const a = effectiveAllocation(s);
   return {
@@ -1069,7 +1101,9 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     68 +
     f.freshFood +
     (comms ? 8 : -8) -
-    isolation(s) +
+    isolation(s) -
+    monotony(s) +
+    ((s.exercise ?? 0) > 0 ? 3 : 0) +
     TUNE.workMoraleDelta[s.workload] +
     (crowded ? -15 : 0) +
     (habs === 0 ? -8 : 0) +
@@ -1108,6 +1142,12 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     if (c.acute > 100) d -= (c.acute - 100) * 0.12;
     if (crowded) d -= 1.5;
     c.health = clamp(c.health + d * dtD, 0, 100);
+
+    // low gravity slowly takes bone and muscle; exercise holds it back
+    const loss = deconditioning(s);
+    c.bone = clamp((c.bone ?? 100) - loss.bone * dtD, 50, 100);
+    const regain = (s.exercise ?? 0) === 2 && hunger === 0 ? TUNE.muscleRegainPerMonth / 30 : 0;
+    c.muscle = clamp((c.muscle ?? 100) - (loss.muscle - regain) * dtD, 40, 100);
 
     const target = clamp(moraleTarget - (c.health < 50 ? 10 : 0), 0, 100);
     c.morale += (target - c.morale) * (1 - Math.exp(-dtD * 0.9));
