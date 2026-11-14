@@ -12,6 +12,8 @@ export interface Settings {
   quality: QualityLevel;
   volume: number;
   music: number;
+  /** 1 = 8–11 years · 2 = 12–14 · 3 = 15+: sets breakdown rates and the debrief questions. */
+  level: 1 | 2 | 3;
 }
 
 const SETTINGS_KEY = 'helios-settings';
@@ -27,7 +29,7 @@ function defaultQuality(): QualityLevel {
 }
 
 function loadSettings(): Settings {
-  const def: Settings = { quality: defaultQuality(), volume: 0.8, music: 0.55 };
+  const def: Settings = { quality: defaultQuality(), volume: 0.8, music: 0.55, level: 2 };
   try {
     return { ...def, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') as Partial<Settings>) };
   } catch {
@@ -238,7 +240,7 @@ export class App {
 
   launch(missionId: string, manifest: Partial<Record<CargoItem, number>>): void {
     this.game.clearSave();
-    void this.game.startMission(missionId, { ...manifest });
+    void this.game.startMission(missionId, { ...manifest }, this.settings.level);
   }
 
   continueGame(): void {

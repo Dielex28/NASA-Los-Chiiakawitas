@@ -71,7 +71,9 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 2. **Planifica la carga.** Tienes un límite de masa. ¿Agua para todo el viaje o una máquina que la recicla? ¿Paneles o reactor? ¿Refugio o excavadora? ORBI, tu dron asistente, te avisa de lo que falta.
 3. **Construye la base** desde la consola de mando: los módulos se conectan solos a la red de servicios y la tripulación los monta.
 4. **Sal a la superficie (EVA).** Camina y salta con la gravedad real de cada mundo, escanea el terreno en busca de hielo y muestras, repara averías, limpia el polvo de los paneles. Conduce el róver para llegar más lejos gastando menos traje: cada misión tiene una **expedición** a un kilómetro de la base, más lejos de lo que un traje permite ir y volver a pie. Suelta un martillo y una pluma como en el Apolo 15, o lanza una roca y compara con lo que habría pasado en la Tierra. Correr gasta la reserva del traje más deprisa, y una caída dura lo daña.
-5. **Sobrevive a los eventos** y completa los objetivos. Al final, un informe con telemetría explica qué decisiones marcaron la misión.
+5. **Sobrevive a los eventos** y completa los objetivos. Al final, un informe con telemetría explica qué decisiones marcaron la misión, cuatro preguntas de comprensión comprueban lo aprendido y un botón descarga un **informe para el docente**.
+
+**En el aula:** hay tres niveles por edad (Junior 8–11, Cadete 12–14, Experto 15+) que cambian las averías y las preguntas, un glosario de veinte términos en la bitácora científica y una [guía para docentes](docs/GUIA-DOCENTE.md) con tres sesiones de 45 minutos y preguntas para el debate.
 
 ### Controles
 
@@ -163,7 +165,7 @@ Detalles técnicos que sostienen el diseño:
 
 ## Pruebas
 
-`npm test` ejecuta 49 pruebas. Veinticuatro cubren la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, misiones completas con la carga recomendada y los dos escenarios históricos (refugiarse a tiempo mantiene la dosis bajo el límite; no hacerlo, no). Tres comprueban que el objetivo de la expedición queda fuera del alcance a pie pero al alcance del róver, y que vale más ciencia. Doce cubren el motor de física frente a las fórmulas: tiempo de caída √(2h/g), velocidad terminal, alcance de un proyectil, deriva por el viento, pérdida de energía en los rebotes y deslizamiento en pendientes. Diez cubren el róver: hundimiento estático de la suspensión y carga por rueda en ambos mundos, velocidad máxima, giro, tracción, distancia de frenado frente a v²/(2·μ·g), pendientes, obstáculos y terreno irregular.
+`npm test` ejecuta 51 pruebas. Veinticuatro cubren la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, misiones completas con la carga recomendada y los dos escenarios históricos (refugiarse a tiempo mantiene la dosis bajo el límite; no hacerlo, no). Tres comprueban que el objetivo de la expedición queda fuera del alcance a pie pero al alcance del róver, y que vale más ciencia. Doce cubren el motor de física frente a las fórmulas: tiempo de caída √(2h/g), velocidad terminal, alcance de un proyectil, deriva por el viento, pérdida de energía en los rebotes y deslizamiento en pendientes. Diez cubren el róver: hundimiento estático de la suspensión y carga por rueda en ambos mundos, velocidad máxima, giro, tracción, distancia de frenado frente a v²/(2·μ·g), pendientes, obstáculos y terreno irregular.
 
 ## Créditos y licencias
 

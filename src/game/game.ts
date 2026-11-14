@@ -344,13 +344,13 @@ export class Game {
 
   /* ----------------------------------------------------------- mission */
 
-  async startMission(missionId: string, manifest: Partial<Record<CargoItem, number>>): Promise<void> {
+  async startMission(missionId: string, manifest: Partial<Record<CargoItem, number>>, level: 1 | 2 | 3 = 2): Promise<void> {
     const mission = missionById(missionId);
     this.setPhase('loading');
     this.events.emit('loading', { fraction: 0, stage: 'terrain' });
     const st = await this.ensureStage(mission.world, mission.startLocalH, !!mission.realSite);
     const hf = st.world.hf;
-    const sim = createMission(mission, manifest, mission.seed, hf, hf.padHeight(0, 0, 5).top);
+    const sim = createMission(mission, manifest, mission.seed, hf, hf.padHeight(0, 0, 5).top, { level });
     this.beginPlay(st, mission, sim, [], [], true);
   }
 

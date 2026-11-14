@@ -309,6 +309,10 @@ export interface MissionConfig {
   doseLimitMsv: number;
   budgetKg: number;
   endless: boolean;
+  /** Player level: 1 = 8–11 years, 2 = 12–14, 3 = 15+ (absent in old saves: 2). */
+  level?: 1 | 2 | 3;
+  /** Multiplier on wear, breakdowns and micrometeorite hits for that level. */
+  hazard?: number;
 }
 
 export interface SimState {

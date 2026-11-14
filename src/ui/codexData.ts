@@ -8,6 +8,9 @@ export interface CodexEntry {
 }
 
 /** Order of the encyclopedia. Every statement is checked against the sources in docs/SCIENCE.md. */
+/** Terms explained in the codex glossary. */
+export const GLOSSARY = ['regolith', 'sievert', 'areal', 'kwh', 'eclss', 'isru', 'sol', 'spe', 'gcr', 'coldTrap', 'tau', 'albedo', 'eva', 'moxie', 'fission', 'gravity', 'delta', 'ejecta', 'alara', 'mass'];
+
 export const CODEX: CodexEntry[] = [
   { id: 'sun', group: 'sun', icon: 'sun' },
   { id: 'spe', group: 'sun', icon: 'rad' },
@@ -206,6 +209,50 @@ addStrings({
     'The figures for human consumption, radiation, gravity, sunlight and day length are real. To keep it playable we simplified other things: crops grow twice as fast (their yield per day is realistic), the Sun’s elevation at the lunar pole is slightly exaggerated, assembling a module takes hours rather than days, and shielding uses simple formulas instead of particle-transport simulations.',
   ],
   'codex.honesty.g': ['La lista completa de fuentes y supuestos está en docs/SCIENCE.md del repositorio.', 'The full list of sources and assumptions is in docs/SCIENCE.md in the repository.'],
+
+  /* ------------------------------------------------------- glossary */
+  'codex.group.words': ['Palabras clave', 'Key words'],
+  'gloss.title': ['Glosario', 'Glossary'],
+  'gloss.regolith': ['Regolito', 'Regolith'],
+  'gloss.regolith.d': ['Capa de polvo y fragmentos de roca que cubre la Luna y Marte, molida por miles de millones de años de impactos.', 'The layer of dust and rock fragments covering the Moon and Mars, ground down by billions of years of impacts.'],
+  'gloss.sievert': ['Sievert (Sv, mSv)', 'Sievert (Sv, mSv)'],
+  'gloss.sievert.d': ['Unidad de dosis de radiación que tiene en cuenta el daño biológico. 1 mSv es una milésima de sievert.', 'Unit of radiation dose that accounts for biological harm. 1 mSv is a thousandth of a sievert.'],
+  'gloss.areal': ['g/cm² (blindaje)', 'g/cm² (shielding)'],
+  'gloss.areal.d': ['Cuánta masa de material atraviesa la radiación por cada centímetro cuadrado. Lo que protege es la masa, no el grosor.', 'How much mass of material radiation crosses per square centimetre. Mass is what protects, not thickness.'],
+  'gloss.kwh': ['kW y kWh', 'kW and kWh'],
+  'gloss.kwh.d': ['El kW mide potencia (a qué ritmo se usa la energía); el kWh mide energía (cuánta). Una batería de 80 kWh da 8 kW durante 10 h.', 'kW measures power (how fast energy is used); kWh measures energy (how much). An 80 kWh battery gives 8 kW for 10 h.'],
+  'gloss.eclss': ['ECLSS', 'ECLSS'],
+  'gloss.eclss.d': ['Sistema de control ambiental y soporte vital: recicla el agua, fabrica oxígeno y retira el CO₂ del aire.', 'Environmental control and life support system: recycles water, makes oxygen and removes CO₂ from the air.'],
+  'gloss.isru': ['ISRU', 'ISRU'],
+  'gloss.isru.d': ['Uso de recursos in situ: obtener agua, oxígeno o combustible de lo que hay en el lugar en vez de traerlo de la Tierra.', 'In-situ resource utilisation: getting water, oxygen or fuel from what is on site instead of bringing it from Earth.'],
+  'gloss.sol': ['Sol', 'Sol'],
+  'gloss.sol.d': ['Un día marciano: 24 h 39 min.', 'A Martian day: 24 h 39 min.'],
+  'gloss.spe': ['Tormenta solar (SPE)', 'Solar particle event (SPE)'],
+  'gloss.spe.d': ['Llegada de protones de alta energía tras una erupción en el Sol. Dura horas o días y se frena bien con blindaje.', 'Arrival of high-energy protons after an eruption on the Sun. It lasts hours or days and shielding stops it well.'],
+  'gloss.gcr': ['Rayos cósmicos galácticos', 'Galactic cosmic rays'],
+  'gloss.gcr.d': ['Partículas muy energéticas que llegan de fuera del sistema solar todo el tiempo. Casi ningún blindaje práctico las detiene del todo.', 'Very energetic particles arriving from outside the solar system all the time. Almost no practical shielding stops them completely.'],
+  'gloss.coldTrap': ['Trampa fría', 'Cold trap'],
+  'gloss.coldTrap.d': ['Lugar en sombra permanente tan frío que el hielo puede durar allí miles de millones de años.', 'A permanently shadowed place so cold that ice can last there for billions of years.'],
+  'gloss.tau': ['Profundidad óptica (τ)', 'Optical depth (τ)'],
+  'gloss.tau.d': ['Medida de cuánto polvo hay en el aire. Cuanto mayor, menos luz directa del Sol llega al suelo.', 'A measure of how much dust is in the air. The higher it is, the less direct sunlight reaches the ground.'],
+  'gloss.albedo': ['Albedo', 'Albedo'],
+  'gloss.albedo.d': ['Fracción de la luz que refleja una superficie. El regolito lunar refleja poco, como el asfalto.', 'The fraction of light a surface reflects. Lunar regolith reflects little, like asphalt.'],
+  'gloss.eva': ['EVA', 'EVA'],
+  'gloss.eva.d': ['Actividad extravehicular: salir con el traje fuera de la nave o de la base.', 'Extravehicular activity: going outside the spacecraft or the base in a suit.'],
+  'gloss.moxie': ['MOXIE', 'MOXIE'],
+  'gloss.moxie.d': ['Experimento del rover Perseverance que demostró en Marte cómo fabricar oxígeno a partir del CO₂ del aire.', 'An experiment on the Perseverance rover that demonstrated on Mars how to make oxygen from the CO₂ in the air.'],
+  'gloss.fission': ['Fisión nuclear', 'Nuclear fission'],
+  'gloss.fission.d': ['Reacción en la que átomos pesados se parten y liberan energía. Un reactor da la misma potencia de día y de noche.', 'A reaction in which heavy atoms split and release energy. A reactor gives the same power by day and by night.'],
+  'gloss.gravity': ['Gravedad reducida', 'Reduced gravity'],
+  'gloss.gravity.d': ['En la Luna pesas un 16,5 % de lo que pesas en la Tierra; en Marte, un 38 %. La masa no cambia.', 'On the Moon you weigh 16.5 % of your weight on Earth; on Mars, 38 %. Mass does not change.'],
+  'gloss.delta': ['Delta', 'Delta'],
+  'gloss.delta.d': ['Depósito de sedimentos que deja un río al entrar en un lago o en el mar.', 'A deposit of sediment a river leaves where it enters a lake or the sea.'],
+  'gloss.ejecta': ['Eyecta', 'Ejecta'],
+  'gloss.ejecta.d': ['Material lanzado alrededor de un cráter por el impacto que lo formó.', 'Material thrown around a crater by the impact that made it.'],
+  'gloss.alara': ['ALARA', 'ALARA'],
+  'gloss.alara.d': ['«Tan bajo como sea razonablemente posible»: la regla de protección radiológica de no recibir más dosis de la necesaria, aunque se esté por debajo del límite.', '“As low as reasonably achievable”: the radiation-protection rule of taking no more dose than necessary, even below the limit.'],
+  'gloss.mass': ['Masa y peso', 'Mass and weight'],
+  'gloss.mass.d': ['La masa es cuánta materia tiene algo (kg) y no cambia. El peso es la fuerza con que la gravedad lo atrae, y sí cambia de un mundo a otro.', 'Mass is how much matter something has (kg) and does not change. Weight is the force with which gravity pulls on it, and does change from one world to another.'],
 
   /* ------------------------------------------------------- minerals */
   'min.anorthosite': ['Anortosita', 'Anorthosite'],

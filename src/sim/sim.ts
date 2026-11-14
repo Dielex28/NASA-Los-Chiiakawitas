@@ -203,6 +203,7 @@ export function createMission(
   seed: number,
   probe: SiteProbe | null,
   landerY = 0,
+  opts: { level?: 1 | 2 | 3 } = {},
 ): SimState {
   const w = WORLDS[mission.world];
   const crew: CrewMember[] = [];
@@ -236,6 +237,8 @@ export function createMission(
       doseLimitMsv: mission.doseLimitMsv,
       budgetKg: mission.budgetKg,
       endless: mission.endless,
+      level: opts.level ?? 2,
+      hazard: [0.5, 1, 1.35][(opts.level ?? 2) - 1],
     },
     seed,
     rng: seed ^ 0xa11ce,
@@ -1097,18 +1100,19 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
     }
   }
 
-  // ---- wear, dust, random failures
+  // ---- wear, dust, random failures (fewer for the youngest players)
   const storm = s.env.storm;
+  const hazard = s.cfg.hazard ?? 1;
   for (const m of s.modules) {
     if (!isBuilt(m)) continue;
     const def = MODULES[m.type];
     const running = m.mode === 'full' || def.genKw > 0;
-    m.condition = Math.max(0, m.condition - def.wearPerSol * w.wearFactor * dtSol * (running ? 1 : 0.4));
+    m.condition = Math.max(0, m.condition - def.wearPerSol * w.wearFactor * hazard * dtSol * (running ? 1 : 0.4));
     if (s.world === 'mars' && m.type === 'solar') {
       m.dust = Math.min(0.85, m.dust + TUNE.dustPerSol * (1 + TUNE.stormDustFactor * storm) * dtSol);
     }
     if (m.type !== 'pylon' && m.type !== 'tank') {
-      const p = (0.0035 + 0.06 * (1 - m.condition / 100) ** 2) * dtSol;
+      const p = (0.0035 + 0.06 * (1 - m.condition / 100) ** 2) * hazard * dtSol;
       if (rng.chance(p)) {
         m.condition = Math.max(4, m.condition - rng.range(18, 38));
         s.stats.failures++;
@@ -1116,7 +1120,7 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
       }
     }
   }
-  if (s.world === 'moon' && rng.chance(0.012 * dtSol)) {
+  if (s.world === 'moon' && rng.chance(0.012 * hazard * dtSol)) {
     const victims = s.modules.filter((m) => isBuilt(m) && m.type !== 'pylon' && m.type !== 'lander');
     if (victims.length) {
       const v = rng.pick(victims);

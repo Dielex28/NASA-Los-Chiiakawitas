@@ -5,7 +5,9 @@ import { manifestMass, planAutonomy } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { CargoItem, ModuleType, SimState, SupplyType } from '../sim/types';
 import type { App } from './app';
-import { CODEX } from './codexData';
+import { CODEX, GLOSSARY } from './codexData';
+import { pickQuestions, tx } from './quiz';
+import { downloadReport, teacherReport, type QuizAnswer } from './report';
 import { clear, fmt, h, icon } from './dom';
 import { getLang, t, type Lang } from './strings';
 
@@ -331,6 +333,23 @@ export function settingsScreen(app: App, onClose: () => void): HTMLElement {
       value: String(Math.round(value * 100)),
       oninput: (e: Event) => on(Number((e.target as HTMLInputElement).value) / 100),
     });
+  const levels = h('div.seg');
+  for (const lv of [1, 2, 3] as const) {
+    levels.append(
+      h(
+        'button',
+        {
+          class: s.level === lv ? 'on' : '',
+          onclick: () => {
+            s.level = lv;
+            app.saveSettings();
+            app.rerender();
+          },
+        },
+        t(`set.level.${lv}`),
+      ),
+    );
+  }
   const lang = getLang();
   const body = h(
     'div.sheet-body',
@@ -354,6 +373,8 @@ export function settingsScreen(app: App, onClose: () => void): HTMLElement {
       ),
     ),
     h('div.setrow', h('span', t('set.quality')), qual),
+    h('div.setrow', h('span', t('set.level')), levels),
+    h('div.setrow', h('span'), h('span.note', t('set.levelNote'))),
     s.quality !== app.activeQuality
       ? h('div.setrow', h('span'), h('div.row', h('span.note', t('set.qualityNote')), h('button.btn.small', { onclick: () => location.reload() }, t('set.reload'))))
       : null,
@@ -415,7 +436,10 @@ export function codexScreen(app: App, onClose: () => void, startId?: string): HT
   const show = (id: string): void => {
     for (const [k, b] of buttons) b.classList.toggle('on', k === id);
     clear(art);
-    if (id.startsWith('min.')) {
+    if (id === 'glossary') {
+      const terms = [...GLOSSARY].sort((a, b) => t(`gloss.${a}`).localeCompare(t(`gloss.${b}`)));
+      art.append(h('h3', t('gloss.title')), h('dl.gloss', ...terms.flatMap((k) => [h('dt', t(`gloss.${k}`)), h('dd', t(`gloss.${k}.d`))])));
+    } else if (id.startsWith('min.')) {
       art.append(h('h3', t(id)), h('p', t(`${id}.b`)));
     } else {
       art.append(h('h3', t(`codex.${id}.t`)), h('p', t(`codex.${id}.b`)), h('div.ingame', h('span.label', t('codex.inGame')), t(`codex.${id}.g`)));
@@ -440,6 +464,10 @@ export function codexScreen(app: App, onClose: () => void, startId?: string): HT
     buttons.set(`min.${k}`, b);
     nav.append(b);
   }
+  nav.append(h('div.grp', t('codex.group.words')));
+  const gb = h('button', { onclick: () => show('glossary') }, icon('info', 16), t('gloss.title'));
+  buttons.set('glossary', gb);
+  nav.append(gb);
   show(startId ?? CODEX[0].id);
   return sheet('', t('codex.title'), t('codex.lead'), onClose, h('div.sheet-body', h('div.codex', nav, art)));
 }
@@ -588,6 +616,60 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
       chart(t('end.chart.dose'), [{ data: tele.dose, color: '#c9a6ff' }], [[t('hud.rad'), '#c9a6ff']]),
     ),
   );
+  // ---- for the classroom: comprehension questions and a report to hand in
+  const level = sim.cfg.level ?? app.settings.level;
+  const answers: QuizAnswer[] = pickQuestions(sim.world, level).map((shown) => ({ shown, chosen: null }));
+  const tally = h('span.tally', '');
+  const updateTally = (): void => {
+    const done = answers.filter((a) => a.chosen !== null).length;
+    tally.textContent = done ? `${answers.filter((a) => a.chosen === 0).length} / ${done}` : '';
+  };
+  const quiz = h(
+    'div.quiz',
+    ...answers.map((a, qi) => {
+      const q = a.shown.question;
+      const why = h('p.why.hidden', tx(q.why));
+      const opts = h('div.qopts');
+      const buttons = a.shown.order.map((o) =>
+        h(
+          'button',
+          {
+            onclick: () => {
+              if (a.chosen !== null) return;
+              a.chosen = o;
+              a.shown.order.forEach((oo, i) => {
+                const b = buttons[i];
+                b.disabled = true;
+                if (oo === 0) b.classList.add('right');
+                else if (oo === o) b.classList.add('wrong');
+              });
+              why.classList.remove('hidden');
+              app.game.audio.ui(o === 0 ? 'good' : 'error');
+              updateTally();
+            },
+          },
+          tx(q.options[o]),
+        ) as HTMLButtonElement,
+      );
+      opts.append(...buttons);
+      return h('div.qcard', h('h4', `${qi + 1}. ${tx(q.q)}`), opts, why);
+    }),
+  );
+  const student = h('input.student', { type: 'text', placeholder: t('end.student'), maxlength: '60' }) as HTMLInputElement;
+  const classroom = h(
+    'div',
+    h('h3.sec', t('end.quiz'), tally),
+    h('p.note', t('end.quiz.lead')),
+    quiz,
+    h(
+      'div.report',
+      student,
+      h('button.btn', { onclick: () => downloadReport(teacherReport(sim, level, answers, student.value.trim()), sim.missionId) }, icon('download'), t('end.report')),
+      h('span.note', t('end.report.note')),
+    ),
+  );
+  body.insertBefore(classroom, body.querySelector('h3.sec'));
+
   const sub = ok ? t('end.success.sub') : t(`end.abort.${sim.outcome?.reason ?? 'health'}`);
   const foot = h(
     'div.sheet-foot',

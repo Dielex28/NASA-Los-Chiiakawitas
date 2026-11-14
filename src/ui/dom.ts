@@ -87,6 +87,7 @@ const P: Record<string, string> = {
   lock: '<rect x="5" y="10.500" width="14" height="10" rx="2"/><path d="M8 10.500V8a4 4 0 0 1 8 0v2.500"/>',
   bolt: '<path d="M13.200 2.500L5.400 13.400h5.400l-1 8.100 8.800-11.400h-5.900z" fill="currentColor"/>',
   scan: '<path d="M4 8V4h4M20 8V4h-4M4 16v4h4M20 16v4h-4M3 12h18"/>',
+  download: '<path d="M12 4v11"/><path d="M7 10l5 5 5-5"/><path d="M5 19h14"/>',
   eye: '<path d="M2.500 12S6 5.500 12 5.500 21.500 12 21.500 12 18 18.500 12 18.500 2.500 12 2.500 12z"/><circle cx="12" cy="12" r="2.800"/>',
   trash: '<path d="M4.500 7h15M9.500 7V4.500h5V7M6.500 7l1 13h9l1-13"/>',
   star: '<path d="M12 3l2.700 5.700 6.300.800-4.600 4.300 1.200 6.200L12 17l-5.600 3 1.200-6.200L3 9.500l6.300-.800z"/>',

@@ -51,6 +51,11 @@ const S: Record<string, [string, string]> = {
   'set.volume': ['Volumen', 'Volume'],
   'set.music': ['Música', 'Music'],
   'set.lang': ['Idioma', 'Language'],
+  'set.level': ['Nivel', 'Level'],
+  'set.level.1': ['Junior · 8–11', 'Junior · 8–11'],
+  'set.level.2': ['Cadete · 12–14', 'Cadet · 12–14'],
+  'set.level.3': ['Experto · 15+', 'Expert · 15+'],
+  'set.levelNote': ['Cambia cuántas averías hay y qué preguntas aparecen al final. Se aplica a la próxima misión.', 'Changes how many breakdowns happen and which questions appear at the end. Applies to the next mission.'],
   'set.reload': ['Recargar ahora', 'Reload now'],
 
   /* ---------------------------------------------------------- worlds */
@@ -543,6 +548,11 @@ const S: Record<string, [string, string]> = {
   'end.chart.crew': ['Salud y ánimo', 'Health and morale'],
   'end.chart.dose': ['Dosis de radiación acumulada (mSv)', 'Accumulated radiation dose (mSv)'],
   'end.retry': ['Reintentar', 'Try again'],
+  'end.quiz': ['Para el aula', 'For the classroom'],
+  'end.quiz.lead': ['Responde y descubre por qué. Las respuestas se incluyen en el informe.', 'Answer and find out why. Your answers go into the report.'],
+  'end.student': ['Nombre (opcional)', 'Name (optional)'],
+  'end.report': ['Descargar informe para el docente', 'Download report for the teacher'],
+  'end.report.note': ['Un archivo HTML que se abre en cualquier navegador y se imprime en una o dos páginas.', 'An HTML file that opens in any browser and prints on one or two pages.'],
   'end.menu': ['Menú principal', 'Main menu'],
   'end.stat.mass': ['Masa aterrizada', 'Mass landed'],
   'end.stat.energy': ['Energía generada', 'Energy generated'],
