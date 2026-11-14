@@ -22,6 +22,7 @@ export const CODEX: CodexEntry[] = [
   { id: 'food', group: 'life', icon: 'food' },
   { id: 'isru', group: 'life', icon: 'drill' },
   { id: 'mass', group: 'life', icon: 'cargo' },
+  { id: 'fire', group: 'life', icon: 'flame' },
   { id: 'solar', group: 'power', icon: 'power' },
   { id: 'night', group: 'power', icon: 'moon' },
   { id: 'storage', group: 'power', icon: 'battery' },
@@ -32,9 +33,12 @@ export const CODEX: CodexEntry[] = [
   { id: 'moondust', group: 'place', icon: 'dust' },
   { id: 'marssky', group: 'place', icon: 'sky' },
   { id: 'earth', group: 'place', icon: 'earth' },
+  { id: 'impacts', group: 'place', icon: 'star' },
+  { id: 'quakes', group: 'place', icon: 'warn' },
   { id: 'comms', group: 'crew', icon: 'antenna' },
   { id: 'crew', group: 'crew', icon: 'crew' },
   { id: 'bones', group: 'crew', icon: 'jump' },
+  { id: 'spares', group: 'crew', icon: 'gear' },
   { id: 'honesty', group: 'crew', icon: 'info' },
 ];
 

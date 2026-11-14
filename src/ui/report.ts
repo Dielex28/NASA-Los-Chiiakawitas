@@ -84,6 +84,12 @@ export function teacherReport(sim: SimState, level: Level, answers: QuizAnswer[]
     [t('end.stat.harvests'), String(st.harvests)],
     [t('end.stat.eva'), num(st.evaH, 1)],
     [L('Expedición', 'Expedition', 'Expedição', 'Expédition'), sim.flags.expedition ? L('completada', 'completed', 'concluída', 'réussie') : L('no realizada', 'not done', 'não realizada', 'non réalisée')],
+    [
+      L('Catástrofes y daños', 'Catastrophes and damage', 'Catástrofes e danos', 'Catastrophes et dégâts'),
+      `${st.catastrophes ?? 0} · ${L('reparados', 'repaired', 'consertados', 'réparés')} ${st.faultsFixed ?? 0} (${L('a mano', 'by hand', 'à mão', 'à la main')} ${st.faultsByPlayer ?? 0}) · ${L('repuestos', 'spare parts', 'peças', 'pièces')} ${st.partsUsed ?? 0}`,
+    ],
+    [L('Tareas hechas a mano', 'Tasks done by hand', 'Tarefas feitas à mão', 'Tâches faites à la main'), `${st.tasksByPlayer ?? 0} · ${L('por la tripulación', 'by the crew', 'pela tripulação', 'par l’équipage')} ${st.tasksByCrew ?? 0}`],
+    [L('Encargos de Control', 'Mission Control requests', 'Pedidos do Controle', 'Missions du Contrôle'), `${st.requestsDone ?? 0} ${L('cumplidos', 'done', 'cumpridos', 'accomplies')} · ${st.requestsMissed ?? 0} ${L('sin cumplir', 'missed', 'não cumpridos', 'manquées')}`],
   ])}</table>
 <table style="margin-top:0.8em">${pillars.map(([k, v]) => `<tr><th>${esc(k)}</th><td><div class="bar"><i style="width:${Math.round(v)}%"></i></div></td><td style="width:3em;text-align:right">${num(v)}</td></tr>`).join('')}</table>
 <h2>${esc(t('end.lessons'))}</h2>

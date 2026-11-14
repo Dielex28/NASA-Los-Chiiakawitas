@@ -262,6 +262,51 @@ export const QUESTIONS: Question[] = [
       'Because the Sun never rises more than a few degrees, any massif in its direction hides it. That is why every spot has its own “horizon” and its own calendar of light.',
     ],
   },
+  {
+    id: 'ejecta',
+    world: 'moon',
+    level: 2,
+    q: ['Un meteoroide cae a 60 m de la base y le hace daños. ¿Qué la ha dañado?', 'A meteoroid lands 60 m from the base and damages it. What did the damage?'],
+    options: [
+      ['La eyecta: roca lanzada lejos sin aire que la frene', 'The ejecta: rock thrown far with no air to slow it'],
+      ['El viento de la explosión', 'The wind from the blast'],
+      ['El calor del meteoroide', 'The heat of the meteoroid'],
+    ],
+    why: [
+      'En la Luna no hay aire: ni hay onda expansiva ni nada frena los fragmentos, que vuelan en parábolas perfectas a cientos de metros por segundo. Por eso la ISS usa escudos Whipple.',
+      'The Moon has no air: there is no blast wave and nothing slows the fragments, which fly perfect arcs at hundreds of metres a second. That is why the ISS uses Whipple shields.',
+    ],
+  },
+  {
+    id: 'starBolts',
+    world: 'any',
+    level: 2,
+    q: ['¿Por qué se aprietan los pernos de una brida en estrella, a pares opuestos?', 'Why are a flange’s bolts tightened in a star, in opposite pairs?'],
+    options: [
+      ['Para que la junta se aplaste por igual y no quede un hueco', 'So the seal is squeezed evenly and no gap is left'],
+      ['Porque así se tarda menos', 'Because it is quicker'],
+      ['Para gastar menos repuestos', 'To use fewer spare parts'],
+    ],
+    why: [
+      'Si aprietas los pernos seguidos, la brida se inclina hacia un lado y la junta queda floja en el otro: por ahí se escaparía el aire.',
+      'If you tighten the bolts in a row, the flange tilts to one side and the seal stays loose on the other: that is where air would escape.',
+    ],
+  },
+  {
+    id: 'fireVent',
+    world: 'any',
+    level: 1,
+    q: ['¿Por qué despresurizar un módulo apaga un fuego al instante?', 'Why does venting a module put a fire out at once?'],
+    options: [
+      ['Sin oxígeno no hay fuego', 'Without oxygen there is no fire'],
+      ['El frío del espacio lo congela', 'The cold of space freezes it'],
+      ['El vacío lo sopla como una vela', 'The vacuum blows it out like a candle'],
+    ],
+    why: [
+      'Un fuego necesita combustible, calor y oxígeno. Al vaciar el módulo de aire, falta el oxígeno. El precio: se pierde ese aire y el módulo queda fuera de servicio hasta repararlo.',
+      'A fire needs fuel, heat and oxygen. Emptying the module of air takes away the oxygen. The price: that air is lost and the module is out of service until repaired.',
+    ],
+  },
 ];
 
 export interface ShownQuestion {

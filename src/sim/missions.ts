@@ -638,6 +638,8 @@ export function customMission(spec: CustomSpec): MissionDef {
     commsDelayMin: moon ? undefined : spec.delayMin || 12,
     conjunction: !moon && spec.conjunction && d >= 20 ? [Math.round(d * 0.45), Math.round(d * 0.45) + 14] : undefined,
     custom: spec,
+    // a teacher who asked for no emergencies gets no random catastrophes either
+    calm: spec.emergencies === 0,
     seed: 0xc0de0000 + spec.variant,
     recommended: rec,
     spe: spread(spec.spe, Math.min(2, d * 0.2), d - 0.5).map((sol) => ({ sol, cls: spec.speClass })),

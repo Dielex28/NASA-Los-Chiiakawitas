@@ -823,3 +823,8 @@ h3.sec { font-family: var(--mono); font-weight: 400; letter-spacing: 0.16em; tex
 .upg { display: flex; flex-direction: column; gap: 0.6em; padding: 1.1em 1.2em; }
 .upg h3 { margin: 0; font-size: 1.1em; }
 .upg p { margin: 0; color: var(--text-2); line-height: 1.5; flex: 1; }
+
+/* alerts sit between the vitals column and the right panel, never over the tabs */
+@media (min-width: 1181px) {
+  .alert { left: calc(24px + 19.5em); right: calc(24px + 23em); transform: none; margin: 0 auto; width: fit-content; max-width: none; }
+}
