@@ -17,10 +17,15 @@ export interface MissionDef {
   endless: boolean;
   /** Played on measured topography (a NASA / USGS elevation model) instead of the designed site. */
   realSite?: boolean;
+  /** Built around a real solar storm (see the mission's briefing and docs/SCIENCE.md). */
+  historic?: boolean;
   seed: number;
   recommended: Partial<Record<CargoItem, number>>;
-  /** Solar particle events: window in sols and class (1 minor, 2 moderate, 3 severe). */
-  spe: Array<{ sol: [number, number]; cls: 1 | 2 | 3 }>;
+  /**
+   * Solar particle events: window in sols and class (1 minor, 2 moderate, 3 severe). A
+   * scenario based on a real event can set its own unshielded total (mSv) and duration (h).
+   */
+  spe: Array<{ sol: [number, number]; cls: 1 | 2 | 3; total?: number; durationH?: number }>;
   storms: Array<{ sol: [number, number]; durationSols: [number, number]; tau: [number, number] }>;
   resupply: Array<{ sol: number; capacityKg: number }>;
 }
@@ -229,6 +234,49 @@ export const MISSIONS: MissionDef[] = [
   },
 ];
 
+// Scenarios built around real solar storms. Totals and durations are game values of the
+// right order of magnitude, not reconstructions of the measured events (see docs/SCIENCE.md).
+MISSIONS.push(
+  {
+    id: 'moon-1972',
+    world: 'moon',
+    durationSols: 10,
+    crew: 2,
+    budgetKg: 5600,
+    scienceGoal: 30,
+    doseLimitMsv: 50,
+    startLocalH: 40,
+    difficulty: 2,
+    tutorial: false,
+    endless: false,
+    historic: true,
+    seed: 19720804,
+    recommended: { solar: 2, battery: 1, antenna: 1, lab: 1, shelter: 1, pylon: 2, food: 2, water: 2, o2: 1 },
+    spe: [{ sol: [3.2, 4.0], cls: 3, total: 450, durationH: 40 }],
+    storms: [],
+    resupply: [],
+  },
+  {
+    id: 'mars-2017',
+    world: 'mars',
+    durationSols: 24,
+    crew: 4,
+    budgetKg: 12000,
+    scienceGoal: 80,
+    doseLimitMsv: 40,
+    startLocalH: 8.5,
+    difficulty: 2,
+    tutorial: false,
+    endless: false,
+    historic: true,
+    seed: 20170910,
+    recommended: { hab: 1, eclss: 1, reactor: 2, solar: 2, battery: 2, lab: 1, antenna: 1, rassor: 1, pylon: 6, food: 6, water: 3, o2: 2 },
+    spe: [{ sol: [8, 10], cls: 2, total: 120, durationH: 48 }],
+    storms: [],
+    resupply: [],
+  },
+);
+
 // Free play on measured topography: the same rules as the sandboxes, on the real shape of the land.
 for (const [base, id, seed] of [
   ['moon-sandbox', 'moon-real', 11],
@@ -236,6 +284,10 @@ for (const [base, id, seed] of [
 ] as const) {
   MISSIONS.push({ ...MISSIONS.find((m) => m.id === base)!, id, seed, realSite: true });
 }
+
+// order on the mission screen: training, then each world from short to long, then free play
+const ORDER = ['moon-first', 'moon-base', 'moon-1972', 'mars-first', 'mars-2017', 'mars-long', 'moon-sandbox', 'moon-real', 'mars-sandbox', 'mars-real'];
+MISSIONS.sort((a, b) => ORDER.indexOf(a.id) - ORDER.indexOf(b.id));
 
 export const missionById = (id: string): MissionDef => MISSIONS.find((m) => m.id === id) ?? MISSIONS[0];
 
@@ -256,11 +308,12 @@ export function buildSchedule(m: MissionDef, seed: number): ScheduledEvent[] {
   const out: ScheduledEvent[] = [];
   for (const spec of m.spe) {
     const c = SPE_CLASS[spec.cls];
+    const durationH = spec.durationH ?? c.durationH;
     out.push({
       kind: 'spe',
       startH: rng.range(spec.sol[0], spec.sol[1]) * solH,
-      durationH: c.durationH,
-      peak: spePeakFor(c.total, c.durationH),
+      durationH,
+      peak: spePeakFor(spec.total ?? c.total, durationH),
       cls: spec.cls,
       warned: false,
       started: false,

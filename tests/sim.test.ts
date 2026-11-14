@@ -3,6 +3,7 @@ import { CROPS, HUMAN, MODULES, gcrTransmission, speTransmission } from '../src/
 import { atmosphereTransmission, speTotal, sunPosition } from '../src/sim/environment';
 import { MISSIONS, buildSchedule, missionById, scoreMission } from '../src/sim/missions';
 import { createMission, manifestMass, placeModule, setAllocation, setPowerSave, step, totalDose } from '../src/sim/sim';
+import type { SimState } from '../src/sim/types';
 import { WORLDS } from '../src/sim/worlds';
 import type { SpeEvent } from '../src/sim/types';
 import { deployAll, flatProbe, ridgeProbe, run } from './helpers';
@@ -200,6 +201,26 @@ describe('whole missions', () => {
     });
     expect(s.outcome?.result).toBe('success');
     expect(Math.min(...s.crew.map((c) => c.health))).toBeGreaterThan(80);
+  });
+  it('August 1972 on the Moon: sheltering keeps the crew under the limit, staying out does not', () => {
+    const shelter = (st: SimState): void => {
+      st.shelterOrder = st.schedule.some((e) => e.kind === 'spe' && e.warned && !e.ended);
+    };
+    const safe = deployAll('moon-1972');
+    run(safe, 11 * 24, 1 / 6, shelter);
+    expect(safe.outcome?.result).toBe('success');
+    expect(scoreMission(safe).maxDose).toBeLessThan(safe.cfg.doseLimitMsv);
+    const careless = deployAll('moon-1972');
+    run(careless, 11 * 24, 1 / 6);
+    expect(scoreMission(careless).maxDose).toBeGreaterThan(careless.cfg.doseLimitMsv);
+  });
+  it('September 2017 on Mars: the recommended loadout rides out the storm', () => {
+    const s = deployAll('mars-2017');
+    run(s, 25 * WORLDS.mars.solH, 1 / 6, (st) => {
+      st.shelterOrder = st.schedule.some((e) => e.kind === 'spe' && e.warned && !e.ended);
+    });
+    expect(s.outcome?.result).toBe('success');
+    expect(scoreMission(s).maxDose).toBeLessThan(s.cfg.doseLimitMsv);
   });
   it('state survives a JSON round trip (save games)', () => {
     const s = deployAll('mars-first');

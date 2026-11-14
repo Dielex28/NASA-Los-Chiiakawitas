@@ -49,6 +49,8 @@ Por debajo de esa resolución el juego añade rugosidad generada (≤ 1,7 m), qu
 
 **Tormentas solares.** Tres clases con dosis total sin blindaje de 12, 60 y 340 mSv, subida rápida (1,5 h) y caída exponencial. Las cifras están en el orden de magnitud de eventos históricos (agosto de 1972, octubre de 1989), no reproducen ninguno en concreto. En Marte se aplica un factor 0,3 por la atmósfera.
 
+**Escenarios históricos.** Dos misiones se inspiran en tormentas reales. *Agosto de 1972*: entre el Apolo 16 y el Apolo 17 el Sol produjo uno de los eventos de protones más intensos registrados; en el juego, 450 mSv sin blindaje repartidos en 40 h. *Septiembre de 2017*: una tormenta que llegó a Marte, registrada en la superficie por el detector RAD de Curiosity y acompañada de auroras observadas por MAVEN; en el juego, 120 mSv sin blindaje en 48 h antes del factor atmosférico. Fechas e historia son reales; las dosis y los perfiles son valores de juego del orden de magnitud adecuado, no reconstrucciones de las mediciones.
+
 **Soporte vital.** La electrólisis consume 1,125 kg de agua por kg de O₂; el reactor Sabatier devuelve la mitad, así que el coste neto es 0,56 kg de agua por kg de O₂. El CO₂ se acumula en el volumen de cabina y lo retiran los depuradores (que necesitan energía) y las plantas.
 
 **Térmica.** La cabina sin energía tiende a la temperatura exterior con una constante de tiempo de 72 h (Luna) o 48 h (Marte). La demanda de calefacción crece con el frío y disminuye hasta un 70 % con cubierta de regolito.

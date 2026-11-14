@@ -100,6 +100,19 @@ const S: Record<string, [string, string]> = {
     'No time limit and a generous payload. Experiment with base designs and see what happens.',
   ],
   'mission.realData': ['Relieve real · NASA', 'Real terrain · NASA'],
+  'mission.historic': ['Escenario histórico', 'Historic scenario'],
+  'mission.moon-1972.name': ['Agosto de 1972', 'August 1972'],
+  'mission.moon-1972.site': ['Polo sur lunar · tormenta solar real', 'Lunar south pole · a real solar storm'],
+  'mission.moon-1972.brief': [
+    'Entre el Apolo 16 (abril) y el Apolo 17 (diciembre) de 1972, el Sol lanzó una de las tormentas de protones más intensas que se han medido. No había nadie en la Luna. Esta vez sí: diez días, dos astronautas y una tormenta que llegará el tercer o cuarto día. Fuera, o tras las paredes de un hábitat, la dosis supera el límite; dentro de un refugio, no.',
+    'Between Apollo 16 (April) and Apollo 17 (December) of 1972, the Sun released one of the most intense proton storms ever measured. Nobody was on the Moon. This time someone is: ten days, two astronauts and a storm due on day three or four. Outside, or behind the walls of a habitat, the dose goes over the limit; inside a shelter, it does not.',
+  ],
+  'mission.mars-2017.name': ['Septiembre de 2017', 'September 2017'],
+  'mission.mars-2017.site': ['Marte · tormenta solar real', 'Mars · a real solar storm'],
+  'mission.mars-2017.brief': [
+    'En septiembre de 2017 una tormenta solar alcanzó Marte: el detector de radiación del rover Curiosity la registró en la superficie y la sonda MAVEN vio auroras en todo el planeta. La atmósfera frena parte de los protones, no todos. Veinticuatro soles y cuatro astronautas: sabes que viene, no cuándo exactamente.',
+    'In September 2017 a solar storm reached Mars: the radiation detector on the Curiosity rover recorded it at the surface and the MAVEN orbiter saw aurora across the whole planet. The atmosphere stops some of the protons, not all. Twenty-four sols and four astronauts: you know it is coming, not exactly when.',
+  ],
   'mission.moon-real.name': ['Borde de Shackleton · relieve real', 'Shackleton rim · real terrain'],
   'mission.moon-real.site': ['Polo sur lunar · datos LOLA de la NASA', 'Lunar south pole · NASA LOLA data'],
   'mission.moon-real.brief': [

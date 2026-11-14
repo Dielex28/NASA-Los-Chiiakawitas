@@ -138,6 +138,7 @@ export function missionsScreen(app: App): HTMLElement {
       h('h3', t(`mission.${m.id}.name`)),
       m.tutorial ? h('span.badge.train', t('tut.title')) : null,
       m.realSite ? h('span.badge.real', t('mission.realData')) : null,
+      m.historic ? h('span.badge.hist', t('mission.historic')) : null,
       h('p', t(`mission.${m.id}.brief`)),
       h(
         'div.meta',

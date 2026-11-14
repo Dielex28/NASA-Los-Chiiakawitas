@@ -247,6 +247,7 @@ kbd {
 }
 .badge.train { border-color: var(--ok); color: var(--ok); }
 .badge.real { border-color: var(--info); color: var(--info); }
+.badge.hist { border-color: var(--rad); color: var(--rad); }
 
 /* cargo planning */
 .plan { display: flex; flex-wrap: wrap; align-items: flex-start; gap: 2.2em; min-height: 0; }
