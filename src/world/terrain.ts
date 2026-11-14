@@ -327,6 +327,29 @@ export class MarsTerrain implements Terrain {
   }
 }
 
+/**
+ * Where to send an expedition: about a kilometre out — farther than a suit allows on foot,
+ * there and back — in the direction whose straight route is gentlest for the rover.
+ */
+export function expeditionSite(t: Terrain): { x: number; z: number; steepest: number } {
+  let best = { x: 0, z: -1000, steepest: 90 };
+  for (let a = 0; a < 360; a += 10) {
+    const dx = Math.sin((a * Math.PI) / 180);
+    const dz = -Math.cos((a * Math.PI) / 180);
+    for (const r of [980, 1060]) {
+      let steepest = 0;
+      let prev = t.height(dx * 60, dz * 60, 4);
+      for (let d = 70; d <= r; d += 10) {
+        const h = t.height(dx * d, dz * d, 4);
+        steepest = Math.max(steepest, Math.abs(Math.atan2(h - prev, 10)) * 57.2958);
+        prev = h;
+      }
+      if (steepest < best.steepest) best = { x: dx * r, z: dz * r, steepest };
+    }
+  }
+  return best;
+}
+
 export function createTerrain(world: WorldId, seed: number): Terrain {
   return world === 'moon' ? new MoonTerrain(seed) : new MarsTerrain(seed);
 }

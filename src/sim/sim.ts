@@ -447,11 +447,16 @@ export function recordExperiment(s: SimState, kind: string): boolean {
   return true;
 }
 
-export function collectSample(s: SimState, discoveryId: string): boolean {
+/** `expedition` marks the far target of the mission, which is worth more. */
+export function collectSample(s: SimState, discoveryId: string, expedition = false): boolean {
   if (s.discoveries.includes(discoveryId)) return false;
   s.discoveries.push(discoveryId);
   s.samples += 1;
-  s.science += TUNE.discoveryScience;
+  s.science += expedition ? TUNE.expeditionScience : TUNE.discoveryScience;
+  if (expedition) {
+    s.flags.expedition = 1;
+    pushLog(s, 'log.expedition', 'good');
+  }
   s.stats.samplesCollected++;
   s.flags.lastDiscoveryH = s.timeH;
   pushLog(s, 'log.sample', 'good', { id: discoveryId });

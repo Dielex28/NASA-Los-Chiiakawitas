@@ -135,6 +135,7 @@ const S: Record<string, [string, string]> = {
   'goal.science': ['Ciencia: {have} / {goal} puntos', 'Science: {have} / {goal} points'],
   'goal.dose': ['Dosis máxima bajo {limit} mSv (ahora {have})', 'Peak dose under {limit} mSv (now {have})'],
   'goal.crew': ['Tripulación sana', 'Healthy crew'],
+  'goal.expedition': ['Expedición: {what} a {d} m de la base', 'Expedition: {what} {d} m from base'],
   'goal.endless': ['Modo libre: sin fecha de fin', 'Free play: no end date'],
 
   /* -------------------------------------------------------- planning */
@@ -433,6 +434,7 @@ const S: Record<string, [string, string]> = {
   'log.dustdevil': ['Un remolino de polvo ha limpiado los paneles. ¡Gracias, Marte!', 'A dust devil swept the arrays clean. Thanks, Mars!'],
   'log.harvest': ['¡Cosecha de {crop}! +{rations} raciones frescas.', '{crop} harvest! +{rations} fresh rations.'],
   'log.croplost': ['El cultivo de {crop} se ha helado y se ha perdido.', 'The {crop} crop froze and was lost.'],
+  'log.expedition': ['Expedición completada: la muestra lejana ya está en la base.', 'Expedition complete: the far sample is back at base.'],
   'log.experiment': ['Experimento de física registrado en la superficie.', 'Surface physics experiment recorded.'],
   'log.sample': ['Muestra geológica catalogada.', 'Geological sample catalogued.'],
   'log.blackout': ['APAGÓN: sistemas críticos sin energía.', 'BLACKOUT: critical systems unpowered.'],
@@ -473,6 +475,10 @@ const S: Record<string, [string, string]> = {
   'tip.foodPlan': ['La comida no llega al final de la misión ({days} días).', 'Food will not last the mission ({days} days).'],
   'tip.co2High': ['CO₂ a {mm} mmHg. Sin energía los depuradores no funcionan: restablece el hábitat.', 'CO₂ at {mm} mmHg. Scrubbers need power: get the habitat running.'],
   'tip.cold': ['Cabina a {c} °C. Los calefactores necesitan energía.', 'Cabin at {c} °C. Heaters need power.'],
+  'tip.expedition': [
+    'La muestra de la expedición está a más de un kilómetro: el traje no da para ir y volver a pie. Sal en EVA y usa el róver (V).',
+    'The expedition sample is more than a kilometre away: a suit cannot walk there and back. Go out on EVA and take the rover (V).',
+  ],
   'tip.noPower': ['Solo tienes el panel del módulo de descenso. Despliega paneles o un reactor.', 'You only have the lander’s panel. Deploy arrays or a reactor.'],
   'tip.blackout': ['¡Apagón! Activa el ahorro de energía o apaga módulos no críticos.', 'Blackout! Switch on power saving or turn off non-critical modules.'],
   'tip.brownout': ['No hay energía para todo: {n} módulo(s) en espera. Añade generación o prioriza.', 'Not enough power for everything: {n} module(s) waiting. Add generation or prioritise.'],
@@ -505,6 +511,8 @@ const S: Record<string, [string, string]> = {
   'tut.eva': ['Sal a la superficie (Tab o botón EVA)', 'Step outside (Tab or the EVA button)'],
   'tut.scan': ['Usa el escáner (F) para buscar sitios de interés', 'Use the scanner (F) to look for sites of interest'],
   'tut.sample': ['Camina hasta un haz azul y recoge una muestra (E)', 'Walk to a blue beam and collect a sample (E)'],
+  'tut.drive': ['Sube al róver (V junto a él) y conduce un poco', 'Get in the rover (V next to it) and drive a little'],
+  'tut.drop': ['Suelta el martillo y la pluma (G): ¿cuál cae antes?', 'Drop the hammer and the feather (G): which lands first?'],
   'tut.back': ['Vuelve a una esclusa y entra (E)', 'Return to an airlock and go inside (E)'],
   'tut.storm': ['Cuando llegue la alerta solar, ordena refugio', 'When the solar alert comes, order the crew to shelter'],
   'tut.finish': ['Mantén a la tripulación sana hasta el día 8', 'Keep the crew healthy until day 8'],

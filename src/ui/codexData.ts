@@ -238,6 +238,16 @@ addStrings({
   'min.clay.b': ['Solo se forman con agua abundante y conservan muy bien la materia orgánica. Son un objetivo prioritario para buscar vida antigua.', 'They only form with plenty of water and are excellent at preserving organic matter. A prime target in the search for ancient life.'],
   'min.meteorite': ['Meteorito de hierro', 'Iron meteorite'],
   'min.meteorite.b': ['En 2005 Opportunity encontró “Heat Shield Rock”, el primer meteorito identificado en otro planeta.', 'In 2005 Opportunity found “Heat Shield Rock”, the first meteorite identified on another planet.'],
+  'min.freshEjecta': ['Eyecta de un cráter joven', 'Fresh crater ejecta'],
+  'min.freshEjecta.b': [
+    'Un impacto reciente lanza alrededor roca de debajo de la superficie. Aún no la ha oscurecido el viento solar, por eso los cráteres jóvenes tienen rayos brillantes: es la forma más barata de muestrear el subsuelo.',
+    'A recent impact throws rock from below the surface all around it. The solar wind has not darkened it yet, which is why young craters have bright rays: it is the cheapest way to sample the subsurface.',
+  ],
+  'min.deltaRock': ['Roca estratificada de delta', 'Layered delta rock'],
+  'min.deltaRock.b': [
+    'Capas finas de arena y barro que un río depositó al entrar en un lago. Jezero tuvo uno hace más de 3 000 millones de años; Perseverance recoge muestras de su delta para buscar señales de vida antigua.',
+    'Thin layers of sand and mud a river laid down where it met a lake. Jezero had one more than 3 billion years ago; Perseverance collects samples from its delta to look for signs of ancient life.',
+  ],
   'min.perchlorate': ['Percloratos', 'Perchlorates'],
   'min.perchlorate.b': ['Sales halladas por la sonda Phoenix en 2008. Son tóxicas para las personas, pero podrían servir para obtener oxígeno.', 'Salts found by the Phoenix lander in 2008. Toxic to people, but they could be used to make oxygen.'],
 });

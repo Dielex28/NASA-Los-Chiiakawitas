@@ -58,7 +58,7 @@ export interface Prompt {
 
 export interface Marker {
   id: string;
-  kind: 'base' | 'site' | 'alert' | 'rover';
+  kind: 'base' | 'site' | 'alert' | 'rover' | 'goal';
   x: number;
   y: number;
   z: number;
@@ -154,6 +154,8 @@ export class Game {
   private roverHelped = false;
   private roverSkidTold = false;
   private roverFlatTold = false;
+  /** Metres driven this mission (for the tutorial). */
+  roverOdo = 0;
   private flipT = 0;
   private roverFocus = new THREE.Vector3();
   private probeT = 0;
@@ -377,6 +379,7 @@ export class Game {
     if (parked) st.rover.battery = parked.battery;
     this.roverHelped = false;
     this.roverSkidTold = false;
+    this.roverOdo = 0;
     st.player.astronaut.group.visible = false;
     st.orbi.group.visible = false;
     sim.playerOutside = false;
@@ -1059,7 +1062,7 @@ export class Game {
     const lander = sim.modules[0];
     this.markers.push({ id: 'base', kind: 'base', x: lander.x, y: lander.y + 9, z: lander.z });
     for (const s of st.sites.list) {
-      if (s.scanned && !s.collected) this.markers.push({ id: s.poi.id, kind: 'site', x: s.poi.x, y: s.y + 2.5, z: s.poi.z, label: s.poi.kind });
+      if (s.scanned && !s.collected) this.markers.push({ id: s.poi.id, kind: s.far ? 'goal' : 'site', x: s.poi.x, y: s.y + (s.far ? 6 : 2.5), z: s.poi.z, label: s.poi.kind });
     }
     for (const m of sim.modules) {
       if (m.down || (m.type === 'solar' && m.dust > 0.3)) this.markers.push({ id: `m${m.id}`, kind: 'alert', x: m.x, y: m.y + 5, z: m.z, label: m.type });
@@ -1162,6 +1165,7 @@ export class Game {
       v.vel[2] *= 0.5;
     }
     if (!this.driving) return;
+    this.roverOdo += Math.abs(v.speed) * dt;
     if (rover.battery <= 0 && !this.roverFlatTold) {
       this.roverFlatTold = true;
       this.events.emit('toast', { key: 'toast.roverFlat', sev: 'warn' });
@@ -1181,6 +1185,14 @@ export class Game {
       this.events.emit('toast', { key: 'toast.roverFlip', sev: 'warn' });
       this.audio.ui('warn');
     }
+  }
+
+  /** The mission's expedition target: what it is, how far from the lander, and whether it is done. */
+  expedition(): { kind: string; distance: number; done: boolean } | null {
+    const site = this.stage?.sites.expedition;
+    const lander = this.sim?.modules[0];
+    if (!site || !lander) return null;
+    return { kind: site.poi.kind, distance: Math.hypot(site.poi.x - lander.x, site.poi.z - lander.z), done: site.collected };
   }
 
   /** Rover speed for the HUD, km/h. */
@@ -1253,7 +1265,7 @@ export class Game {
     if (allowInput && this.input.hit('KeyE')) {
       if (best.kind === 'enter') this.exitEva();
       else if (best.kind === 'sample' && best.site) {
-        if (collectSample(sim, best.site.poi.id)) {
+        if (collectSample(sim, best.site.poi.id, !!best.site.far)) {
           best.site.collected = true;
           this.audio.pickup();
           this.events.emit('discovery', { id: best.site.poi.id, kind: best.site.poi.kind });

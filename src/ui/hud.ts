@@ -154,7 +154,7 @@ export class Hud {
   private scanpop: HTMLElement | null = null;
   private evaBuild = false;
   private offs: Array<() => void> = [];
-  private tutorial = { eva: false, scan: false, sample: false, back: false, shelter: false };
+  private tutorial = { eva: false, scan: false, sample: false, back: false, shelter: false, drop: false };
 
   constructor(app: App) {
     this.app = app;
@@ -286,6 +286,8 @@ export class Hud {
     const dose = s.crew.reduce((a, c) => Math.max(a, totalDose(c)), 0);
     out.push({ text: t('goal.dose', { limit: s.cfg.doseLimitMsv, have: fmt(dose, 1) }), done: dose < s.cfg.doseLimitMsv });
     out.push({ text: t('goal.crew'), done: s.crew.every((c) => c.health > 60) });
+    const exp = this.game.expedition();
+    if (exp && !m.endless && !m.tutorial) out.push({ text: t('goal.expedition', { what: t(`min.${exp.kind}`), d: fmt(exp.distance) }), done: exp.done });
     return out;
   }
 
@@ -303,6 +305,8 @@ export class Hud {
       { key: 'tut.eva', done: tu.eva },
       { key: 'tut.scan', done: tu.scan },
       { key: 'tut.sample', done: tu.sample },
+      { key: 'tut.drive', done: this.game.roverOdo > 60 },
+      { key: 'tut.drop', done: tu.drop },
       { key: 'tut.back', done: tu.back },
       { key: 'tut.storm', done: tu.shelter || speDone },
       { key: 'tut.finish', done: s.outcome?.result === 'success' },
@@ -818,6 +822,7 @@ export class Hud {
     this.offs.push(
       g.events.on('log', (e) => {
         if (e.key === 'log.shelter.on') this.tutorial.shelter = true;
+        if (e.key === 'log.experiment' && e.params?.kind === 'drop') this.tutorial.drop = true;
         this.toast(logText(e), e.sev);
       }),
       g.events.on('toast', (e) => this.toast(t(e.key, e.params), e.sev)),

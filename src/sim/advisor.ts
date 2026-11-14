@@ -112,6 +112,7 @@ export function advise(s: SimState): Advice[] {
   const hab = s.modules.find((m) => m.type === 'hab' && isBuilt(m));
   if (hab && hab.regolith < 40 && count(s, 'rassor', isBuilt) > 0 === false && s.timeH > 48) add('noShield', 'info', 28);
   if (s.samples >= 1 && count(s, 'lab', isBuilt) === 0) add('samplesNoLab', 'info', 26);
+  if (!s.cfg.endless && !s.flags.expedition && s.timeH > 30 && !s.playerOutside && !spe) add('expedition', 'info', 22);
   const win = s.resupply.find((r) => !r.locked && !r.delivered);
   if (win && win.cutoffH - s.timeH < 36 && Object.keys(win.manifest).length === 0) add('resupply', 'warn', 68, { h: Math.max(0, win.cutoffH - s.timeH).toFixed(0) });
 

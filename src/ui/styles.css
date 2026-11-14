@@ -483,6 +483,8 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 18px; background: v
 .marker.base { color: var(--accent); }
 .marker.alert { color: var(--bad-text); }
 .marker.rover { color: var(--ok); }
+.marker.goal { color: #ffb347; }
+.marker.goal i { width: 1.1em; height: 1.1em; border-width: 2px; }
 .compass { position: absolute; left: 50%; top: 5.6em; transform: translateX(-50%); width: 30em; max-width: 44vw; height: 2.3em; overflow: hidden; background: var(--panel); border: 1px solid var(--line); }
 .compass span { position: absolute; top: 0.45em; transform: translateX(-50%); font-family: var(--mono); font-size: 0.78em; color: var(--text-2); }
 .compass span.card { color: var(--white); font-weight: 700; }

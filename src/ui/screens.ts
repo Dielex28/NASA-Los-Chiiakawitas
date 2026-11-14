@@ -433,7 +433,7 @@ export function codexScreen(app: App, onClose: () => void, startId?: string): HT
     nav.append(b);
   }
   nav.append(h('div.grp', `${t('codex.samples')} · ${found.length}/16`));
-  const minerals = ['anorthosite', 'breccia', 'glass', 'basalt', 'iceReg', 'impactMelt', 'agglutinate', 'boulder', 'hematite', 'carbonate', 'sulfate', 'mudstone', 'olivine', 'clay', 'meteorite', 'perchlorate'];
+  const minerals = ['anorthosite', 'breccia', 'glass', 'basalt', 'iceReg', 'impactMelt', 'agglutinate', 'boulder', 'hematite', 'carbonate', 'sulfate', 'mudstone', 'olivine', 'clay', 'meteorite', 'perchlorate', 'freshEjecta', 'deltaRock'];
   for (const k of minerals) {
     const got = found.includes(k);
     const b = h('button', { class: got ? '' : 'locked', onclick: () => got && show(`min.${k}`) }, icon(got ? 'star' : 'lock', 16), got ? t(`min.${k}`) : t('codex.locked'));
