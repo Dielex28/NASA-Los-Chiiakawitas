@@ -1,3 +1,4 @@
+import { setVoice } from './voice';
 import { ensureDailyStrings } from './achievements';
 import { Game } from '../game/game';
 import type { QualityLevel } from '../render/renderer';
@@ -15,6 +16,12 @@ export interface Settings {
   music: number;
   /** 1 = 8–11 years · 2 = 12–14 · 3 = 15+: sets breakdown rates and the debrief questions. */
   level: 1 | 2 | 3;
+  /** Interface text size, 1 = default. */
+  textScale: number;
+  /** Status colours that stay distinct with red-green colour blindness. */
+  colorblind: boolean;
+  /** ORBI and the crew read their messages aloud. */
+  voice: boolean;
 }
 
 const SETTINGS_KEY = 'helios-settings';
@@ -30,7 +37,7 @@ function defaultQuality(): QualityLevel {
 }
 
 function loadSettings(): Settings {
-  const def: Settings = { quality: defaultQuality(), volume: 0.8, music: 0.55, level: 2 };
+  const def: Settings = { quality: defaultQuality(), volume: 0.8, music: 0.55, level: 2, textScale: 1, colorblind: false, voice: false };
   try {
     return { ...def, ...(JSON.parse(localStorage.getItem(SETTINGS_KEY) ?? '{}') as Partial<Settings>) };
   } catch {
@@ -57,6 +64,7 @@ export class App {
     this.root = root;
     initLang();
     this.settings = loadSettings();
+    this.applyAccessibility();
     this.activeQuality = qualityOverride ?? this.settings.quality;
     this.game = new Game(canvas, this.activeQuality);
 
@@ -271,6 +279,14 @@ export class App {
       this.root.append(this.hud.el);
     }
     this.rerender();
+  }
+
+  /** Text size, colour palette and voice, from the settings. */
+  applyAccessibility(): void {
+    const s = this.settings;
+    document.documentElement.style.setProperty('--text-scale', String(s.textScale));
+    document.documentElement.dataset.cb = s.colorblind ? '1' : '0';
+    setVoice(s.voice);
   }
 
   saveSettings(): void {

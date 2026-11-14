@@ -378,6 +378,39 @@ export function settingsScreen(app: App, onClose: () => void): HTMLElement {
       ),
     );
   }
+  const textSizes = h('div.seg');
+  for (const k of [0.9, 1, 1.15, 1.3, 1.5]) {
+    textSizes.append(
+      h(
+        'button',
+        {
+          class: Math.abs(s.textScale - k) < 0.01 ? 'on' : '',
+          onclick: () => {
+            s.textScale = k;
+            app.saveSettings();
+            app.applyAccessibility();
+            app.rerender();
+          },
+        },
+        `${Math.round(k * 100)} %`,
+      ),
+    );
+  }
+  const toggle = (on: boolean, set: (v: boolean) => void): HTMLElement =>
+    h(
+      'button.btn.small',
+      {
+        class: on ? 'on' : '',
+        'aria-pressed': String(on),
+        onclick: () => {
+          set(!on);
+          app.saveSettings();
+          app.applyAccessibility();
+          app.rerender();
+        },
+      },
+      on ? t('set.on') : t('set.off'),
+    );
   const lang = getLang();
   const body = h(
     'div.sheet-body',
@@ -403,6 +436,10 @@ export function settingsScreen(app: App, onClose: () => void): HTMLElement {
     h('div.setrow', h('span', t('set.quality')), qual),
     h('div.setrow', h('span', t('set.level')), levels),
     h('div.setrow', h('span'), h('span.note', t('set.levelNote'))),
+    h('div.setrow', h('span', t('set.text')), textSizes),
+    h('div.setrow', h('span', t('set.cb')), toggle(s.colorblind, (v) => (s.colorblind = v))),
+    h('div.setrow', h('span', t('set.voice')), toggle(s.voice, (v) => (s.voice = v))),
+    h('div.setrow', h('span', t('set.pad')), h('span.note', t('set.padNote'))),
     s.quality !== app.activeQuality
       ? h('div.setrow', h('span'), h('div.row', h('span.note', t('set.qualityNote')), h('button.btn.small', { onclick: () => location.reload() }, t('set.reload'))))
       : null,

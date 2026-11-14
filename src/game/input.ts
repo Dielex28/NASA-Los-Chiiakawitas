@@ -23,6 +23,15 @@ export class Input {
   enabled = true;
   /** True once the player has touched the screen (shows on-screen controls). */
   touch = false;
+  /** Right stick of a game controller, each axis −1..1 (looking around). */
+  padLookX = 0;
+  padLookY = 0;
+  /** Left stick of a game controller. */
+  private padX = 0;
+  private padY = 0;
+  private padHeld = new Set<string>();
+  /** True once a game controller has been used. */
+  gamepad = false;
 
   constructor(private el: HTMLElement) {
     window.addEventListener('keydown', (e) => {
@@ -193,10 +202,59 @@ export class Input {
   }
 
   axisX(): number {
-    return (this.key('KeyD') || this.key('ArrowRight') ? 1 : 0) - (this.key('KeyA') || this.key('ArrowLeft') ? 1 : 0) + this.stickX;
+    return Math.max(-1, Math.min(1, (this.key('KeyD') || this.key('ArrowRight') ? 1 : 0) - (this.key('KeyA') || this.key('ArrowLeft') ? 1 : 0) + this.stickX + this.padX));
   }
   axisY(): number {
-    return (this.key('KeyW') || this.key('ArrowUp') ? 1 : 0) - (this.key('KeyS') || this.key('ArrowDown') ? 1 : 0) + this.stickY;
+    return Math.max(-1, Math.min(1, (this.key('KeyW') || this.key('ArrowUp') ? 1 : 0) - (this.key('KeyS') || this.key('ArrowDown') ? 1 : 0) + this.stickY + this.padY));
+  }
+
+  /**
+   * Read the first game controller (standard mapping) and turn its buttons into the same
+   * keys the keyboard uses, so every action works with either. Call at the start of a frame.
+   *   left stick: move / drive · right stick: look · A: jump, jet, brake · B: EVA in/out (Tab)
+   *   X: use (E) · Y: scanner (F) · LB: hammer and feather (G) · RB: run (Shift) · RT: throw (R)
+   *   LT: rover in/out (V) · Start: pause (Esc) · Back: map (M) · d-pad up/down: time speed
+   */
+  pollGamepad(): void {
+    const pads = typeof navigator.getGamepads === 'function' ? navigator.getGamepads() : [];
+    const p = Array.from(pads ?? []).find((x) => x && x.connected) ?? null;
+    if (!p) {
+      this.padX = this.padY = this.padLookX = this.padLookY = 0;
+      for (const code of this.padHeld) this.release(code);
+      this.padHeld.clear();
+      return;
+    }
+    const dz = (v: number): number => (Math.abs(v) < 0.18 ? 0 : (v - Math.sign(v) * 0.18) / 0.82);
+    this.padX = dz(p.axes[0] ?? 0);
+    this.padY = -dz(p.axes[1] ?? 0);
+    this.padLookX = dz(p.axes[2] ?? 0);
+    this.padLookY = dz(p.axes[3] ?? 0);
+    const map: Array<[number, string]> = [
+      [0, 'Space'],
+      [1, 'Tab'],
+      [2, 'KeyE'],
+      [3, 'KeyF'],
+      [4, 'KeyG'],
+      [5, 'ShiftLeft'],
+      [6, 'KeyV'],
+      [7, 'KeyR'],
+      [8, 'KeyM'],
+      [9, 'Escape'],
+      [12, 'PadSpeedUp'],
+      [13, 'PadSpeedDown'],
+    ];
+    for (const [i, code] of map) {
+      const on = !!p.buttons[i]?.pressed;
+      if (on && !this.padHeld.has(code)) {
+        this.padHeld.add(code);
+        this.press(code);
+        this.gamepad = true;
+      } else if (!on && this.padHeld.has(code)) {
+        this.padHeld.delete(code);
+        this.release(code);
+      }
+    }
+    if (this.padX || this.padY || this.padLookX || this.padLookY) this.gamepad = true;
   }
 
   lock(): void {

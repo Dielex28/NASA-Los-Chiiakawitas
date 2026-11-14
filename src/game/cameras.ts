@@ -39,6 +39,10 @@ export class TacticalCamera {
       this.goal.z += (-s * fx - c * fy) * pan;
       if (input.key('KeyQ')) this.yaw += dt * 1.3;
       if (input.key('KeyE')) this.yaw -= dt * 1.3;
+      if (input.padLookX || input.padLookY) {
+        this.yaw -= input.padLookX * 1.8 * dt;
+        this.pitch = clamp(this.pitch + input.padLookY * 1.2 * dt, 0.16, 1.5);
+      }
       if (input.button(2) || input.button(1)) {
         this.yaw -= input.dx * 0.005;
         this.pitch = clamp(this.pitch + input.dy * 0.004, 0.16, 1.5);
@@ -98,6 +102,10 @@ export class FollowCamera {
     if (allowInput && (input.locked || input.button(0) || input.button(2))) {
       this.yaw -= input.dx * this.sensitivity;
       this.pitch = clamp(this.pitch + input.dy * this.sensitivity, -0.55, 1.25);
+    }
+    if (allowInput && (input.padLookX || input.padLookY)) {
+      this.yaw -= input.padLookX * 2.6 * dt;
+      this.pitch = clamp(this.pitch + input.padLookY * 1.6 * dt, -0.55, 1.25);
     }
     if (allowInput && input.wheel) this.distance = clamp(this.distance * Math.pow(1.12, input.wheel), 2.6, 16);
     const cp = Math.cos(this.pitch);

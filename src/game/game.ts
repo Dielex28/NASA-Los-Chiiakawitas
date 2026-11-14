@@ -677,6 +677,11 @@ export class Game {
     this.time += dt;
     this.fps = damp(this.fps, 1 / Math.max(1e-3, raw), 2, dt);
     this.fitViewport();
+    this.input.pollGamepad();
+    if (this.input.hit('PadSpeedUp')) this.setSpeed(Math.min(SPEEDS.length - 1, this.speed + 1));
+    if (this.input.hit('PadSpeedDown')) this.setSpeed(Math.max(0, this.speed - 1));
+    // buttons that the HUD handles as key presses (pause, map) are forwarded to it
+    for (const code of ['Escape', 'KeyM'] as const) if (this.input.hit(code) && this.input.gamepad) window.dispatchEvent(new KeyboardEvent('keydown', { code, key: code === 'Escape' ? 'Escape' : 'm' }));
     if (this.adaptive && !document.hidden) this.renderer.adapt(this.fps, dt);
     const st = this.stage;
     if (!st || (this.phase !== 'playing' && this.phase !== 'menu' && this.phase !== 'ended')) {

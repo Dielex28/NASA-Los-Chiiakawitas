@@ -1,3 +1,4 @@
+import { speak } from './voice';
 import { check as checkAchievements } from './achievements';
 import { avatarSvg, ROLE_COLOR } from './avatar';
 import { emergencyOptions } from '../sim/emergency';
@@ -919,6 +920,7 @@ export class Hud {
     this.radio.style.setProperty('--role', ROLE_COLOR[c.role]);
     this.radio.classList.remove('hidden');
     this.game.audio.radio();
+    speak(`${c.name}. ${t(`radio.${e.key.slice(4)}`, p)}`);
     window.clearTimeout(this.radioTimer);
     this.radioTimer = window.setTimeout(() => this.radio.classList.add('hidden'), 9000);
   }
@@ -1220,7 +1222,10 @@ export class Hud {
     this.orbi.className = `orbi panel ${sev}`;
     if (key !== this.orbiKey) {
       this.orbiKey = key;
-      if (sev === 'bad' || sev === 'warn') this.game.audio.ui('tick');
+      if (sev === 'bad' || sev === 'warn') {
+        this.game.audio.ui('tick');
+        speak(`ORBI. ${text}`, sev === 'bad');
+      }
     }
   }
 

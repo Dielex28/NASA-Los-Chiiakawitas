@@ -77,6 +77,8 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 
 **La tripulación** tiene nombre, cara y especialidad, y cada especialidad cuenta: el ingeniero repara un 30 % más rápido, la botánica acelera los cultivos, el geólogo saca más ciencia de las muestras, la médica acelera la recuperación y el piloto agiliza el montaje. Si alguien enferma, su ventaja se pierde. Hablan por radio cuando pasa algo de su campo, y dos de ellos salen a trabajar a los módulos que lo necesitan (y se meten dentro de noche, con tormenta solar o cuando ordenas refugio).
 
+**Accesibilidad.** En Ajustes: tamaño del texto (90–150 %), paleta para daltonismo rojo-verde (azul, amarillo y naranja de la paleta Okabe–Ito; los estados también llevan símbolos ▲ y ■, no solo color), lectura en voz alta de los avisos de ORBI y de la radio con la voz del sistema, y mando de consola estándar para mover, conducir, mirar y usar herramientas.
+
 **Reto del día y logros.** Cada día hay un reto corto cuyo mundo, sucesos y dos condiciones especiales salen de la fecha: todo el que juegue el mismo código (por ejemplo, `20261114`) tiene exactamente la misma misión, así que una clase entera —o dos clases de colegios distintos— pueden comparar puntuaciones. Se puede escribir el código de otro día para repetirlo. Además hay 18 logros (como Galileo, brazo lunar, sangre fría, billete de vuelta…) que se guardan en el propio ordenador.
 
 **En el aula:** hay tres niveles por edad (Junior 8–11, Cadete 12–14, Experto 15+) que cambian las averías y las preguntas, un glosario de veinte términos en la bitácora científica y una [guía para docentes](docs/GUIA-DOCENTE.md) con tres sesiones de 45 minutos y preguntas para el debate.

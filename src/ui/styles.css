@@ -33,6 +33,16 @@
   --mono: 'B612 Mono', ui-monospace, 'SFMono-Regular', Menlo, monospace;
 }
 
+/* Okabe–Ito based palette: good, caution and danger stay apart for red-green colour blindness */
+:root[data-cb='1'] {
+  --ok: #56b4e9;
+  --accent: #f0e442;
+  --bad: #e66100;
+  --bad-text: #ff9b4d;
+  --info: #b3a8ff;
+  --rad: #ff8fd8;
+}
+
 * { box-sizing: border-box; }
 
 html, body {
@@ -47,7 +57,7 @@ html, body {
 
 #ui {
   position: fixed; inset: 0; pointer-events: none;
-  font-size: clamp(11px, 0.46vw + 0.44vh + 2.6px, 15px);
+  font-size: calc(clamp(11px, 0.46vw + 0.44vh + 2.6px, 15px) * var(--text-scale, 1));
   line-height: 1.4;
 }
 
