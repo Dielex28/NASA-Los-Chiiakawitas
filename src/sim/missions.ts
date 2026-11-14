@@ -1,4 +1,5 @@
 import type { CrisisKind, EmergencyKind } from './emergency';
+import type { CatastropheSpec } from './faults';
 import { cargoMass } from './catalog';
 import type { RealSiteId } from './sites';
 import { decodeCustom, encodeCustom, type CustomSpec } from './custom';
@@ -38,6 +39,10 @@ export interface MissionDef {
   conjunction?: [number, number];
   /** Scripted crises at a fixed mission hour (historical scenarios). */
   crises?: Array<{ h: number; kind: CrisisKind }>;
+  /** Catastrophes scripted for this mission (window in sols), besides the random ones. */
+  catastrophes?: CatastropheSpec[];
+  /** No random catastrophes (only scripted ones). */
+  calm?: boolean;
   /** Emergencies that will happen in this mission (window in sols), besides random ones. */
   emergencies?: Array<{ sol: [number, number]; kind: EmergencyKind }>;
   seed: number;
@@ -360,7 +365,97 @@ MISSIONS.push(
     storms: [],
     resupply: [],
   },
+  {
+    // 13 March 1973: the strongest shallow moonquake the Apollo seismometers recorded (about
+    // magnitude 5), centred near the south pole, where young faults cut the de Gerlache rim.
+    // Played on the ridge between Shackleton and de Gerlache.
+    id: 'moon-1973',
+    world: 'moon',
+    realSite: 'ridge',
+    durationSols: 12,
+    crew: 3,
+    budgetKg: 7200,
+    scienceGoal: 40,
+    doseLimitMsv: 50,
+    startLocalH: 30,
+    difficulty: 2,
+    tutorial: false,
+    endless: false,
+    historic: true,
+    seed: 19730313,
+    recommended: { hab: 1, solar: 3, battery: 1, lab: 1, antenna: 1, pylon: 3, food: 2, water: 3, o2: 2, spares: 2 },
+    catastrophes: [
+      { sol: [3.5, 4.5], kind: 'quake', mag: [4.8, 5] },
+      { sol: [7.5, 8.5], kind: 'quake', mag: [3.2, 3.8] },
+    ],
+    spe: [],
+    storms: [],
+    resupply: [],
+  },
+  {
+    // 17 March 2013: a meteoroid of about 40 kg struck the Moon at about 90 000 km/h. The flash
+    // was seen from Earth and the Lunar Reconnaissance Orbiter found its 18 m crater. Here it
+    // lands a stone's throw from the base, and its ejecta does the damage.
+    id: 'moon-2013',
+    world: 'moon',
+    durationSols: 10,
+    crew: 3,
+    budgetKg: 7200,
+    scienceGoal: 35,
+    doseLimitMsv: 50,
+    startLocalH: 40,
+    difficulty: 3,
+    tutorial: false,
+    endless: false,
+    historic: true,
+    seed: 20130317,
+    recommended: { hab: 1, solar: 3, battery: 1, lab: 1, antenna: 1, pylon: 3, food: 2, water: 3, o2: 2, spares: 3 },
+    catastrophes: [{ sol: [3, 3.6], kind: 'impact', mag: [15, 18] }],
+    spe: [{ sol: [6.5, 8], cls: 1 }],
+    storms: [],
+    resupply: [],
+  },
+  {
+    // 23 February 1997: an oxygen candle caught fire aboard Mir. Six people fought it in masks,
+    // in thick smoke, for about fourteen minutes. Retold in a base on Mars, near opposition.
+    id: 'mars-1997',
+    world: 'mars',
+    durationSols: 20,
+    crew: 4,
+    budgetKg: 12000,
+    scienceGoal: 45,
+    doseLimitMsv: 40,
+    startLocalH: 8.5,
+    difficulty: 3,
+    tutorial: false,
+    endless: false,
+    historic: true,
+    commsDelayMin: 5.5,
+    seed: 19970223,
+    recommended: { hab: 1, eclss: 1, reactor: 1, solar: 3, battery: 2, lab: 1, antenna: 1, greenhouse: 1, pylon: 5, food: 5, water: 3, o2: 2, spares: 2 },
+    catastrophes: [
+      { sol: [4.5, 5.5], kind: 'fire' },
+      { sol: [11, 13], kind: 'runaway' },
+    ],
+    spe: [],
+    storms: [],
+    resupply: [],
+  },
 );
+
+/** Crates of spare parts each mission's suggested cargo carries (for repairs after catastrophes). */
+const SPARES: Record<string, number> = {
+  'moon-base': 2,
+  'moon-1970': 1,
+  'moon-1972': 1,
+  'mars-first': 2,
+  'mars-2017': 1,
+  'mars-2018': 2,
+  'mars-long': 4,
+  'moon-sandbox': 4,
+  'mars-sandbox': 4,
+};
+for (const m of MISSIONS) if (SPARES[m.id]) m.recommended = { ...m.recommended, spares: SPARES[m.id] };
 
 // Free play on measured topography: the same rules as the sandboxes, on the real shape of the land.
 for (const [base, id, seed] of [
@@ -397,7 +492,7 @@ MISSIONS.push(
     tutorial: false,
     endless: false,
     seed: 20260602,
-    recommended: { hab: 1, solar: 3, battery: 1, lab: 1, antenna: 1, pylon: 3, food: 2, water: 3, o2: 2 },
+    recommended: { hab: 1, solar: 3, battery: 1, lab: 1, antenna: 1, pylon: 3, food: 2, water: 3, o2: 2, spares: 1 },
     spe: [{ sol: [4, 11], cls: 2 }],
     storms: [],
     emergencies: [{ sol: [6, 12], kind: 'meteor' }],
@@ -418,7 +513,7 @@ MISSIONS.push(
     tutorial: false,
     endless: false,
     seed: 20261012,
-    recommended: { hab: 1, eclss: 1, reactor: 1, solar: 3, battery: 2, lab: 1, antenna: 1, rassor: 1, pylon: 4, food: 5, water: 3, o2: 2 },
+    recommended: { hab: 1, eclss: 1, reactor: 1, solar: 3, battery: 2, lab: 1, antenna: 1, rassor: 1, pylon: 4, food: 5, water: 3, o2: 2, spares: 2 },
     spe: [{ sol: [12, 24], cls: 2 }],
     storms: [],
     emergencies: [{ sol: [10, 20], kind: 'eclss' }],
@@ -432,12 +527,15 @@ const ORDER = [
   'moon-base',
   'moon-1970',
   'moon-1972',
+  'moon-1973',
+  'moon-2013',
   'moon-ridge',
   'moon-malapert',
   'moon-nobile',
   'mars-first',
   'mars-2017',
   'mars-2018',
+  'mars-1997',
   'mars-long',
   'moon-sandbox',
   'moon-real',
@@ -504,9 +602,10 @@ export function customMission(spec: CustomSpec): MissionDef {
   const k = (spec.crew * d) / (base.crew * base.durationSols);
   const rec: Partial<Record<CargoItem, number>> = { ...base.recommended };
   for (const sup of ['food', 'water', 'o2'] as const) rec[sup] = Math.max(1, Math.round((base.recommended[sup] ?? 1) * k));
+  rec.spares = Math.max(1, Math.round((base.recommended.spares ?? 1) * Math.sqrt(k)));
   const mass = (): number => (Object.keys(rec) as CargoItem[]).reduce((a, i) => a + cargoMass(i) * (rec[i] ?? 0), 0);
   // trim the least essential cargo first
-  const drop: CargoItem[] = ['pylon', 'rassor', 'greenhouse', 'fuelcell', 'battery', 'solar', 'reactor', 'lab', 'antenna', 'food', 'water', 'o2', 'eclss', 'hab'];
+  const drop: CargoItem[] = ['pylon', 'spares', 'rassor', 'greenhouse', 'fuelcell', 'battery', 'solar', 'reactor', 'lab', 'antenna', 'food', 'water', 'o2', 'eclss', 'hab'];
   for (let guard = 0; mass() > spec.budgetKg && guard < 200; guard++) {
     const item = drop.find((i) => (rec[i] ?? 0) > (['food', 'water', 'o2', 'solar', 'reactor'].includes(i) ? 1 : 0));
     if (!item) break;

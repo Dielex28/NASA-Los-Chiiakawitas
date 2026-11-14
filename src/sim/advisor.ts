@@ -196,6 +196,20 @@ export function lessons(s: SimState): Array<{ key: string; good: boolean; params
     else add('emgFast', true, { n: st.emergencies ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
   }
   if ((st.crises ?? 0) > 0) add(s.outcome?.result === 'success' ? 'apollo13' : 'apollo13Lost', s.outcome?.result === 'success');
+  // catastrophes: what they broke, what was mended and what it cost
+  if ((st.catastrophes ?? 0) > 0) {
+    add('catastrophes', (st.faultsFixed ?? 0) > 0, {
+      n: st.catastrophes ?? 0,
+      fixed: st.faultsFixed ?? 0,
+      you: st.faultsByPlayer ?? 0,
+      parts: st.partsUsed ?? 0,
+      o2: (st.faultO2Lost ?? 0).toFixed(0),
+    });
+    if (Object.keys(s.flags).some((k) => k.startsWith('noparts.'))) add('noparts', false);
+  }
+  if ((st.injuries ?? 0) > 0) add('injuries', false, { n: st.injuries ?? 0 });
+  if ((st.tasksByPlayer ?? 0) + (st.tasksByCrew ?? 0) > 2) add('tasks', (st.tasksByPlayer ?? 0) >= (st.tasksByCrew ?? 0), { you: st.tasksByPlayer ?? 0, crew: st.tasksByCrew ?? 0 });
+  if ((st.requestsDone ?? 0) + (st.requestsMissed ?? 0) > 0) add('requests', (st.requestsDone ?? 0) >= (st.requestsMissed ?? 0), { done: st.requestsDone ?? 0, missed: st.requestsMissed ?? 0 });
   // the distance to Earth: how long help takes
   const delay = s.cfg.commsDelayMin ?? 0;
   if ((st.controlAsks ?? 0) > 0) {

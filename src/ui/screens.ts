@@ -37,7 +37,7 @@ export const MOD_ICON: Record<ModuleType, string> = {
   antenna: 'antenna',
   pylon: 'power',
 };
-const SUPPLY_ICON: Record<SupplyType, string> = { food: 'food', water: 'water', o2: 'o2' };
+const SUPPLY_ICON: Record<SupplyType, string> = { food: 'food', water: 'water', o2: 'o2', spares: 'gear' };
 
 export const cargoName = (item: CargoItem): string => (isSupply(item) ? t(`supply.${item}`) : t(`mod.${item}`));
 export const cargoIcon = (item: CargoItem): string => (isSupply(item) ? SUPPLY_ICON[item] : MOD_ICON[item]);

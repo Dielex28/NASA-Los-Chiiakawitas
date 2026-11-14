@@ -80,6 +80,11 @@ const RADIO: Record<string, CrewMember['role'][]> = {
   'log.co2': ['medic'],
   'log.blackout': ['engineer'],
   'log.cold': ['medic'],
+  'log.emg.fire': ['engineer', 'medic'],
+  'log.cat.impact': ['engineer', 'commander'],
+  'log.cat.moonquake': ['engineer', 'commander'],
+  'log.cat.marsquake': ['engineer', 'commander'],
+  'log.ripe': ['botanist'],
 };
 
 export function logText(e: LogEntry): string {
@@ -87,6 +92,8 @@ export function logText(e: LogEntry): string {
   if (typeof p.type === 'string' && has(`mod.${p.type}`)) p.type = t(`mod.${p.type}`);
   if (typeof p.crop === 'string' && has(`crop.${p.crop}`)) p.crop = t(`crop.${p.crop}`);
   if (typeof p.opt === 'string' && has(p.opt)) p.opt = t(p.opt);
+  // damage kinds, tasks, requests, upgrades and units arrive as keys
+  for (const k of ['what', 'unit']) if (typeof p[k] === 'string' && has(p[k] as string)) p[k] = t(p[k] as string);
   return t(e.key, p);
 }
 

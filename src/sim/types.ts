@@ -1,6 +1,9 @@
 import type { SiteSun } from './sites';
 import type { TeamState } from './team';
 import type { CrisisKind, Emergency, PlannedEmergency } from './emergency';
+import type { CatastropheRecord, Fault, Injury, PlannedCatastrophe } from './faults';
+import type { RequestState } from './requests';
+import type { TaskState } from './tasks';
 /**
  * Simulation data model. Everything in here is plain JSON-serialisable data so a
  * mission can be saved, restored and unit-tested without the 3D layer.
@@ -26,7 +29,7 @@ export type ModuleType =
   | 'tank'
   | 'pylon';
 
-export type SupplyType = 'food' | 'water' | 'o2';
+export type SupplyType = 'food' | 'water' | 'o2' | 'spares';
 export type CargoItem = ModuleType | SupplyType;
 export type CropId = 'lettuce' | 'radish' | 'tomato' | 'potato' | 'wheat';
 export type Category = 'habitat' | 'power' | 'life' | 'food' | 'isru' | 'science' | 'infra';
@@ -95,6 +98,9 @@ export interface ModuleState {
   /** Greenhouse. */
   crop: CropId;
   growth: number;
+  /** Greenhouse: the crop is ripe and waiting to be picked, or the trays are empty waiting to be sown. */
+  ripe?: boolean;
+  fallow?: boolean;
   cropHealth: number;
   coldH: number;
   /** Ice rig: richness of the deposit under it, 0..1. */
@@ -109,6 +115,8 @@ export interface ModuleState {
   kw: number;
   /** Broken down (condition fell below the offline threshold) until repaired. */
   down: boolean;
+  /** Concrete damage left by catastrophes, each with its own repair (absent: none). */
+  faults?: Fault[];
 }
 
 export interface CrewMember {
@@ -127,6 +135,8 @@ export interface CrewMember {
   muscle?: number;
   location: CrewLocation;
   isPlayer: boolean;
+  /** Hurt in a catastrophe: off work until healed (absent: fit). */
+  injury?: Injury;
 }
 
 export interface SpeEvent {
@@ -292,6 +302,22 @@ export interface Stats {
   /** Return propellant made on site, and the water it took, kg. */
   propellantMade?: number;
   propellantWater?: number;
+  /** Catastrophes that struck, faults repaired (all, and by the commander's own hands), parts used. */
+  catastrophes?: number;
+  faultsFixed?: number;
+  faultsByPlayer?: number;
+  partsUsed?: number;
+  /** Oxygen and water lost through holes and leaks left by catastrophes, kg. */
+  faultO2Lost?: number;
+  faultWaterLost?: number;
+  injuries?: number;
+  partsPrinted?: number;
+  /** Daily tasks done by the commander, and by the crew when nobody did them. */
+  tasksByPlayer?: number;
+  tasksByCrew?: number;
+  /** Mission Control's requests completed and missed. */
+  requestsDone?: number;
+  requestsMissed?: number;
 }
 
 export interface Telemetry {
@@ -357,7 +383,7 @@ export interface SimState {
   nextId: number;
   inventory: Partial<Record<ModuleType, number>>;
   /** propellant: return-trip fuel made on site, kg (absent in old saves). */
-  stores: { o2: number; water: number; food: number; propellant?: number };
+  stores: { o2: number; water: number; food: number; propellant?: number; spares?: number };
   caps: { o2: number; water: number };
   cabin: { co2Kg: number; tempC: number };
   alloc: Allocation;
@@ -393,6 +419,17 @@ export interface SimState {
   crisisPlan?: Array<{ h: number; kind: CrisisKind; fired: boolean }>;
   /** Last hour a brownout touched a critical load (for morale). */
   lastBlackoutH: number;
+  /** Catastrophes still to come, and what the past ones did (absent in old saves). */
+  catastrophePlan?: PlannedCatastrophe[];
+  catastrophes?: CatastropheRecord[];
+  nextFaultId?: number;
+  /** Technologies adopted at science milestones, and the choice on offer (if any). */
+  upgrades?: string[];
+  upgradeOffer?: string[] | null;
+  /** The day's maintenance tasks (Among Us style). */
+  tasks?: TaskState;
+  /** Mission Control's requests and the instruments deployed for them. */
+  requests?: RequestState;
 }
 
 /** Terrain knowledge the simulation needs, supplied by the world layer. */

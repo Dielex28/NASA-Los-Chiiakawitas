@@ -1,10 +1,11 @@
 import { Rng } from '../core/rng';
 import { HUMAN, TUNE } from './catalog';
+import { addFault, injure, recordFire } from './faults';
 import type { MissionDef } from './missions';
 import type { ModuleState, SimState } from './types';
 
-export type EmergencyKind = 'leak' | 'meteor' | 'eclss';
-export type EmergencyChoice = 'isolate' | 'patch' | 'repair' | 'backup';
+export type EmergencyKind = 'leak' | 'meteor' | 'eclss' | 'fire';
+export type EmergencyChoice = 'isolate' | 'patch' | 'repair' | 'backup' | 'extinguish' | 'vent';
 /** Scripted crises of historical scenarios. */
 export type CrisisKind = 'o2tank';
 
@@ -48,6 +49,27 @@ const AUTO_REPAIR_H = 5;
 export const LIOH_H = 18;
 
 /**
+ * Fire. On Mir in February 1997 an oxygen candle burst into flames: the crew put masks on and
+ * fought it with extinguishers for about fourteen minutes, in thick smoke. While a fire burns it
+ * eats oxygen, fills the cabin with CO₂ and smoke, and damages what is around it; fighting it
+ * takes a quarter of an hour, and closing the module and venting it to vacuum puts it out at
+ * once, at the cost of the module's air.
+ */
+export const FIRE = {
+  /** Share of the module's function the fire destroys per hour while nobody fights it. */
+  scorchPerH: 0.3,
+  /** Oxygen burnt, kg/h, and CO₂ released into the cabin, kg/h. */
+  o2KgH: 1.5,
+  co2KgH: 1.2,
+  /** Health lost per hour by everyone breathing through masks in the smoke. */
+  smokeHealthH: 2,
+  extinguishH: 0.25,
+  autoExtinguishH: 0.6,
+  /** Air (as oxygen to replace) thrown away when a module is vented to put the fire out, kg. */
+  ventO2: 25,
+} as const;
+
+/**
  * Engineers on Earth need a while to read the telemetry and test a fix on their copy of the
  * hardware (as the Apollo 13 team did with the CO₂ filter adapter), h.
  */
@@ -64,6 +86,10 @@ export function controlRoundTripH(s: SimState): number {
 export function controlAdvice(s: SimState): EmergencyChoice {
   const e = s.emergency!;
   if (e.kind === 'eclss') return !s.flags.liohUsed && s.flows.co2MmHg > 4 ? 'backup' : 'repair';
+  if (e.kind === 'fire') {
+    const m = s.modules.find((x) => x.id === e.moduleId);
+    return (m?.faults?.find((f) => f.kind === 'scorch')?.size ?? 0) > 0.45 ? 'vent' : 'extinguish';
+  }
   // with little oxygen left, stop the loss at once; otherwise keep the module in use
   return s.flows.o2Days < 1.5 ? 'isolate' : 'patch';
 }
@@ -111,6 +137,9 @@ export function triggerEmergency(s: SimState, kind: EmergencyKind, rng: Rng, log
     }
   } else if (kind === 'meteor') {
     m.condition = Math.max(5, m.condition - 25);
+  } else if (kind === 'fire') {
+    addFault(s, m, 'scorch', 0.05, 'fire', rng);
+    recordFire(s, m);
   }
   log(s, `log.emg.${kind}`, 'bad', { type: m.type }, m.id);
   return true;
@@ -121,6 +150,7 @@ export function emergencyOptions(s: SimState): EmergencyChoice[] {
   const e = s.emergency;
   if (!e || e.choice) return [];
   if (e.kind === 'eclss') return s.flags.liohUsed ? ['repair'] : ['repair', 'backup'];
+  if (e.kind === 'fire') return ['extinguish', 'vent'];
   return ['isolate', 'patch'];
 }
 
@@ -168,6 +198,26 @@ export function chooseEmergency(s: SimState, choice: EmergencyChoice, log: Log, 
     s.flags.liohUsed = 1;
     s.flags.liohUntilH = s.timeH + LIOH_H;
     e.doneH = s.timeH + LIOH_H;
+  } else if (choice === 'extinguish') {
+    e.doneH = s.timeH + (auto ? FIRE.autoExtinguishH : FIRE.extinguishH) * (e.advice === 'extinguish' ? CONTROL_SPEEDUP : 1);
+  } else if (choice === 'vent') {
+    // hatches shut and the module's air dumped to vacuum: the fire dies at once
+    const lost = Math.min(s.stores.o2, FIRE.ventO2);
+    s.stores.o2 -= lost;
+    e.o2Lost += lost;
+    if (m) {
+      m.condition = Math.min(m.condition, TUNE.offlineAt - 1);
+      m.down = true;
+      if (m.type === 'greenhouse' && (m.growth > 0 || m.ripe)) {
+        m.growth = 0;
+        m.ripe = false;
+        m.fallow = true;
+        log(s, 'log.croplost', 'bad', { crop: m.crop }, m.id);
+      }
+    }
+    log(s, `log.emg.chose.${choice}`, auto ? 'warn' : 'info', { type: m?.type ?? 'hab' }, e.moduleId);
+    finish(s, log);
+    return true;
   }
   log(s, `log.emg.chose.${choice}`, auto ? 'warn' : 'info', { type: m?.type ?? 'hab' }, e.moduleId);
   return true;
@@ -212,6 +262,22 @@ function fireCrisis(s: SimState, kind: CrisisKind, rng: Rng, log: Log): void {
   }
 }
 
+/** The commander grabs the extinguisher (the minigame's `quality`): a good job puts it out at once, with nobody hurt. */
+export function playerExtinguish(s: SimState, quality: number, rng: Rng, log: Log): boolean {
+  const e = s.emergency;
+  if (!e || e.kind !== 'fire' || (e.choice && e.choice !== 'extinguish')) return false;
+  if (!e.choice) chooseEmergency(s, 'extinguish', log);
+  if (quality < 0.5) {
+    // the fire is knocked down but not out: the crew finishes the job
+    e.doneH = Math.min(e.doneH ?? s.timeH, s.timeH + FIRE.extinguishH * 0.5);
+    return true;
+  }
+  e.doneH = s.timeH;
+  s.flags.fireByHand = 1;
+  updateEmergency(s, 0, rng, log);
+  return true;
+}
+
 /** Advance the running emergency (and fire scripted or random ones). */
 export function updateEmergency(s: SimState, dtH: number, rng: Rng, log: Log): void {
   for (const c of s.crisisPlan ?? []) {
@@ -235,18 +301,37 @@ export function updateEmergency(s: SimState, dtH: number, rng: Rng, log: Log): v
     const lost = Math.min(s.stores.o2, rate * dtH);
     s.stores.o2 -= lost;
     e.o2Lost += lost;
+  } else if (e.kind === 'fire' && m) {
+    // fought, it spreads more slowly; left alone, it eats the module
+    const fought = e.choice === 'extinguish';
+    const scorch = m.faults?.find((f) => f.kind === 'scorch');
+    if (scorch) scorch.size = Math.min(0.85, scorch.size + FIRE.scorchPerH * (fought ? 0.35 : 1) * dtH);
+    const burnt = Math.min(s.stores.o2, FIRE.o2KgH * dtH);
+    s.stores.o2 -= burnt;
+    e.o2Lost += burnt;
+    s.cabin.co2Kg += FIRE.co2KgH * dtH;
+    for (const c of s.crew) if (!(c.isPlayer && s.playerOutside)) c.health = Math.max(5, c.health - FIRE.smokeHealthH * dtH);
   }
   if (e.answerH !== undefined && !e.advice && s.timeH >= e.answerH) {
     e.advice = controlAdvice(s);
     s.stats.controlWaitH = (s.stats.controlWaitH ?? 0) + (e.answerH - (e.askedH ?? e.answerH));
     log(s, e.choice ? 'log.control.late' : 'log.control.answer', e.choice ? 'info' : 'good', { opt: `emg.opt.${e.advice}` }, e.moduleId);
   }
-  if (!e.choice && s.timeH >= e.decideByH) chooseEmergency(s, e.kind === 'eclss' ? 'repair' : 'isolate', log, true);
+  if (!e.choice && s.timeH >= e.decideByH) chooseEmergency(s, e.kind === 'eclss' ? 'repair' : e.kind === 'fire' ? 'extinguish' : 'isolate', log, true);
   if (!s.emergency || e.doneH === null || s.timeH < e.doneH) return;
   if (m && e.choice === 'patch') m.condition = Math.max(TUNE.onlineAt + 1, m.condition - 8);
   if (m && e.choice === 'repair') {
     m.condition = Math.max(m.condition, 70);
     m.down = false;
+  }
+  if (m && e.choice === 'extinguish') {
+    // smoke and burns: likelier the longer it burnt, and when nobody took charge
+    const scorch = m.faults?.find((f) => f.kind === 'scorch')?.size ?? 0;
+    const p = s.flags.fireByHand ? 0 : e.auto ? 0.7 : 0.15 + 0.6 * scorch;
+    if (s.flags.fireByHand) s.flags.fireByHandDone = 1;
+    if (rng.chance(p)) injure(s, scorch > 0.5 ? 'burn' : 'smoke', rng, log, s.playerOutside);
+    delete s.flags.fireByHand;
+    log(s, 'log.fire.out', 'good', { type: m.type, pct: Math.round(scorch * 100) }, m.id);
   }
   finish(s, log);
 }

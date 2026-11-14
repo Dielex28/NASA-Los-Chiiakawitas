@@ -1,4 +1,23 @@
 import { askControl, chooseEmergency, liohScrub, scrubbersFailed, planEmergencies, triggerEmergency, updateEmergency, type EmergencyChoice } from './emergency';
+import {
+  KIT_PARTS,
+  antennaPointed,
+  blocked,
+  dueCatastrophes,
+  faultEff,
+  fireTarget,
+  injuryWork,
+  planCatastrophes,
+  storageCap,
+  strikeImpact,
+  strikeQuake,
+  strikeRunaway,
+  strikeUpset,
+  updateFaults,
+} from './faults';
+import { hasInstrument, planRequests, seismicRecord, updateRequests } from './requests';
+import { buffActive, initTasks, payTaskDebt, updateTasks } from './tasks';
+import { CAMRAS, DUST_SHIELD, LED_POWER, TRIPLE_JUNCTION, WATER98, WATER_WALL_GCM2, hasUpgrade, updatePrinter, updateUpgrades } from './upgrades';
 import { Rng } from '../core/rng';
 import { clamp, clamp01 } from '../core/math';
 import {
@@ -206,7 +225,7 @@ function applyCargo(s: SimState, manifest: Partial<Record<CargoItem, number>>): 
   for (const k of Object.keys(manifest) as CargoItem[]) {
     const n = manifest[k] ?? 0;
     if (n <= 0) continue;
-    if (isSupply(k)) s.stores[k] += SUPPLIES[k].amount * n;
+    if (isSupply(k)) s.stores[k] = (s.stores[k] ?? 0) + SUPPLIES[k].amount * n;
     else s.inventory[k] = (s.inventory[k] ?? 0) + n;
     s.stats.massLanded += cargoMass(k) * n;
   }
@@ -269,6 +288,7 @@ export function createMission(
     // emergency reserve carried in the lander: about three days for the crew
     stores: {
       propellant: 0,
+      spares: KIT_PARTS,
       o2: mission.crew * HUMAN.o2KgDay * 3,
       water: mission.crew * HUMAN.waterKgDay * 3,
       food: mission.crew * 3,
@@ -285,6 +305,12 @@ export function createMission(
     emergency: null,
     emergencyPlan: planEmergencies(mission, seed, w.solH),
     crisisPlan: (mission.crises ?? []).map((c) => ({ ...c, fired: false })),
+    catastrophePlan: planCatastrophes(mission, seed, w.solH, [0.5, 1, 1.35][(opts.level ?? 2) - 1]),
+    nextFaultId: 1,
+    tasks: initTasks(),
+    requests: planRequests(mission, seed),
+    upgrades: [],
+    upgradeOffer: null,
     resupply: mission.resupply.map((r) => ({
       arrivalH: r.sol * w.solH,
       cutoffH: (r.sol - (mission.world === 'moon' ? 3 : 2)) * w.solH,
@@ -389,12 +415,14 @@ export function isolation(s: SimState): number {
 
 export const isBuilt = (m: ModuleState): boolean => m.built >= 1;
 /** Built, switched on and not broken down. */
-export const isUp = (m: ModuleState): boolean => m.built >= 1 && m.enabled && !m.down;
+export const isUp = (m: ModuleState): boolean => m.built >= 1 && m.enabled && !m.down && !blocked(m);
 /** Performance factor from wear: full above 70 % condition, tapering to 45 % at the offline threshold. */
 export const conditionEff = (m: ModuleState): number =>
-  m.condition >= 70 ? 1 : clamp(0.45 + (0.55 * (m.condition - TUNE.offlineAt)) / (70 - TUNE.offlineAt), 0.2, 1);
+  (m.condition >= 70 ? 1 : clamp(0.45 + (0.55 * (m.condition - TUNE.offlineAt)) / (70 - TUNE.offlineAt), 0.2, 1)) * faultEff(m);
 export const insulation = (m: ModuleState): number => 0.7 * clamp01(m.regolith / 120);
 export const shieldOf = (m: ModuleState): number => MODULES[m.type].shieldGcm2 + m.regolith;
+/** Shielding where the crew sleeps: the shell, the regolith on it and any water walls round the bunks. */
+const bunkShield = (s: SimState, m: ModuleState): number => shieldOf(m) + (m.type === 'hab' && hasUpgrade(s, 'waterwall') ? WATER_WALL_GCM2 : 0);
 
 /** How much propellant the base's plants can hold, kg. */
 export function propTank(s: SimState): number {
@@ -487,6 +515,8 @@ export function setCrop(s: SimState, id: number, crop: CropId): void {
   m.crop = crop;
   m.growth = 0;
   m.cropHealth = 1;
+  m.ripe = false;
+  m.fallow = false;
 }
 
 export function setPriority(s: SimState, id: number, p: Priority): void {
@@ -606,7 +636,7 @@ function opDraw(s: SimState, m: ModuleState): number {
   const def = MODULES[m.type];
   switch (m.type) {
     case 'greenhouse':
-      return 0.4 + 10 * CROPS[m.crop].light;
+      return 0.4 + 10 * CROPS[m.crop].light * (hasUpgrade(s, 'led') ? LED_POWER : 1) * (m.fallow ? 0.1 : 1);
     case 'rassor':
       return rassorTarget(s, m) ? def.opKw : 0;
     case 'icerig':
@@ -667,7 +697,7 @@ function solvePower(s: SimState, dtH: number): void {
         p.nuclearKw += g;
       } else {
         m.sunVis = sunVisibility(env.sunEl, horizonAt(m.horizon, env.sunAz), w.sunAngularRadius);
-        g = def.genKw * env.solarFactor * m.sunVis * (1 - m.dust) * eff;
+        g = def.genKw * env.solarFactor * m.sunVis * (1 - m.dust) * eff * (m.type === 'solar' && hasUpgrade(s, 'triplejunction') ? TRIPLE_JUNCTION : 1);
         p.solarKw += g;
       }
       m.output = g;
@@ -678,7 +708,7 @@ function solvePower(s: SimState, dtH: number): void {
     }
     if (def.storageKwh > 0) {
       stores.push(m);
-      p.capacityKwh += def.storageKwh;
+      p.capacityKwh += storageCap(m);
       if (m.type !== 'lander') m.mode = 'full';
     }
     const heat = def.heatKw * hf * (1 - insulation(m));
@@ -748,9 +778,10 @@ function solvePower(s: SimState, dtH: number): void {
     const order = [...stores].sort((a, b) => MODULES[b.type].chargeEff - MODULES[a.type].chargeEff);
     for (const st of order) {
       const def = MODULES[st.type];
-      const room = (def.storageKwh - st.charge) / (def.chargeEff * dtH);
+      const cap = storageCap(st);
+      const room = Math.max(0, cap - st.charge) / (def.chargeEff * dtH);
       const accept = Math.max(0, Math.min(net, def.maxRateKw, room));
-      st.charge = Math.min(def.storageKwh, st.charge + accept * def.chargeEff * dtH);
+      st.charge = Math.min(Math.max(cap, st.charge), st.charge + accept * def.chargeEff * dtH);
       net -= accept;
       p.storageKw += accept;
       if (st.type !== 'lander') st.output = accept;
@@ -816,7 +847,7 @@ function updateCrewHours(s: SimState): { maintain: number; science: number; farm
   // the hours spent exercising come out of the working day
   const workH = Math.max(2, TUNE.workHours[s.workload] - (s.exercise ?? 0));
   let total = 0;
-  for (const c of s.crew) total += workH * (0.4 + (0.6 * c.health) / 100) * (0.5 + (0.5 * c.morale) / 100) * strength(c);
+  for (const c of s.crew) total += workH * (0.4 + (0.6 * c.health) / 100) * (0.5 + (0.5 * c.morale) / 100) * strength(c) * injuryWork(c);
   const sh = s.shelterOrder;
   const a = effectiveAllocation(s);
   return {
@@ -860,9 +891,12 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
       o2GenCap += TUNE.eclssO2KgDay * eff;
     }
     if (m.type === 'lab') labUp = true;
-    if (m.type === 'antenna') comms = true;
+    if (m.type === 'antenna' && antennaPointed(m)) comms = true;
   }
   f.comms = comms;
+  if (buffActive(s, 'filter')) scrub *= 1.15;
+  if (hasUpgrade(s, 'camras')) scrub *= CAMRAS;
+  updatePrinter(s, labUp);
 
   // ---- greenhouses
   const farmNeed = greenhouses * TUNE.farmHoursPerGreenhouse;
@@ -877,6 +911,8 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     m.output = 0;
     if (m.mode === 'full' && isUp(m)) {
       m.coldH = Math.max(0, m.coldH - dtH * 2);
+      // empty trays wait to be sown (a daily task)
+      if (m.fallow) continue;
       const canopy = 0.25 + 0.75 * m.growth;
       const care = TUNE.farmAutomation + (1 - TUNE.farmAutomation) * f.farmSat;
       const waterNeed = crop.waterPerSol * canopy * dtSol;
@@ -885,20 +921,16 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
         waterPlants += waterNeed;
         m.cropHealth = Math.min(1, m.cropHealth + dtSol * 0.05);
       } else m.cropHealth = Math.max(0, m.cropHealth - dtSol * 0.25);
-      m.growth += (dtSol / crop.cycleSols) * care * conditionEff(m) * (watered ? 1 : 0.2) * specialist(s, 'botanist');
+      if (!m.ripe) m.growth += (dtSol / crop.cycleSols) * care * conditionEff(m) * (watered ? 1 : 0.2) * specialist(s, 'botanist');
       o2Plants += crop.o2PerSol * canopy * dtSol;
       co2Plants += crop.co2PerSol * canopy * dtSol;
       fresh += crop.morale * (0.4 + 0.6 * m.growth) * m.cropHealth;
       m.output = crop.rationsPerSol * care * m.cropHealth;
-      if (m.growth >= 1) {
-        const yieldRations = crop.rationsPerSol * crop.cycleSols * m.cropHealth;
-        s.stores.food += yieldRations;
-        s.stats.foodGrown += yieldRations;
-        s.stats.harvests++;
-        s.flags.lastHarvestH = s.timeH;
-        pushLog(s, 'log.harvest', 'good', { crop: m.crop, rations: Math.round(yieldRations) }, m.id);
-        m.growth = 0;
-        m.cropHealth = 1;
+      if (m.growth >= 1 && !m.ripe) {
+        // ripe: it waits for someone to pick it (a task for the commander, or the crew within half a sol)
+        m.growth = 1;
+        m.ripe = true;
+        pushLog(s, 'log.ripe', 'good', { crop: m.crop }, m.id);
       }
     } else if (m.mode === 'standby' && isUp(m)) {
       m.coldH = Math.max(0, m.coldH - dtH);
@@ -913,6 +945,8 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
           m.growth = 0;
           m.cropHealth = 1;
           m.coldH = 0;
+          m.ripe = false;
+          m.fallow = true;
         }
       }
     }
@@ -921,7 +955,7 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
 
   // ---- water
   const waterUse = n * HUMAN.waterKgDay * dtD;
-  f.recycleFrac = n > 0 ? Math.min(1, recycleCrew / n) * TUNE.recycleEff : 0;
+  f.recycleFrac = n > 0 ? Math.min(1, recycleCrew / n) * (hasUpgrade(s, 'water98') ? WATER98 : TUNE.recycleEff) : 0;
   const recycled = waterUse * f.recycleFrac;
   s.stats.waterRecycled += recycled;
   s.stats.waterUsed += waterUse;
@@ -932,7 +966,7 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     m.output = 0;
     if (m.mode === 'full' && isUp(m)) {
       const room = Math.max(0, s.caps.water - s.stores.water);
-      const made = Math.min(room, m.richness * TUNE.iceKgPerSol * conditionEff(m) * dtSol);
+      const made = Math.min(room, m.richness * TUNE.iceKgPerSol * conditionEff(m) * (buffActive(s, `drill.${m.id}`) ? 1.2 : 1) * dtSol);
       waterIn += made;
       s.stats.waterMined += made;
       m.output = dtSol > 0 ? made / dtSol : 0;
@@ -947,7 +981,7 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     if (m.mode !== 'full' || !isUp(m)) continue;
     const room = Math.max(0, propTank(s) - (s.stores.propellant ?? 0));
     const spare = Math.max(0, s.stores.water + waterIn - waterOut - n * HUMAN.waterKgDay * 4);
-    const made = Math.min(room, spare * propPerWater, ((MODULES.propellant.opKw * conditionEff(m)) / TUNE.propKwhPerKg[s.world]) * dtH);
+    const made = Math.min(room, spare * propPerWater, ((MODULES.propellant.opKw * conditionEff(m) * (buffActive(s, `valves.${m.id}`) ? 1.2 : 1)) / TUNE.propKwhPerKg[s.world]) * dtH);
     if (made <= 0) continue;
     s.stores.propellant = (s.stores.propellant ?? 0) + made;
     waterOut += made / propPerWater;
@@ -1069,9 +1103,9 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
       continue;
     }
     if (m.type === 'hab') {
-      habShieldSum += shieldOf(m);
+      habShieldSum += bunkShield(s, m);
       habReg += m.regolith;
-      bestShield = Math.max(bestShield, shieldOf(m));
+      bestShield = Math.max(bestShield, bunkShield(s, m));
     } else if (m.type === 'shelter') bestShield = Math.max(bestShield, shieldOf(m));
   }
   if (habs > 0) baseShield = habShieldSum / habs;
@@ -1128,7 +1162,10 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     (s.shelterOrder ? -6 : 0) +
     (sciRate > 0.5 ? 4 : 0) +
     (recentHarvest ? 5 : 0) +
-    (recentDiscovery ? 4 : 0);
+    (recentDiscovery ? 4 : 0) +
+    (s.timeH - (s.flags.requestDoneH ?? -1e9) < 48 ? 4 : 0) -
+    (s.timeH - (s.flags.requestMissH ?? -1e9) < 24 ? 4 : 0) -
+    (s.crew.some((c) => c.injury) ? 4 : 0);
 
   let moraleAvg = 0;
   const medic = specialist(s, 'medic');
@@ -1239,9 +1276,10 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
     if (!isBuilt(m)) continue;
     const def = MODULES[m.type];
     const running = m.mode === 'full' || def.genKw > 0;
-    m.condition = Math.max(0, m.condition - def.wearPerSol * w.wearFactor * hazard * dtSol * (running ? 1 : 0.4));
+    const cracked = m.faults?.some((f) => f.kind === 'crack') ? 3 : 1;
+    m.condition = Math.max(0, m.condition - def.wearPerSol * w.wearFactor * hazard * dtSol * (running ? 1 : 0.4) * cracked);
     if (s.world === 'mars' && m.type === 'solar') {
-      m.dust = Math.min(0.85, m.dust + TUNE.dustPerSol * (1 + TUNE.stormDustFactor * storm) * dtSol);
+      m.dust = Math.min(0.85, m.dust + TUNE.dustPerSol * (1 + TUNE.stormDustFactor * storm) * (hasUpgrade(s, 'dustshield') ? DUST_SHIELD : 1) * dtSol);
     }
     if (m.type !== 'pylon' && m.type !== 'tank') {
       const p = (0.0035 + 0.06 * (1 - m.condition / 100) ** 2) * hazard * dtSol;
@@ -1249,7 +1287,7 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
         s.stats.failures++;
         // some breakdowns become emergencies: a seal that lets go, scrubbers that stop
         if (!s.emergency && m.type === 'eclss') triggerEmergency(s, 'eclss', rng, pushLog, m);
-        else if (!s.emergency && PRESSURE_SHELLS.has(m.type) && rng.chance(0.5)) triggerEmergency(s, 'leak', rng, pushLog, m);
+        else if (!s.emergency && PRESSURE_SHELLS.has(m.type) && rng.chance(buffActive(s, `seals.${m.id}`) ? 0.25 : 0.5)) triggerEmergency(s, 'leak', rng, pushLog, m);
         else {
           m.condition = Math.max(4, m.condition - rng.range(18, 38));
           pushLog(s, 'log.failure', 'warn', { type: m.type }, m.id);
@@ -1257,7 +1295,7 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
       }
     }
   }
-  if (s.world === 'moon' && rng.chance(0.012 * hazard * dtSol)) {
+  if (s.world === 'moon' && rng.chance(0.012 * hazard * (hasUpgrade(s, 'whipple') ? 0.5 : 1) * dtSol)) {
     const victims = s.modules.filter((m) => isBuilt(m) && m.type !== 'pylon' && m.type !== 'lander');
     if (victims.length) {
       const v = rng.pick(victims);
@@ -1280,8 +1318,11 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
     if (cleaned) pushLog(s, 'log.dustdevil', 'good');
   }
 
-  // ---- maintenance: worst module first; a share of the time goes to brushing dust off arrays
+  // ---- maintenance: chores the crew took over, then concrete faults (most urgent first), then
+  // wear on the worst module; a share of the time goes to brushing dust off arrays
   let maint = hours.maintain * dtD;
+  maint -= payTaskDebt(s, maint * 0.5);
+  maint = updateFaults(s, dtH, maint, specialist(s, 'engineer'), specialist(s, 'medic'), rng, pushLog);
   let dustiest: ModuleState | null = null;
   for (const m of s.modules) if (m.type === 'solar' && isBuilt(m) && (!dustiest || m.dust > dustiest.dust)) dustiest = m;
   if (dustiest && dustiest.dust > 0.04) {
@@ -1309,7 +1350,7 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
   }
 }
 
-function processEvents(s: SimState): void {
+function processEvents(s: SimState, rng: Rng, dtH: number): void {
   const w = WORLDS[s.world];
   // warnings of solar and dust storms come from Earth's watch on the Sun: none during conjunction
   const comms = earthLink(s);
@@ -1336,6 +1377,8 @@ function processEvents(s: SimState): void {
         s.flags.speShelter = s.shelterOrder ? 1 : 0;
         pushLog(s, 'log.spe.start', 'bad', { cls: ev.cls });
       }
+      // strong storms can crash unshielded computers (single-event upsets)
+      if (ev.started && !ev.ended && ev.cls >= 2 && rng.chance(0.012 * (ev.cls - 1) ** 2 * (s.cfg.hazard ?? 1) * dtH)) strikeUpset(s, rng, pushLog);
       if (ev.started && s.timeH >= ev.startH + ev.durationH) {
         ev.ended = true;
         const got = avgSpeDose(s) - (s.flags.speDose0 ?? 0);
@@ -1344,7 +1387,8 @@ function processEvents(s: SimState): void {
         pushLog(s, 'log.spe.end', got > 20 ? 'warn' : 'good', { dose: got.toFixed(1) });
       }
     } else {
-      const lead = comms ? 2 * w.solH : 0.25 * w.solH;
+      // a weather station of the base's own sees the haze coming a sol ahead
+      const lead = Math.max(comms ? 2 * w.solH : 0.25 * w.solH, hasInstrument(s, 'weather') ? 1 * w.solH : 0) + (comms && hasInstrument(s, 'weather') ? w.solH : 0);
       if (!ev.warned && s.timeH >= ev.startH - lead) {
         ev.warned = true;
         pushLog(s, 'log.storm.warn', 'warn', { sols: Math.round(ev.durationH / w.solH), h: Math.max(0, ev.startH - s.timeH).toFixed(0) });
@@ -1424,6 +1468,35 @@ function checkOutcome(s: SimState): void {
   }
 }
 
+/**
+ * Catastrophes that are due. A fire needs a pressurised module and a free emergency slot, and
+ * waits a few hours if there is none; a thermal runaway needs a battery or fuel cell.
+ */
+function fireCatastrophes(s: SimState, rng: Rng): void {
+  for (const p of dueCatastrophes(s)) {
+    if (p.kind === 'impact') {
+      strikeImpact(s, rng, pushLog, p.mag);
+      seismicRecord(s, pushLog);
+    } else if (p.kind === 'quake') {
+      strikeQuake(s, rng, pushLog, p.mag);
+      seismicRecord(s, pushLog);
+    } else if (p.kind === 'runaway') strikeRunaway(s, rng, pushLog);
+    else if (p.kind === 'upset') strikeUpset(s, rng, pushLog);
+    else if (p.kind === 'fire') {
+      const m = s.emergency ? null : fireTarget(s, rng);
+      if (!m) {
+        // nothing to burn yet, or another emergency running: try again later (scripted fires only)
+        if ((s.flags.fireRetry ?? 0) < 12) {
+          s.flags.fireRetry = (s.flags.fireRetry ?? 0) + 1;
+          p.h = s.timeH + 6;
+          continue;
+        }
+      } else triggerEmergency(s, 'fire', rng, pushLog, m);
+    }
+    p.fired = true;
+  }
+}
+
 /** Advance the mission by `dtH` hours (sub-stepped). */
 export function step(s: SimState, dtH: number): void {
   let left = dtH;
@@ -1439,10 +1512,14 @@ function stepOnce(s: SimState, dtH: number): void {
   s.timeH += dtH;
   const lander = s.modules[0];
   s.env = computeEnv(s.world, s.timeH, s.cfg.startLocalH, s.schedule, lander?.horizon ?? null, s.env, dtH, s.cfg.sun);
-  processEvents(s);
+  processEvents(s, rng, dtH);
+  fireCatastrophes(s, rng);
   const hours = updateCrewHours(s);
   upkeep(s, dtH, hours, rng);
   updateEmergency(s, dtH, rng, pushLog);
+  updateTasks(s, rng, pushLog);
+  updateRequests(s, dtH, rng, pushLog);
+  updateUpgrades(s, pushLog);
   solvePower(s, dtH);
   lifeSupport(s, dtH, hours, rng);
   recordTelemetry(s);

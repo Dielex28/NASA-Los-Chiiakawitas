@@ -300,9 +300,13 @@ export const SUPPLIES: Record<SupplyType, SupplyDef> = {
   food: { type: 'food', amount: 20, massKg: 36 },
   water: { type: 'water', amount: 100, massKg: 104 },
   o2: { type: 'o2', amount: 20, massKg: 26 },
+  /** A crate of spare parts: seals and patch kits, cable harnesses, solar cell strings, pumps. */
+  spares: { type: 'spares', amount: 5, massKg: 40 },
 };
 
-export const isSupply = (item: CargoItem): item is SupplyType => item === 'food' || item === 'water' || item === 'o2';
+export const isSupply = (item: CargoItem): item is SupplyType => item === 'food' || item === 'water' || item === 'o2' || item === 'spares';
+
+export const SUPPLY_ORDER: SupplyType[] = ['food', 'water', 'o2', 'spares'];
 
 export const cargoMass = (item: CargoItem): number => (isSupply(item) ? SUPPLIES[item].massKg : MODULES[item].massKg);
 
