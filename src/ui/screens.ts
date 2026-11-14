@@ -1,5 +1,6 @@
 import { lessons } from '../sim/advisor';
 import { MODULES, MODULE_ORDER, SUPPLIES, cargoMass, isSupply } from '../sim/catalog';
+import { QUALITY_LEVELS } from '../render/renderer';
 import { CUSTOM_LIMITS, DEFAULT_CUSTOM, clampSpec, encodeCustom, normalizeCode, type CustomSpec } from '../sim/custom';
 import { MISSIONS, dailyCode, missionById, scoreMission, type MissionDef } from '../sim/missions';
 import { STATIONS, assignStations, type ShiftGoal, type TeamState } from '../sim/team';
@@ -707,7 +708,7 @@ export function helpScreen(app: App, onClose: () => void): HTMLElement {
 export function settingsScreen(app: App, onClose: () => void): HTMLElement {
   const s = app.settings;
   const qual = h('div.seg');
-  for (const q of ['low', 'medium', 'high', 'ultra'] as const) {
+  for (const q of QUALITY_LEVELS) {
     qual.append(
       h(
         'button',

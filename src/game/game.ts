@@ -826,11 +826,16 @@ export class Game {
   }
 
   run(): void {
-    const loop = (): void => {
+    let last = 0;
+    const loop = (now: number): void => {
       requestAnimationFrame(loop);
+      // battery saver: skip screen refreshes above the preset's frame-rate cap
+      const cap = this.renderer.quality.maxFps;
+      if (cap && now - last < 1000 / cap - 2) return;
+      last = now;
       this.frame();
     };
-    loop();
+    requestAnimationFrame(loop);
   }
 
   private frame(): void {

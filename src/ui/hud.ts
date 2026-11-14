@@ -285,7 +285,7 @@ export class Hud {
       ['log', 'log', 'hud.tab.log'],
     ];
     for (const [id, ic, key] of defs) {
-      const b = h('button', { onclick: () => this.showTab(id) }, icon(ic, 17), t(key));
+      const b = h('button', { onclick: () => this.showTab(id), title: t(key), 'aria-label': t(key) }, icon(ic, 17), h('span.tl', t(key)));
       if (id === 'cargo') b.append(this.cargoDot);
       this.tabBtns.set(id, b);
       tabs.append(b);
@@ -915,7 +915,41 @@ export class Hud {
       b.addEventListener('touchcancel', up, { passive: false });
       return b;
     };
-    this.touchEl = h('div.touch.hidden', stick, h('div.tbtns', key('E', 'KeyE'), key('▲', 'Space'), key('F', 'KeyF'), key('⇄', 'Tab')));
+    // running is a toggle on a touch screen: nobody can hold a key and steer at once
+    const run = h('button.toggle', { title: t('touch.run') }, '⇧');
+    run.addEventListener(
+      'touchstart',
+      (e) => {
+        e.preventDefault();
+        const on = !run.classList.contains('on');
+        run.classList.toggle('on', on);
+        if (on) input.press('ShiftLeft');
+        else input.release('ShiftLeft');
+      },
+      { passive: false },
+    );
+    const labelled = (label: string, code: string, title: string): HTMLElement => {
+      const b = key(label, code);
+      b.title = t(title);
+      b.setAttribute('aria-label', t(title));
+      return b;
+    };
+    this.touchEl = h(
+      'div.touch.hidden',
+      stick,
+      h(
+        'div.tbtns',
+        labelled('E', 'KeyE', 'touch.use'),
+        labelled('▲', 'Space', 'touch.jump'),
+        labelled('F', 'KeyF', 'touch.scan'),
+        labelled('V', 'KeyV', 'touch.rover'),
+        run,
+        labelled('R', 'KeyR', 'touch.throw'),
+        labelled('G', 'KeyG', 'touch.galileo'),
+        labelled('B', 'KeyB', 'touch.build'),
+        labelled('⇄', 'Tab', 'touch.back'),
+      ),
+    );
     return this.touchEl;
   }
 
@@ -1246,6 +1280,8 @@ export class Hud {
   private updateBuildInfo(): void {
     const g = this.game;
     const b = g.build;
+    // the route planner steps aside while building (and on EVA)
+    this.routeBox.parentElement?.classList.toggle('hidden', !!b?.active || g.mode === 'eva');
     if (!b || !b.active) {
       this.buildinfo.classList.add('hidden');
       return;
@@ -1269,7 +1305,18 @@ export class Hud {
         if (p.crewDist < TUNE.reactorSafeM) parts.push(h('span.wn', t('build.warn.reactor')));
       }
     }
-    parts.push(h('span.muted', `${t('build.rotate')} · ${g.mode === 'eva' ? t('build.placeEva') : t('build.place')} · ${t('build.cancel')}`));
+    if (g.input.touch) {
+      // on a touch screen: buttons instead of keys
+      const tap = (code: string): void => {
+        g.input.press(code);
+        window.setTimeout(() => g.input.release(code), 90);
+      };
+      parts.push(
+        h('button.btn.small', { onclick: () => tap('KeyR') }, '↻ ', t('touch.rotate')),
+        h('button.btn.small.ghost', { onclick: () => g.cancelBuild() }, '✕ ', t('touch.cancel')),
+        h('span.muted', g.mode === 'eva' ? t('touch.placeEva') : t('touch.place')),
+      );
+    } else parts.push(h('span.muted', `${t('build.rotate')} · ${g.mode === 'eva' ? t('build.placeEva') : t('build.place')} · ${t('build.cancel')}`));
     const sig = parts.map((x) => x.textContent).join('|');
     if (this.buildinfo.dataset.sig !== sig) {
       this.buildinfo.dataset.sig = sig;

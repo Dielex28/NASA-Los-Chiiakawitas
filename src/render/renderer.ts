@@ -6,7 +6,8 @@ import { GTAOPass } from 'three/examples/jsm/postprocessing/GTAOPass.js';
 import { OutputPass } from 'three/examples/jsm/postprocessing/OutputPass.js';
 import { ShaderPass } from 'three/examples/jsm/postprocessing/ShaderPass.js';
 
-export type QualityLevel = 'low' | 'medium' | 'high' | 'ultra';
+export type QualityLevel = 'lite' | 'low' | 'medium' | 'high' | 'ultra';
+export const QUALITY_LEVELS: QualityLevel[] = ['lite', 'low', 'medium', 'high', 'ultra'];
 
 export interface QualitySettings {
   level: QualityLevel;
@@ -35,9 +36,13 @@ export interface QualitySettings {
   volumetric: number;
   /** One bounce of sunlight off the terrain, solved on the height map. */
   bounce: boolean;
+  /** Frame-rate cap to save battery on school laptops and tablets (absent: as fast as the screen). */
+  maxFps?: number;
 }
 
 export const QUALITY: Record<QualityLevel, Omit<QualitySettings, 'level'>> = {
+  // school Chromebooks and tablets: a smaller image, no extras, 30 frames a second to save battery
+  lite: { pixelRatio: 0.6, shadowSize: 512, hfSteps: 12, bloom: false, msaa: 0, rocks: 0.2, particles: 0.25, ao: false, sunTaps: 0, textureSize: 128, anisotropy: 1, rays: 0, lampShadows: false, probeSize: 0, volumetric: 0, bounce: false, maxFps: 30 },
   low: { pixelRatio: 0.75, shadowSize: 1024, hfSteps: 18, bloom: false, msaa: 0, rocks: 0.35, particles: 0.4, ao: false, sunTaps: 0, textureSize: 256, anisotropy: 1, rays: 0, lampShadows: false, probeSize: 0, volumetric: 0, bounce: false },
   medium: { pixelRatio: 1, shadowSize: 2048, hfSteps: 28, bloom: true, msaa: 2, rocks: 0.7, particles: 0.7, ao: false, sunTaps: 10, textureSize: 512, anisotropy: 2, rays: 20, lampShadows: false, probeSize: 0, volumetric: 0, bounce: true },
   high: { pixelRatio: 1.5, shadowSize: 4096, hfSteps: 40, bloom: true, msaa: 4, rocks: 1, particles: 1, ao: true, sunTaps: 16, textureSize: 1024, anisotropy: 8, rays: 32, lampShadows: true, probeSize: 128, volumetric: 16, bounce: true },

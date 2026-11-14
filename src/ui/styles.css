@@ -650,7 +650,8 @@ h3.sec { font-family: var(--mono); font-weight: 400; letter-spacing: 0.16em; tex
 .touch { position: absolute; inset: 0; pointer-events: none; }
 .stick { position: absolute; left: 4vw; bottom: 30vh; width: 8.4em; height: 8.4em; border-radius: 50%; border: 1px solid var(--text); background: var(--panel); }
 .stick i { position: absolute; left: 50%; top: 50%; width: 3.4em; height: 3.4em; margin: -1.7em 0 0 -1.7em; border-radius: 50%; background: var(--text); transition: transform 0.05s linear; }
-.tbtns { position: absolute; right: 4vw; bottom: 30vh; display: grid; grid-template-columns: repeat(2, 4.4em); gap: 0.6em; }
+.tbtns { position: absolute; right: 3vw; bottom: 24vh; display: grid; grid-template-columns: repeat(3, 4.4em); gap: 0.6em; }
+.tbtns button.toggle.on { background: var(--accent); color: var(--ground); border-color: var(--accent); }
 .tbtns button { width: 4.4em; height: 4.4em; border-radius: 50%; border: 1px solid var(--text); background: var(--panel); color: var(--text); font-family: var(--mono); font-size: 0.95em; touch-action: none; }
 
 /* Figures are set in the proportional face with tabular digits: a monospaced decimal comma
@@ -762,3 +763,4 @@ h3.sec { font-family: var(--mono); font-weight: 400; letter-spacing: 0.16em; tex
 .classtable td { padding: 0.55em 0.6em; border-bottom: 1px solid var(--line); }
 .classtable td.n { font-family: var(--mono); }
 .classtable td.ok { color: var(--ok); } .classtable td.bad { color: var(--bad-text); }
+@media (max-width: 1180px) { .tabs button .tl { display: none; } }

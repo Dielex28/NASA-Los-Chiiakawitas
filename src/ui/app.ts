@@ -34,8 +34,15 @@ const MINERALS_KEY = 'helios-minerals';
 /** A sensible starting preset for this device; the player can change it in Settings. */
 function defaultQuality(): QualityLevel {
   const nav = navigator as Navigator & { deviceMemory?: number };
-  const mobile = /Android|iPhone|iPad|Mobile/i.test(nav.userAgent);
-  if (mobile) return 'low';
+  const ua = nav.userAgent;
+  // iPadOS reports itself as a Mac: tell it apart by its touch screen
+  const tablet = /Android|iPad|Tablet/i.test(ua) || (/Macintosh/.test(ua) && nav.maxTouchPoints > 1);
+  const mobile = /iPhone|Mobile/i.test(ua);
+  const memory = nav.deviceMemory ?? 8;
+  if (mobile) return 'lite';
+  if (tablet) return memory <= 3 ? 'lite' : 'low';
+  // school Chromebooks: modest integrated graphics
+  if (/CrOS/.test(ua)) return memory <= 4 ? 'lite' : 'low';
   if ((nav.deviceMemory ?? 8) <= 4 || (nav.hardwareConcurrency ?? 8) <= 4) return 'medium';
   return 'high';
 }

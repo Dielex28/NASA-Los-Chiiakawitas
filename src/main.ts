@@ -1,4 +1,4 @@
-import type { QualityLevel } from './render/renderer';
+import { QUALITY_LEVELS, type QualityLevel } from './render/renderer';
 import { missionById } from './sim/missions';
 import { step } from './sim/sim';
 import { App, fatal } from './ui/app';
@@ -25,7 +25,7 @@ async function main(): Promise<void> {
     return;
   }
   const q = params.get('q') as QualityLevel | null;
-  const app = new App(canvas, root, q && ['low', 'medium', 'high', 'ultra'].includes(q) ? q : undefined);
+  const app = new App(canvas, root, q && QUALITY_LEVELS.includes(q) ? q : undefined);
   // the styled loading screen takes over from the plain boot message
   document.getElementById('boot')?.remove();
   // handles for automated play-testing
