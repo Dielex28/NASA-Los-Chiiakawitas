@@ -529,7 +529,10 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 18px; background: v
 .alert.info > .ico { color: var(--accent); animation: none; }
 .alert h4 { margin: 0; font-size: 0.98em; font-weight: 700; letter-spacing: 0.08em; text-transform: uppercase; }
 .alert p { margin: 0.25em 0 0; font-size: 0.86em; color: var(--text-2); line-height: 1.4; }
-.alert .acts { display: flex; gap: 0.5em; flex: none; }
+/* when the buttons do not fit beside the text (narrow windows, three choices) they drop below it */
+.alert { flex-wrap: wrap; }
+.alert > .grow { flex: 1 1 18em; min-width: 0; }
+.alert .acts { display: flex; flex-wrap: wrap; justify-content: flex-end; gap: 0.5em; flex: 0 1 auto; margin-left: auto; }
 .emgbar { height: 4px; margin-top: 0.6em; background: var(--line); }
 .emgbar i { display: block; height: 4px; width: 100%; background: var(--bad); transition: width 0.3s linear; }
 .emgopts { display: flex; flex-direction: column; gap: 0.2em; margin-top: 0.55em; font-size: 0.82em; color: var(--text-2); line-height: 1.4; }
