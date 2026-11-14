@@ -4,6 +4,7 @@ import { Emitter } from '../core/events';
 import { closeTeam, createTeam, shiftDue } from '../sim/team';
 import { MUSCLE_EFF, SUITED_KG, planRoute, type RoutePlan, type RoutePoint } from '../sim/route';
 import { RouteView } from './routeview';
+import { Interior } from './interior';
 import { siteOf, siteSun, type RealSiteId, type SiteSun } from '../sim/sites';
 import { clamp01, damp, dampAngle } from '../core/math';
 import { Orbi } from '../entities/astronaut';
@@ -90,6 +91,8 @@ export interface GameEvents extends Record<string, unknown> {
   shift: number;
   /** The planned EVA route changed. */
   route: number;
+  /** Stepped inside a module (its id) or back out (null). */
+  interior: number | null;
 }
 
 /** Game hours that pass per real second at each command-console speed. */
@@ -269,6 +272,7 @@ export class Game {
   }
 
   private setPhase(p: GamePhase): void {
+    if (p !== 'playing') this.exitInterior();
     this.phase = p;
     this.events.emit('phase', p);
   }
@@ -554,6 +558,33 @@ export class Game {
     this.select(id);
   }
 
+  /* --------------------------------------------------------- interior */
+
+  /** Looking around inside a module (null: outside views). */
+  interior: Interior | null = null;
+
+  /** Step inside a pressurised module from the command view. */
+  enterInterior(moduleId: number): void {
+    const sim = this.sim;
+    const st = this.stage;
+    const m = sim?.modules.find((x) => x.id === moduleId);
+    if (!sim || !st || !m || this.mode !== 'command' || !isBuilt(m)) return;
+    this.exitInterior();
+    st.build.cancel();
+    this.routeEdit = false;
+    this.interior = new Interior(m, st.world.id);
+    this.audio.ui('open');
+    this.events.emit('interior', moduleId);
+  }
+
+  exitInterior(): void {
+    if (!this.interior) return;
+    this.interior.dispose();
+    this.interior = null;
+    this.audio.ui('close');
+    this.events.emit('interior', null);
+  }
+
   /* ------------------------------------------------------------- demo */
 
   /** Demo mode: where the astronaut walks by herself (null: nobody is steering). */
@@ -730,6 +761,7 @@ export class Game {
       return;
     }
     st.build.cancel();
+    this.exitInterior();
     this.routeEdit = false;
     this.routeNext = 0;
     // leave by the airlock closest to where the commander is looking
@@ -884,6 +916,11 @@ export class Game {
       // the rover moves first, so the driver is drawn on this frame's seat
       this.updateRover(dt, st, sim, rate * dt, playing && this.mode === 'eva' && allowInput);
       if (playing && this.mode === 'eva') this.updateEva(dt, st, sim, allowInput);
+      else if (this.interior) {
+        this.interior.update(dt, this.time, sim, this.input, allowInput);
+        if (allowInput && (this.input.hit('Escape') || this.input.hit('Tab'))) this.exitInterior();
+        if (allowInput && this.input.hit('Space')) this.togglePause();
+      }
       else this.updateCommand(dt, st, sim, allowInput);
       this.blend.apply(this.camera, dt);
     }
@@ -994,7 +1031,13 @@ export class Game {
     const wu = st.world.uniforms;
     const airLit = this.renderer.setVolume(this.camera, atm.sun, atm.sunDir, atm.airSun, atm.airAmbient, atm.scatter, env.storm, this.time, wu.uHeightMap.value, wu.uHf.value, wu.uNoise.value);
     this.renderer.setRays(this.camera, atm.sunDir, airLit ? 0 : atm.shafts, atm.shaftTint);
-    this.renderer.render(st.world.scene, this.camera, atm.exposure * (this.photo ? Math.pow(2, this.photoExposure) : 1), this.time);
+    if (this.interior && playing) {
+      // inside a module: its own scene and lights; no dust in the air, no shafts of sunlight
+      this.renderer.setVolume(this.camera, atm.sun, atm.sunDir, atm.airSun, atm.airAmbient, 0, 0, this.time, null, wu.uHf.value, null);
+      this.renderer.setRays(this.camera, atm.sunDir, 0, atm.shaftTint);
+      this.interior.setAspect(this.camera.aspect);
+      this.renderer.render(this.interior.scene, this.interior.camera, 1.05, this.time);
+    } else this.renderer.render(st.world.scene, this.camera, atm.exposure * (this.photo ? Math.pow(2, this.photoExposure) : 1), this.time);
 
     // ---- housekeeping
     if (playing) {

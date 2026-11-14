@@ -442,6 +442,9 @@ export class Hud {
       return dd;
     };
     wrap.append(h('div.insp-title', icon(MOD_ICON[m0.type], 22), h('h3', t(`mod.${m0.type}`)), status), h('div.note', t(`desc.${m0.type}`)));
+    // pressurised rooms can be visited
+    if (['hab', 'lab', 'greenhouse', 'lander'].includes(m0.type) && m0.built >= 1)
+      wrap.append(h('button.btn.small', { onclick: () => g.enterInterior(m0.id) }, icon('eye', 14), t('inside.enter')));
     wrap.append(h('div.label', t('insp.condition')), condBar, dl);
     const isLoad = def.opKw + def.keepKw + def.heatKw > 0;
     const draw = isLoad || def.genKw > 0 ? row(def.genKw > 0 && m0.type !== 'lander' ? t('insp.output') : t('insp.draw')) : null;
@@ -803,6 +806,23 @@ export class Hud {
     this.renderRoute();
   }
 
+  /** Inside a module: the room's name, how to look around, and the way out. */
+  private interiorBar: HTMLElement | null = null;
+  private showInteriorBar(id: number | null): void {
+    this.interiorBar?.remove();
+    this.interiorBar = null;
+    this.el.classList.toggle('inside', id !== null);
+    if (id === null) return;
+    const m = this.sim.modules.find((x) => x.id === id);
+    this.interiorBar = h(
+      'div.insidebar.panel',
+      icon('eye', 18),
+      h('div.grow', h('b', t('inside.title', { what: m ? t(`mod.${m.type}`) : '' })), h('span', t(this.game.input.touch ? 'inside.help.touch' : 'inside.help'))),
+      h('button.btn.small', { onclick: () => this.game.exitInterior() }, t('inside.exit')),
+    );
+    this.el.append(this.interiorBar);
+  }
+
   /** The EVA route planner: draw a traverse in the command view and see what it would cost. */
   private readonly routeBox = h('div.routebox.panel');
   private renderRoute(): void {
@@ -1002,6 +1022,7 @@ export class Hud {
         else this.photoPanel?.remove();
       }),
       g.events.on('route', () => this.renderRoute()),
+      g.events.on('interior', (id) => this.showInteriorBar(id)),
       g.events.on('mode', (mode) => {
         if (mode === 'eva') this.tutorial.eva = true;
         else if (this.tutorial.eva) this.tutorial.back = true;

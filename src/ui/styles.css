@@ -764,3 +764,9 @@ h3.sec { font-family: var(--mono); font-weight: 400; letter-spacing: 0.16em; tex
 .classtable td.n { font-family: var(--mono); }
 .classtable td.ok { color: var(--ok); } .classtable td.bad { color: var(--bad-text); }
 @media (max-width: 1180px) { .tabs button .tl { display: none; } }
+
+/* inside a module */
+.insidebar { position: absolute; left: 50%; top: 5.6em; transform: translateX(-50%); display: flex; align-items: center; gap: 0.9em; padding: 0.7em 1em; max-width: calc(100vw - 24px); z-index: 6; }
+.insidebar .grow { display: flex; flex-direction: column; gap: 0.15em; }
+.insidebar span { color: var(--text-2); font-size: 0.86em; }
+#ui .hud.inside .hud-right, #ui .hud.inside .hud-bottom, #ui .hud.inside .hud-corner, #ui .hud.inside .hud-route, #ui .hud.inside .forecast { display: none; }
