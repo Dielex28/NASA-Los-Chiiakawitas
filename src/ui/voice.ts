@@ -14,11 +14,12 @@ export function setVoice(on: boolean): void {
  */
 export function speak(text: string, urgent = false): void {
   if (!enabled || typeof speechSynthesis === 'undefined') return;
-  const lang = getLang() === 'es' ? 'es' : 'en';
+  const lang = getLang();
+  const tag = { es: 'es-ES', en: 'en-GB', pt: 'pt-BR', fr: 'fr-FR' }[lang];
   const voices = speechSynthesis.getVoices();
-  const voice = voices.find((v) => v.lang.toLowerCase().startsWith(lang === 'es' ? 'es-es' : 'en-gb')) ?? voices.find((v) => v.lang.toLowerCase().startsWith(lang));
+  const voice = voices.find((v) => v.lang.toLowerCase().startsWith(tag.toLowerCase())) ?? voices.find((v) => v.lang.toLowerCase().startsWith(lang));
   const u = new SpeechSynthesisUtterance(text.replace(/[«»“”]/g, ''));
-  u.lang = lang === 'es' ? 'es-ES' : 'en-GB';
+  u.lang = tag;
   if (voice) u.voice = voice;
   u.rate = urgent ? 1.08 : 1;
   u.pitch = 1.05;

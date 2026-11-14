@@ -4,7 +4,7 @@ import type { SimState } from '../sim/types';
 import { tx, type Level, type ShownQuestion } from './quiz';
 import { saveFile } from './save';
 import { telemetryCsv } from '../sim/csv';
-import { getLang, t } from './strings';
+import { L, getLang, locale, t } from './strings';
 
 export interface QuizAnswer {
   shown: ShownQuestion;
@@ -21,10 +21,9 @@ const esc = (s: string): string => s.replace(/[&<>"]/g, (c) => ({ '&': '&amp;', 
  */
 export function teacherReport(sim: SimState, level: Level, answers: QuizAnswer[], student: string): string {
   const score = scoreMission(sim);
-  const es = getLang() === 'es';
-  const num = (v: number, d = 0): string => v.toLocaleString(es ? 'es-ES' : 'en-GB', { minimumFractionDigits: d, maximumFractionDigits: d });
+  const num = (v: number, d = 0): string => v.toLocaleString(locale(), { minimumFractionDigits: d, maximumFractionDigits: d });
   const ok = sim.outcome?.result === 'success';
-  const date = new Date().toLocaleString(es ? 'es-ES' : 'en-GB', { dateStyle: 'long', timeStyle: 'short' });
+  const date = new Date().toLocaleString(locale(), { dateStyle: 'long', timeStyle: 'short' });
   const right = answers.filter((a) => a.chosen === 0).length;
   const pillars: Array<[string, number]> = [
     [t('end.pillar.crew'), score.crew],
@@ -51,9 +50,9 @@ export function teacherReport(sim: SimState, level: Level, answers: QuizAnswer[]
   const learned = lessons(sim)
     .map((l) => `<li class="${l.good ? 'good' : 'bad'}">${esc(t(`lesson.${l.key}`, l.params))}</li>`)
     .join('');
-  const title = es ? 'Informe de misión' : 'Mission report';
+  const title = L('Informe de misión', 'Mission report', 'Relatório da missão', 'Rapport de mission');
   return `<!doctype html>
-<html lang="${es ? 'es' : 'en'}">
+<html lang="${getLang()}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -75,24 +74,24 @@ export function teacherReport(sim: SimState, level: Level, answers: QuizAnswer[]
 <body>
 <h1>${title}: ${esc(t(`mission.${sim.missionId}.name`))}</h1>
 <p class="meta">${esc(t(`mission.${sim.missionId}.site`))} · ${esc(date)}${student ? ` · ${esc(student)}` : ''}</p>
-<h2>${es ? 'Resultado' : 'Outcome'}</h2>
+<h2>${L('Resultado', 'Outcome', 'Resultado', 'Résultat')}</h2>
 <table>${rows([
-    [es ? 'Resultado' : 'Result', ok ? t('end.success') : t('end.abort')],
-    [es ? 'Puntuación' : 'Score', `${num(score.total)} / 100 · ${t(`end.rank.${score.rank}`)}`],
-    [es ? 'Nivel' : 'Level', t(`set.level.${level}`)],
-    [t('end.stat.dose'), `${num(score.maxDose, 1)} mSv (${es ? 'límite' : 'limit'} ${sim.cfg.doseLimitMsv})`],
+    [L('Resultado', 'Result', 'Resultado', 'Résultat'), ok ? t('end.success') : t('end.abort')],
+    [L('Puntuación', 'Score', 'Pontuação', 'Score'), `${num(score.total)} / 100 · ${t(`end.rank.${score.rank}`)}`],
+    [L('Nivel', 'Level', 'Nível', 'Niveau'), t(`set.level.${level}`)],
+    [t('end.stat.dose'), `${num(score.maxDose, 1)} mSv (${L('límite', 'limit', 'limite', 'limite')} ${sim.cfg.doseLimitMsv})`],
     [t('end.stat.samples'), String(st.samplesCollected)],
     [t('end.stat.harvests'), String(st.harvests)],
     [t('end.stat.eva'), num(st.evaH, 1)],
-    [es ? 'Expedición' : 'Expedition', sim.flags.expedition ? (es ? 'completada' : 'completed') : es ? 'no realizada' : 'not done'],
+    [L('Expedición', 'Expedition', 'Expedição', 'Expédition'), sim.flags.expedition ? L('completada', 'completed', 'concluída', 'réussie') : L('no realizada', 'not done', 'não realizada', 'non réalisée')],
   ])}</table>
 <table style="margin-top:0.8em">${pillars.map(([k, v]) => `<tr><th>${esc(k)}</th><td><div class="bar"><i style="width:${Math.round(v)}%"></i></div></td><td style="width:3em;text-align:right">${num(v)}</td></tr>`).join('')}</table>
 <h2>${esc(t('end.lessons'))}</h2>
 <ul class="lessons">${learned}</ul>
-<h2>${es ? 'Preguntas de comprensión' : 'Comprehension questions'} · ${right} / ${answers.length}</h2>
+<h2>${L('Preguntas de comprensión', 'Comprehension questions', 'Perguntas de compreensão', 'Questions de compréhension')} · ${right} / ${answers.length}</h2>
 ${quiz}
-<div class="sign"><div>${es ? 'Alumno o alumna' : 'Student'}</div><div>${es ? 'Docente' : 'Teacher'}</div></div>
-<p class="meta" style="margin-top:2em">Helios Outpost · NASA Space Apps Challenge 2026 · ${es ? 'Las cifras científicas y sus fuentes están en docs/SCIENCE.md del proyecto.' : 'Scientific figures and their sources are in docs/SCIENCE.md of the project.'}</p>
+<div class="sign"><div>${L('Alumno o alumna', 'Student', 'Aluno ou aluna', 'Élève')}</div><div>${L('Docente', 'Teacher', 'Professor(a)', 'Enseignant(e)')}</div></div>
+<p class="meta" style="margin-top:2em">Helios Outpost · NASA Space Apps Challenge 2026 · ${L('Las cifras científicas y sus fuentes están en docs/SCIENCE.md del proyecto.', 'Scientific figures and their sources are in docs/SCIENCE.en.md of the project.', 'Os números científicos e suas fontes estão em docs/SCIENCE.en.md do projeto.', 'Les chiffres scientifiques et leurs sources sont dans docs/SCIENCE.en.md du projet.')}</p>
 </body>
 </html>`;
 }
@@ -100,7 +99,7 @@ ${quiz}
 /** The mission's telemetry as a spreadsheet file (CSV). */
 export function downloadTelemetry(sim: SimState): void {
   const day = new Date().toISOString().slice(0, 10);
-  const name = getLang() === 'es' ? 'datos' : 'data';
+  const name = L('datos', 'data', 'dados', 'donnees');
   void saveFile(`helios-${sim.missionId}-${day}-${name}.csv`, telemetryCsv(sim, getLang()), 'text/csv');
 }
 

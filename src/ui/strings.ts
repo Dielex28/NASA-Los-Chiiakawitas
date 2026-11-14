@@ -1,10 +1,19 @@
+import { FR } from './i18n/fr';
+import { PT } from './i18n/pt';
+
 /**
- * All player-facing text, Spanish and English side by side: [es, en].
+ * All player-facing text, Spanish and English side by side: [es, en]. Portuguese and French live
+ * in their own tables by key (./i18n); a key missing there falls back to English.
  * `{name}` placeholders are filled by `t()`.
  */
-export type Lang = 'es' | 'en';
+export type Lang = 'es' | 'en' | 'pt' | 'fr';
+export const LANGS: Lang[] = ['es', 'en', 'pt', 'fr'];
+const EXTRA: Record<'pt' | 'fr', Record<string, string>> = { pt: PT, fr: FR };
 
-const S: Record<string, [string, string]> = {
+/** Text in all four languages, for strings built in code (Portuguese and French optional). */
+type Entry = [string, string] | [string, string, string, string];
+
+const S: Record<string, Entry> = {
   /* ------------------------------------------------------------ shell */
   'app.title': ['HELIOS OUTPOST', 'HELIOS OUTPOST'],
   'app.subtitle': ['Simulador de misión para astronautas junior', 'Mission simulator for junior astronauts'],
@@ -1028,7 +1037,10 @@ export function initLang(): void {
   } catch {
     /* ignore */
   }
-  if (l !== 'es' && l !== 'en') l = (navigator.language || 'es').toLowerCase().startsWith('es') ? 'es' : 'en';
+  if (!l || !LANGS.includes(l)) {
+    const nav = (navigator.language || 'es').toLowerCase();
+    l = nav.startsWith('es') ? 'es' : nav.startsWith('pt') ? 'pt' : nav.startsWith('fr') ? 'fr' : 'en';
+  }
   setLang(l);
 }
 
@@ -1039,12 +1051,34 @@ export function has(key: string): boolean {
 /** Translate `key`, filling `{placeholders}`. Unknown keys come back as the key itself. */
 export function t(key: string, params?: Record<string, string | number>): string {
   const e = S[key];
-  let s = e ? e[lang === 'es' ? 0 : 1] : key;
+  let s: string;
+  if (lang === 'es' || lang === 'en') s = e ? e[lang === 'es' ? 0 : 1] : key;
+  else s = (e && e.length === 4 ? e[lang === 'pt' ? 2 : 3] : undefined) ?? EXTRA[lang][key] ?? (e ? e[1] : key);
   if (params) for (const k of Object.keys(params)) s = s.split(`{${k}}`).join(String(params[k]));
   return s;
 }
 
-/** Register extra strings (codex, minerals). */
-export function addStrings(extra: Record<string, [string, string]>): void {
+/** Register extra strings (codex, minerals, generated missions). */
+export function addStrings(extra: Record<string, Entry>): void {
   Object.assign(S, extra);
+}
+
+/** The Portuguese or French text stored for a key outside the main table (null in Spanish or English, or if missing). */
+export function translated(key: string): string | null {
+  return lang === 'pt' || lang === 'fr' ? (EXTRA[lang][key] ?? null) : null;
+}
+
+/** Pick the text for the current language (for the few strings written inline in code). */
+export function L(es: string, en: string, pt: string, fr: string): string {
+  return { es, en, pt, fr }[lang];
+}
+
+/** The current language's locale, for numbers and dates. */
+export function locale(): string {
+  return { es: 'es-ES', en: 'en-GB', pt: 'pt-BR', fr: 'fr-FR' }[lang];
+}
+
+/** Every key with its Spanish and English text (for building and checking translations). */
+export function allStrings(): Record<string, Entry> {
+  return S;
 }

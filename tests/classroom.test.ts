@@ -69,7 +69,7 @@ describe('class results', () => {
     watchClass(c, (r) => (rows = r), () => undefined);
     await sendResult(c, { ...entryFor(finished('success'), 2), score: 78 });
     expect(rows.map((r) => r.student).sort()).toEqual(['u_ana', 'u_bruno']);
-    const csv = classCsv(rows.map((r) => ({ ...(r as object), name: r.student === 'u_ana' ? 'Ana' : 'Bruno' }) as never), true);
+    const csv = classCsv(rows.map((r) => ({ ...(r as object), name: r.student === 'u_ana' ? 'Ana' : 'Bruno' }) as never), 'es');
     const lines = csv.trim().split('\r\n');
     expect(lines.length).toBe(3);
     expect(lines[0]).toContain('Estudiante;Misión');

@@ -1,4 +1,4 @@
-import { getLang } from './strings';
+import { getLang, translated } from './strings';
 
 /** 1 = 8–11 years · 2 = 12–14 · 3 = 15 and up. */
 export type Level = 1 | 2 | 3;
@@ -286,4 +286,18 @@ export function pickQuestions(world: 'moon' | 'mars', level: Level, n = 4, rand:
 }
 
 /** Text in the current language. */
-export const tx = (t: Text): string => (getLang() === 'es' ? t[0] : t[1]);
+// Portuguese and French live in the shared tables by key: quiz.<id>.q, quiz.<id>.o<n>, quiz.<id>.why
+const KEYS = new WeakMap<Text, string>();
+for (const q of QUESTIONS) {
+  KEYS.set(q.q, `quiz.${q.id}.q`);
+  q.options.forEach((o, i) => KEYS.set(o, `quiz.${q.id}.o${i}`));
+  KEYS.set(q.why, `quiz.${q.id}.why`);
+}
+
+export const tx = (txt: Text): string => {
+  const lang = getLang();
+  if (lang === 'es') return txt[0];
+  if (lang === 'en') return txt[1];
+  const key = KEYS.get(txt);
+  return (key && translated(key)) || txt[1];
+};

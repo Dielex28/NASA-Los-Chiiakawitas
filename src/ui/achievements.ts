@@ -100,12 +100,13 @@ export function recordDaily(code: string, score: number): number {
   return all[code];
 }
 
-const TWIST_TEXT: Record<DailyTwist, [string, string]> = {
-  extraSpe: ['dos tormentas solares', 'two solar storms'],
-  tightDose: ['límite de dosis estricto', 'a strict dose limit'],
-  extraEmg: ['dos emergencias', 'two emergencies'],
-  noResupply: ['sin reabastecimiento', 'no resupply'],
-  bigFuel: ['mucho combustible que fabricar', 'a lot of fuel to make'],
+type Four = [string, string, string, string];
+const TWIST_TEXT: Record<DailyTwist, Four> = {
+  extraSpe: ['dos tormentas solares', 'two solar storms', 'duas tempestades solares', 'deux tempêtes solaires'],
+  tightDose: ['límite de dosis estricto', 'a strict dose limit', 'limite de dose rigoroso', 'une limite de dose stricte'],
+  extraEmg: ['dos emergencias', 'two emergencies', 'duas emergências', 'deux urgences'],
+  noResupply: ['sin reabastecimiento', 'no resupply', 'sem reabastecimento', 'sans ravitaillement'],
+  bigFuel: ['mucho combustible que fabricar', 'a lot of fuel to make', 'muito combustível para produzir', 'beaucoup de carburant à produire'],
 };
 
 /** Give a teacher's mission its name, site line and a briefing that lists what was chosen. */
@@ -115,49 +116,43 @@ function ensureCustomStrings(id: string): void {
   if (!m || !c) return;
   const code = id.slice(7);
   const moon = c.world === 'moon';
-  const cls = (['', 'menor', 'moderada', 'severa'] as const)[c.speClass];
-  const clsEn = (['', 'minor', 'moderate', 'severe'] as const)[c.speClass];
-  const es: string[] = [`${c.days} ${moon ? 'días' : 'soles'}`, `${c.crew} ${c.crew === 1 ? 'persona' : 'personas'}`];
-  const en: string[] = [`${c.days} ${moon ? 'days' : 'sols'}`, `crew of ${c.crew}`];
-  const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
-  es.push(c.spe ? `${n(c.spe, 'tormenta solar', 'tormentas solares')} (${cls})` : 'sin tormentas solares');
-  en.push(c.spe ? `${n(c.spe, 'solar storm', 'solar storms')} (${clsEn})` : 'no solar storms');
-  if (!moon && c.storms) {
-    es.push(n(c.storms, 'tormenta de polvo', 'tormentas de polvo'));
-    en.push(n(c.storms, 'dust storm', 'dust storms'));
-  }
-  es.push(c.emergencies ? n(c.emergencies, 'emergencia', 'emergencias') : 'sin emergencias');
-  en.push(c.emergencies ? n(c.emergencies, 'emergency', 'emergencies') : 'no emergencies');
-  if (!moon) {
-    es.push(`radio con ${m.commsDelayMin} min de retraso`);
-    en.push(`${m.commsDelayMin}-minute radio delay`);
-  }
-  if (!moon && c.conjunction && c.days >= 20) {
-    es.push('dos semanas de conjunción solar');
-    en.push('a two-week solar conjunction');
-  }
-  if (c.fuelKg) {
-    es.push(`${c.fuelKg} kg de combustible que fabricar`);
-    en.push(`${c.fuelKg} kg of fuel to make`);
-  }
-  es.push(c.resupply ? n(c.resupply, 'reabastecimiento', 'reabastecimientos') : 'sin reabastecimiento');
-  en.push(c.resupply ? n(c.resupply, 'resupply', 'resupplies') : 'no resupply');
+  const parts: Four[] = [];
+  const add = (es: string, en: string, pt: string, fr: string): void => void parts.push([es, en, pt, fr]);
+  const n = (k: number, one: Four, many: Four): Four => [0, 1, 2, 3].map((i) => `${k} ${k === 1 ? one[i] : many[i]}`) as Four;
+  const push = (f: Four): void => void parts.push(f);
+  const cls = (['', 'menor|minor|fraca|faible', 'moderada|moderate|moderada|modérée', 'severa|severe|severa|forte'] as const)[c.speClass].split('|');
+  add(`${c.days} ${moon ? 'días' : 'soles'}`, `${c.days} ${moon ? 'days' : 'sols'}`, `${c.days} ${moon ? 'dias' : 'sóis'}`, `${c.days} ${moon ? 'jours' : 'sols'}`);
+  push(n(c.crew, ['persona', 'crew member', 'tripulante', 'astronaute'], ['personas', 'crew', 'tripulantes', 'astronautes']));
+  if (c.spe) {
+    const f = n(c.spe, ['tormenta solar', 'solar storm', 'tempestade solar', 'tempête solaire'], ['tormentas solares', 'solar storms', 'tempestades solares', 'tempêtes solaires']);
+    push(f.map((x, i) => `${x} (${cls[i]})`) as Four);
+  } else add('sin tormentas solares', 'no solar storms', 'sem tempestades solares', 'sans tempête solaire');
+  if (!moon && c.storms) push(n(c.storms, ['tormenta de polvo', 'dust storm', 'tempestade de poeira', 'tempête de poussière'], ['tormentas de polvo', 'dust storms', 'tempestades de poeira', 'tempêtes de poussière']));
+  if (c.emergencies) push(n(c.emergencies, ['emergencia', 'emergency', 'emergência', 'urgence'], ['emergencias', 'emergencies', 'emergências', 'urgences']));
+  else add('sin emergencias', 'no emergencies', 'sem emergências', 'sans urgence');
+  if (!moon) add(`radio con ${m.commsDelayMin} min de retraso`, `${m.commsDelayMin}-minute radio delay`, `rádio com ${m.commsDelayMin} min de atraso`, `radio avec ${m.commsDelayMin} min de délai`);
+  if (!moon && c.conjunction && c.days >= 20) add('dos semanas de conjunción solar', 'a two-week solar conjunction', 'duas semanas de conjunção solar', 'deux semaines de conjonction solaire');
+  if (c.fuelKg) add(`${c.fuelKg} kg de combustible que fabricar`, `${c.fuelKg} kg of fuel to make`, `${c.fuelKg} kg de combustível para produzir`, `${c.fuelKg} kg de carburant à produire`);
+  if (c.resupply) push(n(c.resupply, ['reabastecimiento', 'resupply', 'reabastecimento', 'ravitaillement'], ['reabastecimientos', 'resupplies', 'reabastecimentos', 'ravitaillements']));
+  else add('sin reabastecimiento', 'no resupply', 'sem reabastecimento', 'sans ravitaillement');
   if (c.terrain) {
     const where = t(`edit.terrain.${c.world}.${c.terrain}`);
-    es.push(`terreno real de la NASA (${where})`);
-    en.push(`real NASA terrain (${where})`);
+    add(`terreno real de la NASA (${where})`, `real NASA terrain (${where})`, `terreno real da NASA (${where})`, `terrain réel de la NASA (${where})`);
   }
+  const j = (i: number): string => parts.map((p) => p[i]).join(' · ');
   addStrings({
-    [`mission.${id}.name`]: ['Misión del docente', "Teacher's mission"],
-    [`mission.${id}.site`]: [`${moon ? 'Luna' : 'Marte'} · código ${code}`, `${moon ? 'Moon' : 'Mars'} · code ${code}`],
+    [`mission.${id}.name`]: ['Misión del docente', "Teacher's mission", 'Missão do professor', "Mission de l'enseignant"],
+    [`mission.${id}.site`]: [`${moon ? 'Luna' : 'Marte'} · código ${code}`, `${moon ? 'Moon' : 'Mars'} · code ${code}`, `${moon ? 'Lua' : 'Marte'} · código ${code}`, `${moon ? 'Lune' : 'Mars'} · code ${code}`],
     [`mission.${id}.brief`]: [
-      `${es.join(' · ')}. Objetivo: ${c.scienceGoal} puntos de ciencia sin pasar de ${c.doseLimitMsv} mSv.`,
-      `${en.join(' · ')}. Goal: ${c.scienceGoal} science points without going over ${c.doseLimitMsv} mSv.`,
+      `${j(0)}. Objetivo: ${c.scienceGoal} puntos de ciencia sin pasar de ${c.doseLimitMsv} mSv.`,
+      `${j(1)}. Goal: ${c.scienceGoal} science points without going over ${c.doseLimitMsv} mSv.`,
+      `${j(2)}. Meta: ${c.scienceGoal} pontos de ciência sem passar de ${c.doseLimitMsv} mSv.`,
+      `${j(3)}. Objectif : ${c.scienceGoal} points de science sans dépasser ${c.doseLimitMsv} mSv.`,
     ],
   });
 }
 
-/** Give a daily challenge or a teacher's mission its name, site line and briefing in both languages. */
+/** Give a daily challenge or a teacher's mission its name, site line and briefing in every language. */
 export function ensureMissionStrings(id: string): void {
   if (id.startsWith('custom-')) return ensureCustomStrings(id);
   if (!id.startsWith('daily-')) return;
@@ -165,13 +160,15 @@ export function ensureMissionStrings(id: string): void {
   const m = dailyMission(code);
   const date = `${code.slice(6, 8)}/${code.slice(4, 6)}/${code.slice(0, 4)}`;
   const moon = m.world === 'moon';
-  const tw = (i: 0 | 1): string => m.twists.map((x) => TWIST_TEXT[x][i]).join(' + ');
+  const tw = (i: number): string => m.twists.map((x) => TWIST_TEXT[x][i]).join(' + ');
   addStrings({
-    [`mission.${id}.name`]: [`Reto del día · ${date}`, `Daily challenge · ${date}`],
-    [`mission.${id}.site`]: [`${moon ? 'Luna' : 'Marte'} · código ${code}`, `${moon ? 'Moon' : 'Mars'} · code ${code}`],
+    [`mission.${id}.name`]: [`Reto del día · ${date}`, `Daily challenge · ${date}`, `Desafio do dia · ${date}`, `Défi du jour · ${date}`],
+    [`mission.${id}.site`]: [`${moon ? 'Luna' : 'Marte'} · código ${code}`, `${moon ? 'Moon' : 'Mars'} · code ${code}`, `${moon ? 'Lua' : 'Marte'} · código ${code}`, `${moon ? 'Lune' : 'Mars'} · code ${code}`],
     [`mission.${id}.brief`]: [
-      `${m.durationSols} ${moon ? 'días' : 'soles'} con ${tw(0)}. Quien juegue con el código ${code} tendrá exactamente los mismos sucesos: comparad la puntuación.`,
-      `${m.durationSols} ${moon ? 'days' : 'sols'} with ${tw(1)}. Anyone who plays code ${code} gets exactly the same events: compare your scores.`,
+      `${m.durationSols} ${moon ? 'días' : 'soles'}: ${tw(0)}. Quien juegue con el código ${code} tendrá exactamente los mismos sucesos: comparad la puntuación.`,
+      `${m.durationSols} ${moon ? 'days' : 'sols'}: ${tw(1)}. Anyone who plays code ${code} gets exactly the same events: compare your scores.`,
+      `${m.durationSols} ${moon ? 'dias' : 'sóis'}: ${tw(2)}. Quem jogar com o código ${code} terá exatamente os mesmos eventos: comparem a pontuação.`,
+      `${m.durationSols} ${moon ? 'jours' : 'sols'} : ${tw(3)}. Tous ceux qui jouent le code ${code} ont exactement les mêmes événements : comparez vos scores.`,
     ],
   });
 }

@@ -135,12 +135,17 @@ export function watchClass(c: Classroom, next: (rows: ClassRow[], confirmed: boo
 }
 
 /** The class table as CSV (teacher's export). */
-export function classCsv(rows: Array<ClassRow & { name: string }>, es: boolean): string {
+export function classCsv(rows: Array<ClassRow & { name: string }>, lang: string): string {
+  const es = lang !== 'en';
   const sep = es ? ';' : ',';
   const n = (v: number): string => (es ? String(v).replace('.', ',') : String(v));
-  const head = es
-    ? ['Estudiante', 'Misión', 'Resultado', 'Puntos', 'Dosis máxima (mSv)', 'Ciencia', 'Objetivo de ciencia', 'Días', 'Nivel', 'Equipo', 'Fecha']
-    : ['Student', 'Mission', 'Result', 'Score', 'Peak dose (mSv)', 'Science', 'Science goal', 'Days', 'Level', 'Team', 'Date'];
+  const HEADS: Record<string, string[]> = {
+    es: ['Estudiante', 'Misión', 'Resultado', 'Puntos', 'Dosis máxima (mSv)', 'Ciencia', 'Objetivo de ciencia', 'Días', 'Nivel', 'Equipo', 'Fecha'],
+    en: ['Student', 'Mission', 'Result', 'Score', 'Peak dose (mSv)', 'Science', 'Science goal', 'Days', 'Level', 'Team', 'Date'],
+    pt: ['Estudante', 'Missão', 'Resultado', 'Pontos', 'Dose máxima (mSv)', 'Ciência', 'Meta de ciência', 'Dias', 'Nível', 'Equipe', 'Data'],
+    fr: ['Élève', 'Mission', 'Résultat', 'Score', 'Dose maximale (mSv)', 'Science', 'Objectif de science', 'Jours', 'Niveau', 'Équipe', 'Date'],
+  };
+  const head = HEADS[lang] ?? HEADS.en;
   const q = (x: string): string => (/[;,"\n]/.test(x) ? `"${x.replace(/"/g, '""')}"` : x);
   const lines = rows.map((r) =>
     [q(r.name), q(r.mission), r.result, n(r.score), n(r.dose), n(r.science), n(r.scienceGoal), n(r.days), n(r.level), n(r.team), r.at.slice(0, 16).replace('T', ' ')].join(sep),

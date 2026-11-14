@@ -16,7 +16,7 @@ import { pickQuestions, tx } from './quiz';
 import { ACHIEVEMENTS, check as checkAchievements, dailyBest, ensureMissionStrings, recordDaily, unlocked } from './achievements';
 import { downloadReport, downloadTelemetry, teacherReport, type QuizAnswer } from './report';
 import { clear, fmt, h, icon } from './dom';
-import { getLang, t, type Lang } from './strings';
+import { L, LANGS, getLang, locale, t, type Lang } from './strings';
 
 export const MOD_ICON: Record<ModuleType, string> = {
   lander: 'rocket',
@@ -112,7 +112,7 @@ export function menuScreen(app: App): HTMLElement {
       'div.menu-rail',
       h('div.logo', sunMark(), h('h1', 'HELIOS', h('br'), 'OUTPOST'), h('div.sub', t('app.subtitle')), h('div.tag', t('app.tagline'))),
       h('nav.menu-list', { 'aria-label': t('hud.menu') }, ...rows),
-      h('div.menu-foot', h('div.lang', { role: 'group', 'aria-label': t('set.lang') }, langBtn('es', 'ES'), langBtn('en', 'EN')), h('span', t('app.footer'))),
+      h('div.menu-foot', h('div.lang', { role: 'group', 'aria-label': t('set.lang') }, ...LANGS.map((l) => langBtn(l, l.toUpperCase()))), h('span', t('app.footer'))),
     ),
     h('div.menu-stage', h('dl.menu-facts', fact('site'), fact('sun'), fact('light'), fact('gravity'))),
   );
@@ -318,7 +318,6 @@ export function editorScreen(app: App, spec: CustomSpec): HTMLElement {
 
 /** The class's results (claude.ai only): the teacher sees everyone's, a student their own. */
 export function classScreen(app: App): HTMLElement {
-  const es = getLang() === 'es';
   const status = h('p.note', t('class.loading'));
   const pick = h('select.classpick', { 'aria-label': t('class.mission') }) as HTMLSelectElement;
   const table = h('div.classtable');
@@ -360,7 +359,7 @@ export function classScreen(app: App): HTMLElement {
       table.append(h('p.note', t(c.teacher ? 'class.empty.teacher' : 'class.empty.student')));
       return;
     }
-    const fmtD = (iso: string): string => new Date(iso).toLocaleString(es ? 'es-ES' : 'en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    const fmtD = (iso: string): string => new Date(iso).toLocaleString(locale(), { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
     table.append(
       h(
         'table',
@@ -383,7 +382,7 @@ export function classScreen(app: App): HTMLElement {
     );
   };
   pick.onchange = () => void render();
-  csvBtn.onclick = () => void saveFile(es ? 'helios-resultados-clase.csv' : 'helios-class-results.csv', classCsv(named, es), 'text/csv');
+  csvBtn.onclick = () => void saveFile(`helios-${L('resultados-clase', 'class-results', 'resultados-turma', 'resultats-classe')}.csv`, classCsv(named, getLang()), 'text/csv');
   void classroom().then((c) => {
     if (!c) {
       status.textContent = t('class.none');
@@ -837,8 +836,7 @@ export function settingsScreen(app: App, onClose: () => void): HTMLElement {
       h('span', t('set.lang')),
       h(
         'div.lang',
-        h('button', { class: lang === 'es' ? 'on' : '', onclick: () => app.setLanguage('es') }, 'ES'),
-        h('button', { class: lang === 'en' ? 'on' : '', onclick: () => app.setLanguage('en') }, 'EN'),
+        ...LANGS.map((l) => h('button', { class: lang === l ? 'on' : '', 'aria-pressed': String(lang === l), onclick: () => app.setLanguage(l) }, l.toUpperCase())),
       ),
     ),
   );
