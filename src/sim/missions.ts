@@ -1,4 +1,4 @@
-import type { EmergencyKind } from './emergency';
+import type { CrisisKind, EmergencyKind } from './emergency';
 import { cargoMass } from './catalog';
 import type { RealSiteId } from './sites';
 import { decodeCustom, encodeCustom, type CustomSpec } from './custom';
@@ -31,6 +31,8 @@ export interface MissionDef {
   commsDelayMin?: number;
   /** Designed by a teacher in the mission editor (the code that rebuilds it). */
   custom?: CustomSpec;
+  /** Scripted crises at a fixed mission hour (historical scenarios). */
+  crises?: Array<{ h: number; kind: CrisisKind }>;
   /** Emergencies that will happen in this mission (window in sols), besides random ones. */
   emergencies?: Array<{ sol: [number, number]; kind: EmergencyKind }>;
   seed: number;
@@ -306,6 +308,51 @@ MISSIONS.push(
     storms: [],
     resupply: [],
   },
+  {
+    // June 2018: the planet-encircling dust storm that ended Opportunity's mission. Optical depth
+    // reached 10.8 over the rover, the highest ever measured on Mars; nuclear-powered Curiosity
+    // worked on. Mars was near opposition (closest approach 31 July): radio took under 4 minutes.
+    id: 'mars-2018',
+    commsDelayMin: 3.7,
+    world: 'mars',
+    durationSols: 40,
+    crew: 4,
+    budgetKg: 14000,
+    scienceGoal: 90,
+    doseLimitMsv: 60,
+    startLocalH: 8.5,
+    difficulty: 3,
+    tutorial: false,
+    endless: false,
+    historic: true,
+    seed: 20180610,
+    recommended: { hab: 1, eclss: 1, reactor: 2, solar: 2, battery: 2, lab: 1, antenna: 1, rassor: 1, pylon: 6, food: 8, water: 3, o2: 2 },
+    spe: [],
+    storms: [{ sol: [4, 6], durationSols: [34, 38], tau: [9.5, 10.8] }],
+    resupply: [],
+  },
+  {
+    // April 1970, retold on the surface: 55 h 55 min into Apollo 13 an oxygen tank exploded. Fuel
+    // cells died, the crew of three lived in a lander built for two and improvised CO2 filters.
+    id: 'moon-1970',
+    world: 'moon',
+    durationSols: 7,
+    crew: 3,
+    budgetKg: 5600,
+    scienceGoal: 20,
+    doseLimitMsv: 40,
+    startLocalH: 40,
+    difficulty: 3,
+    tutorial: false,
+    endless: false,
+    historic: true,
+    seed: 19700413,
+    recommended: { eclss: 1, fuelcell: 1, solar: 2, battery: 1, antenna: 1, lab: 1, pylon: 2, food: 3, water: 3, o2: 2 },
+    crises: [{ h: 55.9, kind: 'o2tank' }],
+    spe: [],
+    storms: [],
+    resupply: [],
+  },
 );
 
 // Free play on measured topography: the same rules as the sandboxes, on the real shape of the land.
@@ -376,12 +423,14 @@ MISSIONS.push(
 const ORDER = [
   'moon-first',
   'moon-base',
+  'moon-1970',
   'moon-1972',
   'moon-ridge',
   'moon-malapert',
   'moon-nobile',
   'mars-first',
   'mars-2017',
+  'mars-2018',
   'mars-long',
   'moon-sandbox',
   'moon-real',

@@ -195,6 +195,7 @@ export function lessons(s: SimState): Array<{ key: string; good: boolean; params
     if ((st.emergencyAuto ?? 0) > 0) add('emgSlow', false, { n: st.emergencyAuto ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
     else add('emgFast', true, { n: st.emergencies ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
   }
+  if ((st.crises ?? 0) > 0) add(s.outcome?.result === 'success' ? 'apollo13' : 'apollo13Lost', s.outcome?.result === 'success');
   // the distance to Earth: how long help takes
   const delay = s.cfg.commsDelayMin ?? 0;
   if ((st.controlAsks ?? 0) > 0) {

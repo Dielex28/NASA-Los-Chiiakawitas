@@ -68,6 +68,7 @@ const RADIO: Record<string, CrewMember['role'][]> = {
   'log.emg.meteor': ['engineer'],
   'log.emg.eclss': ['medic', 'engineer'],
   'log.emg.over': ['engineer'],
+  'log.crisis.o2tank': ['engineer', 'commander'],
   'log.failure': ['engineer'],
   'log.repaired': ['engineer'],
   'log.harvest': ['botanist'],

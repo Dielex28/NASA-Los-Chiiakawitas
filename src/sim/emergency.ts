@@ -5,6 +5,8 @@ import type { ModuleState, SimState } from './types';
 
 export type EmergencyKind = 'leak' | 'meteor' | 'eclss';
 export type EmergencyChoice = 'isolate' | 'patch' | 'repair' | 'backup';
+/** Scripted crises of historical scenarios. */
+export type CrisisKind = 'o2tank';
 
 /**
  * Something has gone wrong and the commander has a short time to choose how to respond.
@@ -101,9 +103,12 @@ export function triggerEmergency(s: SimState, kind: EmergencyKind, rng: Rng, log
   s.emergency = { kind, moduleId: m.id, startH: s.timeH, decideByH: s.timeH + DECIDE_H, choice: null, doneH: null, auto: false, o2Lost: 0 };
   s.stats.emergencies = (s.stats.emergencies ?? 0) + 1;
   if (kind === 'eclss') {
-    // the scrubbers stop: CO₂ starts to climb at once
-    m.condition = Math.min(m.condition, TUNE.offlineAt - 1);
-    m.down = true;
+    // the scrubbers stop: CO₂ starts to climb at once (the lander's own scrubbers fail without
+    // taking the whole lander out of service)
+    if (m.type !== 'lander') {
+      m.condition = Math.min(m.condition, TUNE.offlineAt - 1);
+      m.down = true;
+    }
   } else if (kind === 'meteor') {
     m.condition = Math.max(5, m.condition - 25);
   }
@@ -180,8 +185,36 @@ export function liohScrub(s: SimState): number {
   return (s.flags.liohUntilH ?? 0) > s.timeH ? s.crew.length * HUMAN.co2KgDay * 1.3 : 0;
 }
 
+/**
+ * Apollo 13's accident, on the surface: an oxygen tank bursts. Most of the stored oxygen is gone,
+ * the fuel cells it fed die, and the scrubbers fail with the shock: power down, use the backup
+ * canisters, repair, and make the rest last.
+ */
+function fireCrisis(s: SimState, kind: CrisisKind, rng: Rng, log: Log): void {
+  if (kind === 'o2tank') {
+    s.stores.o2 *= 0.35;
+    for (const m of s.modules) {
+      if (m.type === 'fuelcell' && built(m)) {
+        m.condition = 5;
+        m.down = true;
+      }
+    }
+    s.stats.crises = (s.stats.crises ?? 0) + 1;
+    log(s, 'log.crisis.o2tank', 'bad');
+    if (s.emergency) return;
+    const eclss = s.modules.find((m) => m.type === 'eclss' && built(m) && !m.down);
+    triggerEmergency(s, 'eclss', rng, log, eclss ?? s.modules[0]);
+  }
+}
+
 /** Advance the running emergency (and fire scripted or random ones). */
 export function updateEmergency(s: SimState, dtH: number, rng: Rng, log: Log): void {
+  for (const c of s.crisisPlan ?? []) {
+    if (!c.fired && s.timeH >= c.h) {
+      c.fired = true;
+      fireCrisis(s, c.kind, rng, log);
+    }
+  }
   // scripted emergencies wait until there is something to strike, and until the last one is over
   for (const p of s.emergencyPlan ?? []) {
     if (!p.fired && s.timeH >= p.h && !s.emergency) {

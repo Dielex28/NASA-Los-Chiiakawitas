@@ -283,6 +283,7 @@ export function createMission(
     schedule: buildSchedule(mission, seed),
     emergency: null,
     emergencyPlan: planEmergencies(mission, seed, w.solH),
+    crisisPlan: (mission.crises ?? []).map((c) => ({ ...c, fired: false })),
     resupply: mission.resupply.map((r) => ({
       arrivalH: r.sol * w.solH,
       cutoffH: (r.sol - (mission.world === 'moon' ? 3 : 2)) * w.solH,

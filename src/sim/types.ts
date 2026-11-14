@@ -1,6 +1,6 @@
 import type { SiteSun } from './sites';
 import type { TeamState } from './team';
-import type { Emergency, PlannedEmergency } from './emergency';
+import type { CrisisKind, Emergency, PlannedEmergency } from './emergency';
 /**
  * Simulation data model. Everything in here is plain JSON-serialisable data so a
  * mission can be saved, restored and unit-tested without the 3D layer.
@@ -282,6 +282,8 @@ export interface Stats {
   emergencies?: number;
   emergencyAuto?: number;
   emergencyO2Lost?: number;
+  /** Scripted crises that struck (Apollo 13-style). */
+  crises?: number;
   /** Times the crew asked Mission Control for help, and hours spent waiting for the answers. */
   controlAsks?: number;
   controlWaitH?: number;
@@ -385,6 +387,8 @@ export interface SimState {
   emergency?: Emergency | null;
   /** Scripted emergencies still to come. */
   emergencyPlan?: PlannedEmergency[];
+  /** Scripted crises of a historical scenario, by mission hour (absent in old saves). */
+  crisisPlan?: Array<{ h: number; kind: CrisisKind; fired: boolean }>;
   /** Last hour a brownout touched a critical load (for morale). */
   lastBlackoutH: number;
 }
