@@ -1,5 +1,6 @@
 import { lessons } from '../sim/advisor';
 import { MODULES, MODULE_ORDER, SUPPLIES, cargoMass, isSupply } from '../sim/catalog';
+import { CUSTOM_LIMITS, DEFAULT_CUSTOM, clampSpec, encodeCustom, normalizeCode, type CustomSpec } from '../sim/custom';
 import { MISSIONS, dailyCode, missionById, scoreMission, type MissionDef } from '../sim/missions';
 import { manifestMass, planAutonomy } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
@@ -7,7 +8,7 @@ import type { CargoItem, ModuleType, SimState, SupplyType } from '../sim/types';
 import type { App } from './app';
 import { CODEX, GLOSSARY } from './codexData';
 import { pickQuestions, tx } from './quiz';
-import { ACHIEVEMENTS, check as checkAchievements, dailyBest, ensureDailyStrings, recordDaily, unlocked } from './achievements';
+import { ACHIEVEMENTS, check as checkAchievements, dailyBest, ensureMissionStrings, recordDaily, unlocked } from './achievements';
 import { downloadReport, teacherReport, type QuizAnswer } from './report';
 import { clear, fmt, h, icon } from './dom';
 import { getLang, t, type Lang } from './strings';
@@ -80,7 +81,7 @@ export function menuScreen(app: App): HTMLElement {
     h('button', { class: l === lang ? 'on' : '', 'aria-pressed': String(l === lang), onclick: () => app.setLanguage(l) }, label);
   let saveLabel = '';
   if (save && hasSave) {
-    ensureDailyStrings(save.missionId);
+    ensureMissionStrings(save.missionId);
     const m = missionById(save.missionId);
     const day = Math.floor(save.timeH / WORLDS[save.world].solH) + (save.world === 'moon' ? 1 : 0);
     saveLabel = `${t(`mission.${m.id}.name`)} · ${t(`unit.day.${save.world}`).toLowerCase()} ${day}`;
@@ -159,7 +160,7 @@ export function missionsScreen(app: App): HTMLElement {
   const today = dailyCode();
   const codeInput = h('input.code', { type: 'text', inputmode: 'numeric', maxlength: '8', value: today, 'aria-label': t('daily.code') }) as HTMLInputElement;
   const best = dailyBest()[today];
-  ensureDailyStrings(`daily-${today}`);
+  ensureMissionStrings(`daily-${today}`);
   const daily = h(
     'div.daily',
     h('div.grow', h('span.site', t('daily.title')), h('h3', t(`mission.daily-${today}.name`)), h('p', t(`mission.daily-${today}.brief`)), best ? h('div.best', t('daily.best', { s: best })) : null),
@@ -179,8 +180,124 @@ export function missionsScreen(app: App): HTMLElement {
       ),
     ),
   );
-  const body = h('div.sheet-body', daily, h('div.cards', ...MISSIONS.map(card)));
+  // a mission a teacher designed: the code is the whole mission
+  const teacherInput = h('input.code.wide', { type: 'text', maxlength: '20', placeholder: 'HXXXX-XXXXX-XXXXX', spellcheck: 'false', autocomplete: 'off', 'aria-label': t('edit.codeIn') }) as HTMLInputElement;
+  const teacherMsg = h('span.msg');
+  const openCode = (): void => {
+    const code = normalizeCode(teacherInput.value);
+    if (!code) {
+      teacherMsg.textContent = t('edit.badCode');
+      teacherInput.focus();
+      return;
+    }
+    app.openPlanning(`custom-${code}`);
+  };
+  teacherInput.addEventListener('keydown', (e) => {
+    if (e.key === 'Enter') openCode();
+  });
+  const teacher = h(
+    'div.teacherbar',
+    h('label', t('edit.codeIn'), h('div.row', teacherInput, h('button.btn', { onclick: openCode }, t('edit.open')))),
+    teacherMsg,
+    h('div.grow'),
+    h('button.btn', { onclick: () => app.openEditor() }, icon('science'), t('edit.title')),
+  );
+  const body = h('div.sheet-body', daily, teacher, h('div.cards', ...MISSIONS.map(card)));
   return sheet('', t('mission.select'), null, () => app.openMenu(), body);
+}
+
+/* ---------------------------------------------------------- mission editor */
+
+/** The teacher's mission editor: every choice is folded into a code the class types in. */
+export function editorScreen(app: App, spec: CustomSpec): HTMLElement {
+  const sp = clampSpec(spec);
+  const moon = sp.world === 'moon';
+  const code = encodeCustom(sp);
+  const id = `custom-${code}`;
+  ensureMissionStrings(id);
+  const set = (patch: Partial<CustomSpec>): void => app.openEditor({ ...sp, ...patch });
+  const slider = (key: keyof CustomSpec, label: string, fmtV: (v: number) => string, min?: number): HTMLElement => {
+    const lim = CUSTOM_LIMITS[key];
+    const out = h('b', fmtV(Number(sp[key])));
+    const input = h('input', {
+      type: 'range',
+      min: String(min ?? lim.min),
+      max: String(lim.max),
+      step: String(lim.step),
+      value: String(sp[key]),
+      'aria-label': label,
+      oninput: (e: Event) => {
+        out.textContent = fmtV(Number((e.target as HTMLInputElement).value));
+      },
+      onchange: (e: Event) => set({ [key]: Number((e.target as HTMLInputElement).value) } as Partial<CustomSpec>),
+    });
+    return h('div.edrow', h('span', label), input, out);
+  };
+  const seg = <T extends string | number>(label: string, options: Array<[T, string]>, current: T, on: (v: T) => void): HTMLElement =>
+    h(
+      'div.edrow',
+      h('span', label),
+      h('div.seg', ...options.map(([v, l]) => h('button', { class: v === current ? 'on' : '', 'aria-pressed': String(v === current), onclick: () => on(v) }, l))),
+      h('b'),
+    );
+  const days = unitDays(sp.world);
+  const kg = (v: number): string => `${fmt(v)} kg`;
+  const count = (v: number): string => (v === 0 ? t('edit.none') : String(v));
+  const levels = (k: string): Array<[1 | 2 | 3, string]> => [1, 2, 3].map((n) => [n as 1 | 2 | 3, t(`edit.${k}.${n}`)]);
+  const controls = h(
+    'div.edgrid',
+    seg<'moon' | 'mars'>(t('edit.world'), [['moon', t('world.moon')], ['mars', t('world.mars')]], sp.world, (w) => w !== sp.world && app.openEditor({ ...DEFAULT_CUSTOM[w], variant: sp.variant })),
+    slider('days', t('mission.duration'), (v) => `${v} ${days}`),
+    slider('crew', t('mission.crew'), (v) => String(v)),
+    slider('budgetKg', t('mission.budget'), kg),
+    slider('scienceGoal', t('edit.science'), (v) => String(v)),
+    slider('doseLimitMsv', t('edit.dose'), (v) => `${v} mSv`),
+    h('h4.edsec', t('edit.events')),
+    slider('spe', t('edit.spe'), count),
+    sp.spe ? seg(t('edit.intensity'), levels('spe'), sp.speClass, (v) => set({ speClass: v })) : null,
+    moon ? null : slider('storms', t('edit.storms'), count),
+    !moon && sp.storms ? seg(t('edit.intensity'), levels('storm'), sp.stormLevel, (v) => set({ stormLevel: v })) : null,
+    slider('emergencies', t('edit.emergencies'), count),
+    moon ? null : slider('delayMin', t('edit.delay'), (v) => `${v} min`, 3),
+    h('h4.edsec', t('edit.extras')),
+    slider('fuelKg', t('edit.fuel'), (v) => (v ? kg(v) : t('edit.none'))),
+    slider('resupply', t('edit.resupply'), count),
+    seg<'no' | 'yes'>(t('edit.real'), [['no', t('set.off')], ['yes', t('set.on')]], sp.realSite ? 'yes' : 'no', (v) => set({ realSite: v === 'yes' })),
+    h(
+      'div.edrow',
+      h('span', t('edit.variant')),
+      h('div.row', h('code', String(sp.variant)), h('button.btn.small', { onclick: () => set({ variant: Math.floor(Math.random() * 4096) }) }, t('edit.shuffle'))),
+      h('b'),
+    ),
+  );
+  const copied = h('span.msg');
+  const copy = async (): Promise<void> => {
+    try {
+      await navigator.clipboard.writeText(code);
+      copied.textContent = t('edit.copied');
+    } catch {
+      // no clipboard here (some embedded pages): select the code so it can be copied by hand
+      const range = document.createRange();
+      range.selectNodeContents(codeEl);
+      const sel = window.getSelection();
+      sel?.removeAllRanges();
+      sel?.addRange(range);
+      copied.textContent = t('edit.copyHand');
+    }
+  };
+  const codeEl = h('div.bigcode', code);
+  const m = missionById(id);
+  const side = h(
+    'div.edside',
+    h('span.site', t('edit.code')),
+    codeEl,
+    h('div.row', h('button.btn', { onclick: () => void copy() }, t('edit.copy')), copied),
+    h('p.brief', t(`mission.${id}.brief`)),
+    h('p.note', t('edit.howto')),
+    h('div.meta', h('span', t('mission.difficulty'), ' ', h('b', '●'.repeat(m.difficulty) + '○'.repeat(3 - m.difficulty)))),
+    h('button.btn.primary', { onclick: () => app.openPlanning(id) }, icon('rocket'), t('edit.play')),
+  );
+  return sheet('.wide', t('edit.title'), t('edit.sub'), () => app.openMissions(), h('div.sheet-body.editor', controls, side));
 }
 
 /* -------------------------------------------------------------- planning */

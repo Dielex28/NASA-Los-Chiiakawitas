@@ -1,12 +1,13 @@
 import { setVoice } from './voice';
-import { ensureDailyStrings } from './achievements';
+import { ensureMissionStrings } from './achievements';
 import { Game } from '../game/game';
 import type { QualityLevel } from '../render/renderer';
 import type { CargoItem } from '../sim/types';
 import './codexData';
 import { h } from './dom';
 import { Hud } from './hud';
-import { achievementsScreen, codexScreen, debriefScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
+import { achievementsScreen, codexScreen, debriefScreen, editorScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
+import { DEFAULT_CUSTOM, type CustomSpec } from '../sim/custom';
 import { initLang, setLang, type Lang } from './strings';
 import './styles.css';
 
@@ -58,6 +59,7 @@ export class App {
   private current: (() => void) | null = null;
   private overlayThunk: (() => void) | null = null;
   private resumeSpeed = 1;
+  private lastSpec: CustomSpec | null = null;
   private last = performance.now();
 
   constructor(canvas: HTMLCanvasElement, root: HTMLElement, qualityOverride?: QualityLevel) {
@@ -162,8 +164,16 @@ export class App {
     this.current();
   }
 
+  /** The teacher's mission editor, opened on a spec (the last one designed, or a default). */
+  openEditor(spec?: CustomSpec): void {
+    if (spec) this.lastSpec = spec;
+    const sp = this.lastSpec ?? DEFAULT_CUSTOM.moon;
+    this.current = () => this.setScreen(editorScreen(this, sp));
+    this.current();
+  }
+
   openPlanning(missionId: string): void {
-    ensureDailyStrings(missionId);
+    ensureMissionStrings(missionId);
     this.current = () => this.setScreen(planningScreen(this, missionId));
     this.current();
   }

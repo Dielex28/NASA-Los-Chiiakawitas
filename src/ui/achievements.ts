@@ -1,4 +1,4 @@
-import { dailyMission, scoreMission, type DailyTwist } from '../sim/missions';
+import { customByCode, dailyMission, scoreMission, type DailyTwist } from '../sim/missions';
 import type { SimState } from '../sim/types';
 import { addStrings } from './strings';
 
@@ -101,8 +101,53 @@ const TWIST_TEXT: Record<DailyTwist, [string, string]> = {
   bigFuel: ['mucho combustible que fabricar', 'a lot of fuel to make'],
 };
 
-/** Give a daily challenge its name, site line and briefing in both languages. */
-export function ensureDailyStrings(id: string): void {
+/** Give a teacher's mission its name, site line and a briefing that lists what was chosen. */
+function ensureCustomStrings(id: string): void {
+  const m = customByCode(id.slice(7));
+  const c = m?.custom;
+  if (!m || !c) return;
+  const code = id.slice(7);
+  const moon = c.world === 'moon';
+  const cls = (['', 'menor', 'moderada', 'severa'] as const)[c.speClass];
+  const clsEn = (['', 'minor', 'moderate', 'severe'] as const)[c.speClass];
+  const es: string[] = [`${c.days} ${moon ? 'días' : 'soles'}`, `${c.crew} ${c.crew === 1 ? 'persona' : 'personas'}`];
+  const en: string[] = [`${c.days} ${moon ? 'days' : 'sols'}`, `crew of ${c.crew}`];
+  const n = (k: number, one: string, many: string): string => `${k} ${k === 1 ? one : many}`;
+  es.push(c.spe ? `${n(c.spe, 'tormenta solar', 'tormentas solares')} (${cls})` : 'sin tormentas solares');
+  en.push(c.spe ? `${n(c.spe, 'solar storm', 'solar storms')} (${clsEn})` : 'no solar storms');
+  if (!moon && c.storms) {
+    es.push(n(c.storms, 'tormenta de polvo', 'tormentas de polvo'));
+    en.push(n(c.storms, 'dust storm', 'dust storms'));
+  }
+  es.push(c.emergencies ? n(c.emergencies, 'emergencia', 'emergencias') : 'sin emergencias');
+  en.push(c.emergencies ? n(c.emergencies, 'emergency', 'emergencies') : 'no emergencies');
+  if (!moon) {
+    es.push(`radio con ${m.commsDelayMin} min de retraso`);
+    en.push(`${m.commsDelayMin}-minute radio delay`);
+  }
+  if (c.fuelKg) {
+    es.push(`${c.fuelKg} kg de combustible que fabricar`);
+    en.push(`${c.fuelKg} kg of fuel to make`);
+  }
+  es.push(c.resupply ? n(c.resupply, 'reabastecimiento', 'reabastecimientos') : 'sin reabastecimiento');
+  en.push(c.resupply ? n(c.resupply, 'resupply', 'resupplies') : 'no resupply');
+  if (c.realSite) {
+    es.push('terreno real de la NASA');
+    en.push('real NASA terrain');
+  }
+  addStrings({
+    [`mission.${id}.name`]: ['Misión del docente', "Teacher's mission"],
+    [`mission.${id}.site`]: [`${moon ? 'Luna' : 'Marte'} · código ${code}`, `${moon ? 'Moon' : 'Mars'} · code ${code}`],
+    [`mission.${id}.brief`]: [
+      `${es.join(' · ')}. Objetivo: ${c.scienceGoal} puntos de ciencia sin pasar de ${c.doseLimitMsv} mSv.`,
+      `${en.join(' · ')}. Goal: ${c.scienceGoal} science points without going over ${c.doseLimitMsv} mSv.`,
+    ],
+  });
+}
+
+/** Give a daily challenge or a teacher's mission its name, site line and briefing in both languages. */
+export function ensureMissionStrings(id: string): void {
+  if (id.startsWith('custom-')) return ensureCustomStrings(id);
   if (!id.startsWith('daily-')) return;
   const code = id.slice(6);
   const m = dailyMission(code);

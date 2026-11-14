@@ -265,6 +265,32 @@ kbd {
 .dailyplay { display: flex; gap: 10px; align-items: flex-end; }
 .dailyplay label { display: flex; flex-direction: column; gap: 4px; font-size: 0.76em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-2); }
 .dailyplay .code { width: 7.5em; padding: 0.55em 0.7em; background: transparent; border: 1px solid var(--line); color: var(--text); font-family: var(--mono); font-size: 1.15em; letter-spacing: 0.06em; }
+.teacherbar { display: flex; flex-wrap: wrap; gap: 0.8em 1.2em; align-items: flex-end; padding: 1em 1.4em; margin-bottom: 8px; border: 1px solid var(--line); }
+.teacherbar label { display: flex; flex-direction: column; gap: 4px; font-size: 0.76em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-2); }
+.teacherbar .msg, .edside .msg { color: var(--warn); font-size: 0.9em; }
+.code.wide { width: 13em; padding: 0.55em 0.7em; min-height: 2.6em; background: transparent; border: 1px solid var(--line); color: var(--text); font-family: var(--mono); font-size: 1.05em; letter-spacing: 0.06em; text-transform: uppercase; }
+
+/* mission editor */
+.sheet.wide { width: min(70em, 100%); }
+.sheet-body.editor { display: grid; grid-template-columns: minmax(0, 1.5fr) minmax(16em, 1fr); gap: 2em; }
+.edgrid { display: flex; flex-direction: column; gap: 0.15em; }
+.edrow { display: grid; grid-template-columns: 11em minmax(0, 1fr) 6.5em; gap: 1em; align-items: center; min-height: 2.6em; }
+.edrow > span { color: var(--text-2); font-size: 0.92em; }
+.edrow > b { font-family: var(--mono); font-weight: 400; text-align: right; font-size: 0.95em; }
+.edrow .seg { margin: 0; }
+.edrow code { font-family: var(--mono); min-width: 3em; }
+.edsec { margin: 1.1em 0 0.3em; font-size: 0.74em; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); font-weight: 600; }
+.edside { display: flex; flex-direction: column; gap: 0.9em; padding: 1.3em 1.4em; border: 1px solid var(--accent); background: rgba(242, 169, 59, 0.05); align-self: start; position: sticky; top: 0; }
+.edside .site { font-family: var(--mono); font-size: 0.76em; letter-spacing: 0.14em; text-transform: uppercase; color: var(--accent); }
+.bigcode { font-family: var(--mono); font-size: 1.65em; letter-spacing: 0.08em; user-select: all; overflow-wrap: anywhere; }
+.edside .brief { margin: 0; line-height: 1.55; }
+.edside .note { margin: 0; color: var(--text-2); font-size: 0.88em; line-height: 1.5; }
+.edside .meta b { font-family: var(--mono); font-weight: 400; color: var(--accent); }
+@media (max-width: 900px) {
+  .sheet-body.editor { grid-template-columns: 1fr; }
+  .edrow { grid-template-columns: 8.5em minmax(0, 1fr) 5.5em; gap: 0.7em; }
+  .edside { position: static; }
+}
 .achlist { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(19em, 100%), 1fr)); gap: 6px; margin-top: 0.6em; }
 .ach { display: flex; gap: 0.8em; align-items: flex-start; padding: 0.75em 0.9em; border: 1px solid var(--line); color: var(--text-2); }
 .ach b { display: block; color: var(--text); font-size: 0.95em; }

@@ -1,4 +1,6 @@
 import type { EmergencyKind } from './emergency';
+import { cargoMass } from './catalog';
+import { decodeCustom, encodeCustom, type CustomSpec } from './custom';
 import { Rng } from '../core/rng';
 import { clamp, clamp01 } from '../core/math';
 import { WORLDS } from './worlds';
@@ -22,6 +24,10 @@ export interface MissionDef {
   historic?: boolean;
   /** Return propellant to make on site, kg: an optional objective worth extra science. */
   fuelGoalKg?: number;
+  /** One-way radio delay to Earth, minutes (Mars: 3–22 depending on where the planets are). */
+  commsDelayMin?: number;
+  /** Designed by a teacher in the mission editor (the code that rebuilds it). */
+  custom?: CustomSpec;
   /** Emergencies that will happen in this mission (window in sols), besides random ones. */
   emergencies?: Array<{ sol: [number, number]; kind: EmergencyKind }>;
   seed: number;
@@ -346,7 +352,74 @@ export function dailyMission(code: string): MissionDef & { twists: DailyTwist[] 
   return m;
 }
 
-export const missionById = (id: string): MissionDef => (id.startsWith('daily-') ? dailyMission(id.slice(6)) : (MISSIONS.find((m) => m.id === id) ?? MISSIONS[0]));
+/**
+ * A mission from the teacher's editor. The suggested cargo starts from the matching base
+ * mission, with supplies scaled to crew × days, then trimmed until it fits the budget: the
+ * class still has to plan, but they start from something that can launch.
+ */
+export function customMission(spec: CustomSpec): MissionDef {
+  const code = encodeCustom(spec);
+  const moon = spec.world === 'moon';
+  const base = MISSIONS.find((m) => m.id === (moon ? 'moon-base' : 'mars-first'))!;
+  const d = spec.days;
+  const rng = new Rng(spec.variant * 7919 + 17);
+  const k = (spec.crew * d) / (base.crew * base.durationSols);
+  const rec: Partial<Record<CargoItem, number>> = { ...base.recommended };
+  for (const sup of ['food', 'water', 'o2'] as const) rec[sup] = Math.max(1, Math.round((base.recommended[sup] ?? 1) * k));
+  const mass = (): number => (Object.keys(rec) as CargoItem[]).reduce((a, i) => a + cargoMass(i) * (rec[i] ?? 0), 0);
+  // trim the least essential cargo first
+  const drop: CargoItem[] = ['pylon', 'rassor', 'greenhouse', 'fuelcell', 'battery', 'solar', 'reactor', 'lab', 'antenna', 'food', 'water', 'o2', 'eclss', 'hab'];
+  for (let guard = 0; mass() > spec.budgetKg && guard < 200; guard++) {
+    const item = drop.find((i) => (rec[i] ?? 0) > (['food', 'water', 'o2', 'solar', 'reactor'].includes(i) ? 1 : 0));
+    if (!item) break;
+    rec[item] = (rec[item] ?? 0) - 1;
+    if (!rec[item]) delete rec[item];
+  }
+  const spread = (n: number, from: number, to: number): Array<[number, number]> =>
+    Array.from({ length: n }, (_, i) => {
+      const a = from + ((to - from) * i) / n;
+      const b = from + ((to - from) * (i + 1)) / n;
+      return [a + (b - a) * 0.1, b - (b - a) * 0.1];
+    });
+  const kinds: EmergencyKind[] = ['leak', 'meteor', 'eclss'];
+  const tau = { 1: [1.5, 2.5], 2: [2.5, 4], 3: [4, 6] }[spec.stormLevel] as [number, number];
+  const hard = spec.spe * spec.speClass + spec.storms * spec.stormLevel + spec.emergencies * 2 + (spec.doseLimitMsv < 40 ? 2 : 0);
+  return {
+    id: `custom-${code}`,
+    world: spec.world,
+    durationSols: d,
+    crew: spec.crew,
+    budgetKg: spec.budgetKg,
+    scienceGoal: spec.scienceGoal,
+    doseLimitMsv: spec.doseLimitMsv,
+    startLocalH: base.startLocalH,
+    difficulty: hard <= 3 ? 1 : hard <= 8 ? 2 : 3,
+    tutorial: false,
+    endless: false,
+    realSite: spec.realSite || undefined,
+    fuelGoalKg: spec.fuelKg > 0 ? spec.fuelKg : undefined,
+    commsDelayMin: moon ? undefined : spec.delayMin || 12,
+    custom: spec,
+    seed: 0xc0de0000 + spec.variant,
+    recommended: rec,
+    spe: spread(spec.spe, Math.min(2, d * 0.2), d - 0.5).map((sol) => ({ sol, cls: spec.speClass })),
+    storms: moon ? [] : spread(spec.storms, 3, d - 2).map((sol) => ({ sol, durationSols: [2, Math.max(3, Math.min(10, d / 6))] as [number, number], tau })),
+    emergencies: spread(spec.emergencies, 2, d - 1).map((sol) => ({ sol, kind: kinds[Math.floor(rng.next() * kinds.length)] })),
+    resupply: Array.from({ length: spec.resupply }, (_, i) => ({ sol: Math.max(1, Math.round((d * (i + 1)) / (spec.resupply + 1))), capacityKg: 1500 })),
+  };
+}
+
+/** The mission a code opens, if it is a valid editor code. */
+export const customByCode = (code: string): MissionDef | null => {
+  const spec = decodeCustom(code);
+  return spec ? customMission(spec) : null;
+};
+
+export const missionById = (id: string): MissionDef => {
+  if (id.startsWith('daily-')) return dailyMission(id.slice(6));
+  if (id.startsWith('custom-')) return customByCode(id.slice(7)) ?? MISSIONS[0];
+  return MISSIONS.find((m) => m.id === id) ?? MISSIONS[0];
+};
 
 const SPE_CLASS = {
   1: { total: 12, durationH: 12 },
