@@ -192,6 +192,15 @@ export function lessons(s: SimState): Array<{ key: string; good: boolean; params
     if ((st.emergencyAuto ?? 0) > 0) add('emgSlow', false, { n: st.emergencyAuto ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
     else add('emgFast', true, { n: st.emergencies ?? 0, kg: (st.emergencyO2Lost ?? 0).toFixed(0) });
   }
+  // the distance to Earth: how long help takes
+  const delay = s.cfg.commsDelayMin ?? 0;
+  if ((st.controlAsks ?? 0) > 0) {
+    const min = Math.round((st.controlWaitH ?? 0) * 60);
+    if ((st.controlFollowed ?? 0) > 0) add('controlOk', true, { n: st.controlAsks ?? 0, min });
+    else add('controlWait', false, { min });
+  }
+  if (delay >= 1) add('delayMars', true, { d: delay.toFixed(0), rt: Math.round(2 * delay + 15) });
+  else if ((st.emergencies ?? 0) > 0 && s.world === 'moon') add('delayMoon', true);
   const morale = st.moraleN > 0 ? st.moraleSum / st.moraleN : 60;
   if (morale > 74) add('morale', true);
   else if (morale < 50) add('lowMorale', false);

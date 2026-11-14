@@ -15,6 +15,7 @@ import { missionById, type MissionDef } from '../sim/missions';
 import {
   collectSample,
   decideEmergency,
+  askMissionControl,
   recordExperiment,
   createMission,
   isBuilt,
@@ -1313,6 +1314,11 @@ export class Game {
       void saveFile(`helios-${st.world.id}-${stamp}.png`, blob);
     }, 'image/png');
     this.audio.ui('place');
+  }
+
+  /** Ask Mission Control for help with the running emergency. */
+  askControl(): void {
+    if (this.sim && askMissionControl(this.sim)) this.audio.ui('click');
   }
 
   /** The commander's answer to the running emergency. */

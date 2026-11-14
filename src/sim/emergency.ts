@@ -24,6 +24,11 @@ export interface Emergency {
   auto: boolean;
   /** Oxygen lost to space so far, kg. */
   o2Lost: number;
+  /** When the crew asked Mission Control, and when the answer arrives (mission hours). */
+  askedH?: number;
+  answerH?: number;
+  /** Control's recommendation, once it has arrived. */
+  advice?: EmergencyChoice;
 }
 
 /** Hours to decide before the crew acts on its own. */
@@ -39,6 +44,27 @@ const REPAIR_H = 3;
 const AUTO_REPAIR_H = 5;
 /** Emergency lithium-hydroxide canisters: hours of CO₂ removal for the whole crew. */
 export const LIOH_H = 18;
+
+/**
+ * Engineers on Earth need a while to read the telemetry and test a fix on their copy of the
+ * hardware (as the Apollo 13 team did with the CO₂ filter adapter), h.
+ */
+export const CONTROL_ANALYSIS_H = 0.25;
+/** A procedure tested on the ground makes the fix this much quicker. */
+const CONTROL_SPEEDUP = 0.6;
+
+/** Hours from asking Control to getting the answer: there and back at light speed, plus the analysis. */
+export function controlRoundTripH(s: SimState): number {
+  return (2 * (s.cfg.commsDelayMin ?? 0)) / 60 + CONTROL_ANALYSIS_H;
+}
+
+/** What Control would recommend right now. */
+export function controlAdvice(s: SimState): EmergencyChoice {
+  const e = s.emergency!;
+  if (e.kind === 'eclss') return !s.flags.liohUsed && s.flows.co2MmHg > 4 ? 'backup' : 'repair';
+  // with little oxygen left, stop the loss at once; otherwise keep the module in use
+  return s.flows.o2Days < 1.5 ? 'isolate' : 'patch';
+}
 
 /** Pressurised modules a puncture or a seal can open to vacuum. */
 const PRESSURISED = new Set(['hab', 'lab', 'greenhouse', 'shelter']);
@@ -93,6 +119,21 @@ export function emergencyOptions(s: SimState): EmergencyChoice[] {
   return ['isolate', 'patch'];
 }
 
+/** Ask Control for help. Needs a working antenna, and only one question per emergency. */
+export function askControl(s: SimState, log: Log): boolean {
+  const e = s.emergency;
+  if (!e || e.choice || e.askedH !== undefined) return false;
+  if (!s.flows.comms) {
+    log(s, 'log.control.nolink', 'warn');
+    return false;
+  }
+  e.askedH = s.timeH;
+  e.answerH = s.timeH + controlRoundTripH(s);
+  s.stats.controlAsks = (s.stats.controlAsks ?? 0) + 1;
+  log(s, 'log.control.asked', 'info', { min: Math.round(controlRoundTripH(s) * 60), d: (s.cfg.commsDelayMin ?? 0).toFixed(s.world === 'moon' ? 2 : 0) });
+  return true;
+}
+
 /** The commander's answer. */
 export function chooseEmergency(s: SimState, choice: EmergencyChoice, log: Log, auto = false): boolean {
   const e = s.emergency;
@@ -100,6 +141,7 @@ export function chooseEmergency(s: SimState, choice: EmergencyChoice, log: Log, 
   const m = s.modules.find((x) => x.id === e.moduleId);
   e.choice = choice;
   e.auto = auto;
+  if (e.advice === choice) s.stats.controlFollowed = (s.stats.controlFollowed ?? 0) + 1;
   if (auto) s.stats.emergencyAuto = (s.stats.emergencyAuto ?? 0) + 1;
   if (choice === 'isolate') {
     // close the hatches: no more air lost, but the module is out of use until someone repairs it outside
@@ -109,9 +151,9 @@ export function chooseEmergency(s: SimState, choice: EmergencyChoice, log: Log, 
     }
     finish(s, log);
   } else if (choice === 'patch') {
-    e.doneH = s.timeH + PATCH_H[e.kind as 'leak' | 'meteor'];
+    e.doneH = s.timeH + PATCH_H[e.kind as 'leak' | 'meteor'] * (e.advice === 'patch' ? CONTROL_SPEEDUP : 1);
   } else if (choice === 'repair') {
-    e.doneH = s.timeH + (auto ? AUTO_REPAIR_H : REPAIR_H);
+    e.doneH = s.timeH + (auto ? AUTO_REPAIR_H : REPAIR_H) * (e.advice === 'repair' ? CONTROL_SPEEDUP : 1);
   } else if (choice === 'backup') {
     s.flags.liohUsed = 1;
     s.flags.liohUntilH = s.timeH + LIOH_H;
@@ -155,6 +197,11 @@ export function updateEmergency(s: SimState, dtH: number, rng: Rng, log: Log): v
     const lost = Math.min(s.stores.o2, rate * dtH);
     s.stores.o2 -= lost;
     e.o2Lost += lost;
+  }
+  if (e.answerH !== undefined && !e.advice && s.timeH >= e.answerH) {
+    e.advice = controlAdvice(s);
+    s.stats.controlWaitH = (s.stats.controlWaitH ?? 0) + (e.answerH - (e.askedH ?? e.answerH));
+    log(s, e.choice ? 'log.control.late' : 'log.control.answer', e.choice ? 'info' : 'good', { opt: `emg.opt.${e.advice}` }, e.moduleId);
   }
   if (!e.choice && s.timeH >= e.decideByH) chooseEmergency(s, e.kind === 'eclss' ? 'repair' : 'isolate', log, true);
   if (!s.emergency || e.doneH === null || s.timeH < e.doneH) return;

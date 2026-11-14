@@ -1,7 +1,7 @@
 import { speak } from './voice';
 import { check as checkAchievements } from './achievements';
 import { avatarSvg, ROLE_COLOR } from './avatar';
-import { emergencyOptions } from '../sim/emergency';
+import { controlRoundTripH, emergencyOptions } from '../sim/emergency';
 import { clamp01 } from '../core/math';
 import type { Game } from '../game/game';
 import { advise, type Advice } from '../sim/advisor';
@@ -81,6 +81,7 @@ export function logText(e: LogEntry): string {
   const p: Record<string, string | number> = { ...(e.params ?? {}) };
   if (typeof p.type === 'string' && has(`mod.${p.type}`)) p.type = t(`mod.${p.type}`);
   if (typeof p.crop === 'string' && has(`crop.${p.crop}`)) p.crop = t(`crop.${p.crop}`);
+  if (typeof p.opt === 'string' && has(p.opt)) p.opt = t(p.opt);
   return t(e.key, p);
 }
 
@@ -119,6 +120,7 @@ export class Hud {
   private forecast = h('canvas') as HTMLCanvasElement;
   private sunState = h('span.state', '');
   private dustEl = h('span', '');
+  private linkEl = h('b');
   // left
   private vPower = vital('power', t('hud.power'), '.sun');
   private vO2 = vital('o2', t('hud.o2'));
@@ -236,6 +238,7 @@ export class Hud {
         h('div.frow', h('span', t('hud.forecast', { n: span, unit: unitDays(m.world) })), this.sunState),
         this.forecast,
         m.world === 'mars' ? h('div.frow', this.dustEl, h('span')) : null,
+        h('div.frow.link', { title: t('link.tip') }, h('span', icon('antenna', 13), t('link.earth')), this.linkEl),
       ),
       h('span.spacer'),
       h('div.topbox.panel', speed, this.evaBtn),
@@ -949,6 +952,18 @@ export class Hud {
 
   /** A crew member comments on the radio — the one whose job the event is. */
   private radioCall(e: LogEntry): void {
+    if (e.key === 'log.control.answer') {
+      const say = logText(e);
+      clear(this.radio);
+      this.radio.append(h('div.av.capcom', icon('antenna', 26)), h('div.grow', h('div.who', h('b', 'CAPCOM'), ' · ', t('link.control')), h('div.say', say)));
+      this.radio.style.setProperty('--role', '#9ec5ff');
+      this.radio.classList.remove('hidden');
+      this.game.audio.radio();
+      speak(`CAPCOM. ${say}`);
+      window.clearTimeout(this.radioTimer);
+      this.radioTimer = window.setTimeout(() => this.radio.classList.add('hidden'), 11000);
+      return;
+    }
     const who = RADIO[e.key];
     if (!who) return;
     const crew = this.sim.crew.filter((c) => !c.isPlayer && c.health > 5);
@@ -1043,6 +1058,9 @@ export class Hud {
   private updateFast(s: SimState): void {
     const g = this.game;
     const ck = clockText(s);
+    const d = s.cfg.commsDelayMin ?? 0;
+    setText(this.linkEl, !s.flows.comms ? t('link.none') : d < 1 ? t('link.sec', { s: fmt(d * 60, 1) }) : t('link.min', { m: fmt(d, d < 10 ? 1 : 0) }));
+    this.linkEl.className = s.flows.comms ? '' : 'warn';
     setText(this.dayEl, ck.day);
     setText(this.timeEl, ck.time);
     this.missionFill.style.width = s.cfg.endless ? '0%' : `${clamp01(s.timeH / s.cfg.durationH) * 100}%`;
@@ -1186,15 +1204,27 @@ export class Hud {
     if (emg) {
       const left = Math.max(0, emg.decideByH - s.timeH);
       const mins = Math.ceil(left * 60);
-      key = `emg:${emg.kind}:${emg.choice ?? ''}:${emergencyOptions(s).join(',')}`;
+      key = `emg:${emg.kind}:${emg.choice ?? ''}:${emergencyOptions(s).join(',')}:${emg.askedH ?? ''}:${emg.advice ?? ''}`;
+      const ctlText = (): string =>
+        emg.advice
+          ? t('emg.ctl.advice', { opt: t(`emg.opt.${emg.advice}`) })
+          : emg.answerH !== undefined
+            ? t('emg.ctl.wait', { min: Math.max(1, Math.ceil((emg.answerH - s.timeH) * 60)), late: emg.answerH > emg.decideByH ? t('emg.ctl.late') : '' })
+            : t('emg.ctl.offer', { min: Math.round(controlRoundTripH(s) * 60) });
       const mod = s.modules.find((m) => m.id === emg.moduleId);
       const what = mod ? t(`mod.${mod.type}`) : '';
       build = () => {
         if (!emg.choice) {
           const opts = emergencyOptions(s).map((c) =>
-            h(`button.btn.small${c === 'isolate' || c === 'repair' ? '' : '.danger'}`, { onclick: () => g.decideEmergency(c), title: t(`emg.opt.${c}.d`) }, t(`emg.opt.${c}`)),
+            h(
+              `button.btn.small${c === 'isolate' || c === 'repair' ? '' : '.danger'}${emg.advice === c ? '.advised' : ''}`,
+              { onclick: () => g.decideEmergency(c), title: t(`emg.opt.${c}.d`) },
+              t(`emg.opt.${c}`),
+            ),
           );
+          if (emg.askedH === undefined) opts.push(h('button.btn.small.ghost', { onclick: () => g.askControl(), title: t('emg.ctl.ask.d') }, icon('antenna', 14), t('emg.ctl.ask')));
           set('', emg.kind === 'eclss' ? 'air' : 'warn', t(`emg.${emg.kind}.title`, { what }), t(`emg.${emg.kind}.body`, { min: mins }), opts);
+          this.alert.querySelector('.grow')?.append(h('p.ctl', ctlText()));
           const bar = h('div.emgbar', h('i'));
           this.alert.querySelector('.grow')?.append(bar, h('div.emgopts', ...emergencyOptions(s).map((c) => h('span', h('b', t(`emg.opt.${c}`)), ' · ', t(`emg.opt.${c}.d`)))));
         } else {
@@ -1206,6 +1236,8 @@ export class Hud {
         if (bar) bar.style.width = `${(100 * left) / 1.5}%`;
         const pEl = this.alert.querySelector('p');
         if (pEl) setText(pEl, emg.choice ? (emg.doneH ? t('emg.work.left', { h: fmt(Math.max(0, emg.doneH - s.timeH), 1) }) : '') : t(`emg.${emg.kind}.body`, { min: mins }));
+        const ctl = this.alert.querySelector('p.ctl');
+        if (ctl) setText(ctl, ctlText());
       }
     } else if (spe && spe.kind === 'spe') {
       const started = spe.started;

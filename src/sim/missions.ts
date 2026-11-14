@@ -98,6 +98,8 @@ export const MISSIONS: MissionDef[] = [
   },
   {
     id: 'mars-first',
+    // Perseverance landed on 18 Feb 2021 with a one-way delay of 11 min 22 s
+    commsDelayMin: 11.4,
     world: 'mars',
     durationSols: 60,
     crew: 4,
@@ -135,6 +137,8 @@ export const MISSIONS: MissionDef[] = [
   },
   {
     id: 'mars-long',
+    // a typical delay for a long stay
+    commsDelayMin: 16,
     world: 'mars',
     durationSols: 180,
     crew: 6,
@@ -218,6 +222,8 @@ export const MISSIONS: MissionDef[] = [
   },
   {
     id: 'mars-sandbox',
+    // the average one-way delay
+    commsDelayMin: 12,
     world: 'mars',
     durationSols: 100000,
     crew: 4,
@@ -278,6 +284,8 @@ MISSIONS.push(
   },
   {
     id: 'mars-2017',
+    // September 2017: Mars had just passed behind the Sun (conjunction, 27 July)
+    commsDelayMin: 20,
     world: 'mars',
     durationSols: 24,
     crew: 4,
@@ -345,6 +353,7 @@ export function dailyMission(code: string): MissionDef & { twists: DailyTwist[] 
     emergencies: [{ sol: [3, days - 3], kind: kinds[Math.floor(rng.next() * 3)] }],
     resupply: twists.includes('noResupply') ? [] : [{ sol: Math.round(days / 2), capacityKg: 1500 }],
     fuelGoalKg: twists.includes('bigFuel') ? (moon ? 500 : 1500) : moon ? 200 : 600,
+    commsDelayMin: moon ? undefined : Math.round(4 + rng.next() * 18),
     twists,
   };
   if (twists.includes('extraSpe')) m.spe.push({ sol: [days * 0.65, days - 1], cls: 2 });
@@ -420,6 +429,11 @@ export const missionById = (id: string): MissionDef => {
   if (id.startsWith('custom-')) return customByCode(id.slice(7)) ?? MISSIONS[0];
   return MISSIONS.find((m) => m.id === id) ?? MISSIONS[0];
 };
+
+/** One-way light time to Earth for a mission, minutes: 1.3 s for the Moon, 3–22 min for Mars. */
+export function commsDelay(m: MissionDef): number {
+  return m.world === 'moon' ? 1.28 / 60 : (m.commsDelayMin ?? 12);
+}
 
 const SPE_CLASS = {
   1: { total: 12, durationH: 12 },

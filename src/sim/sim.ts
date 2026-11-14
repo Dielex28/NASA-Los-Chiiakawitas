@@ -1,4 +1,4 @@
-import { chooseEmergency, liohScrub, scrubbersFailed, planEmergencies, triggerEmergency, updateEmergency, type EmergencyChoice } from './emergency';
+import { askControl, chooseEmergency, liohScrub, scrubbersFailed, planEmergencies, triggerEmergency, updateEmergency, type EmergencyChoice } from './emergency';
 import { Rng } from '../core/rng';
 import { clamp, clamp01 } from '../core/math';
 import {
@@ -16,7 +16,7 @@ import {
   speTransmission,
 } from './catalog';
 import { computeEnv, heatFactor, horizonAt, sunPosition, sunVisibility } from './environment';
-import { buildSchedule, type MissionDef } from './missions';
+import { buildSchedule, commsDelay, type MissionDef } from './missions';
 import { WORLDS } from './worlds';
 import type {
   Allocation,
@@ -252,6 +252,7 @@ export function createMission(
       budgetKg: mission.budgetKg,
       endless: mission.endless,
       fuelGoalKg: mission.fuelGoalKg ?? 0,
+      commsDelayMin: commsDelay(mission),
       level: opts.level ?? 2,
       hazard: [0.5, 1, 1.35][(opts.level ?? 2) - 1],
     },
@@ -324,6 +325,20 @@ const PRESSURE_SHELLS = new Set(['hab', 'lab', 'greenhouse', 'shelter']);
 /** The commander's answer to the running emergency. */
 export function decideEmergency(s: SimState, choice: EmergencyChoice): boolean {
   return chooseEmergency(s, choice, pushLog);
+}
+
+/** Ask Mission Control how to handle the running emergency (the answer takes a round trip). */
+export function askMissionControl(s: SimState): boolean {
+  return askControl(s, pushLog);
+}
+
+/**
+ * Morale lost to distance: from the Moon the crew can talk with home almost live; from Mars
+ * every message takes minutes each way, so there are no conversations, only letters.
+ */
+export function isolation(s: SimState): number {
+  const d = s.cfg.commsDelayMin ?? 0;
+  return d < 1 ? 0 : 3 + 0.15 * d;
 }
 
 export const isBuilt = (m: ModuleState): boolean => m.built >= 1;
@@ -1051,7 +1066,8 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
   let moraleTarget =
     68 +
     f.freshFood +
-    (comms ? 8 : -8) +
+    (comms ? 8 : -8) -
+    isolation(s) +
     TUNE.workMoraleDelta[s.workload] +
     (crowded ? -15 : 0) +
     (habs === 0 ? -8 : 0) +

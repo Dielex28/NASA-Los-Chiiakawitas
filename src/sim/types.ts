@@ -277,6 +277,11 @@ export interface Stats {
   emergencies?: number;
   emergencyAuto?: number;
   emergencyO2Lost?: number;
+  /** Times the crew asked Mission Control for help, and hours spent waiting for the answers. */
+  controlAsks?: number;
+  controlWaitH?: number;
+  /** Emergencies solved with Control's procedure. */
+  controlFollowed?: number;
   /** Return propellant made on site, and the water it took, kg. */
   propellantMade?: number;
   propellantWater?: number;
@@ -324,6 +329,8 @@ export interface MissionConfig {
   hazard?: number;
   /** Return-trip propellant the mission asks to make on site, kg (0 = no such objective). */
   fuelGoalKg?: number;
+  /** One-way light time to Earth, minutes (Moon ≈ 0.02; Mars 3–22). Absent in old saves. */
+  commsDelayMin?: number;
 }
 
 export interface SimState {
