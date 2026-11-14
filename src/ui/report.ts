@@ -2,6 +2,7 @@ import { scoreMission } from '../sim/missions';
 import { lessons } from '../sim/advisor';
 import type { SimState } from '../sim/types';
 import { tx, type Level, type ShownQuestion } from './quiz';
+import { saveFile } from './save';
 import { getLang, t } from './strings';
 
 export interface QuizAnswer {
@@ -95,16 +96,8 @@ ${quiz}
 </html>`;
 }
 
-/** Hand the report to the browser (or the desktop app) as a file to save. */
+/** Hand the report to the player as a file to save. */
 export function downloadReport(html: string, missionId: string): void {
-  const blob = new Blob([html], { type: 'text/html' });
-  const url = URL.createObjectURL(blob);
-  const a = document.createElement('a');
   const day = new Date().toISOString().slice(0, 10);
-  a.href = url;
-  a.download = `helios-${missionId}-${day}.html`;
-  document.body.append(a);
-  a.click();
-  a.remove();
-  setTimeout(() => URL.revokeObjectURL(url), 4000);
+  void saveFile(`helios-${missionId}-${day}.html`, html, 'text/html');
 }

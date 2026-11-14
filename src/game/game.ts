@@ -40,6 +40,7 @@ import { Input } from './input';
 import { AIR_DENSITY, metabolicWatts, type PhysEnv } from './physics';
 import { Player } from './player';
 import { Props } from './props';
+import { saveFile } from '../ui/save';
 import { Crewmates } from './crewmates';
 import { DOCK_RANGE, RoverUnit } from './rover';
 import type { VehicleEnv, VehicleInput } from './vehicle';
@@ -1308,15 +1309,8 @@ export class Game {
     const canvas = this.renderer.canvas;
     canvas.toBlob((blob) => {
       if (!blob) return;
-      const url = URL.createObjectURL(blob);
-      const a = document.createElement('a');
       const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
-      a.href = url;
-      a.download = `helios-${st.world.id}-${stamp}.png`;
-      document.body.append(a);
-      a.click();
-      a.remove();
-      setTimeout(() => URL.revokeObjectURL(url), 4000);
+      void saveFile(`helios-${st.world.id}-${stamp}.png`, blob);
     }, 'image/png');
     this.audio.ui('place');
   }
