@@ -1,3 +1,4 @@
+import type { TeamState } from './team';
 import type { Emergency, PlannedEmergency } from './emergency';
 /**
  * Simulation data model. Everything in here is plain JSON-serialisable data so a
@@ -368,6 +369,8 @@ export interface SimState {
   log: LogEntry[];
   telemetry: Telemetry;
   outcome: Outcome | null;
+  /** Team mode: who holds which station and whose turn it is (absent when playing alone). */
+  team?: TeamState;
   /** Advisor / codex bookkeeping. */
   flags: Record<string, number>;
   /** The emergency the commander is dealing with, if any (absent in old saves). */

@@ -6,7 +6,8 @@ import type { CargoItem } from '../sim/types';
 import './codexData';
 import { h } from './dom';
 import { Hud } from './hud';
-import { achievementsScreen, codexScreen, debriefScreen, editorScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
+import { startNextShift } from '../sim/team';
+import { achievementsScreen, codexScreen, debriefScreen, editorScreen, shiftScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
 import { DEFAULT_CUSTOM, type CustomSpec } from '../sim/custom';
 import { initLang, setLang, type Lang } from './strings';
 import './styles.css';
@@ -89,6 +90,7 @@ export class App {
     });
 
     this.game.events.on('loading', ({ fraction, stage }) => this.loader?.set(fraction, stage));
+    this.game.events.on('shift', () => this.openShift());
     this.game.events.on('phase', (p) => {
       if (p === 'loading') this.showLoading();
       else if (p === 'menu') {
@@ -101,6 +103,7 @@ export class App {
         this.hud = new Hud(this);
         this.root.append(this.hud.el);
         if (this.game.sim && this.game.sim.timeH < 0.05) this.hud.showTitleCard();
+        if (this.game.sim?.team?.handover) this.openShift();
       } else if (p === 'ended') {
         const sim = this.game.sim;
         if (this.overlayOpen) this.closeOverlay();
@@ -262,9 +265,27 @@ export class App {
 
   /* --------------------------------------------------------- actions */
 
+  /** Team mode set up on the planning screen (kept for the next mission of the same group). */
+  team: { on: boolean; names: string[]; shiftH: number } = { on: false, names: ['', '', ''], shiftH: 24 };
+
   launch(missionId: string, manifest: Partial<Record<CargoItem, number>>): void {
     this.game.clearSave();
-    void this.game.startMission(missionId, { ...manifest }, this.settings.level);
+    const team = this.team.on ? { names: this.team.names, shiftH: this.team.shiftH } : undefined;
+    void this.game.startMission(missionId, { ...manifest }, this.settings.level, team);
+  }
+
+  /** Change of shift: the game stops and the group hands over. */
+  openShift(): void {
+    if (!this.game.sim?.team) return;
+    this.overlayThunk = () => this.showOverlay(shiftScreen(this));
+    this.overlayThunk();
+  }
+
+  /** The next student takes the controls. */
+  startShift(): void {
+    const s = this.game.sim;
+    if (s) startNextShift(s);
+    this.closeOverlay();
   }
 
   continueGame(): void {

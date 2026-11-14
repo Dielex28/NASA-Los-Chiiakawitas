@@ -2,6 +2,7 @@ import { lessons } from '../sim/advisor';
 import { MODULES, MODULE_ORDER, SUPPLIES, cargoMass, isSupply } from '../sim/catalog';
 import { CUSTOM_LIMITS, DEFAULT_CUSTOM, clampSpec, encodeCustom, normalizeCode, type CustomSpec } from '../sim/custom';
 import { MISSIONS, dailyCode, missionById, scoreMission, type MissionDef } from '../sim/missions';
+import { STATIONS, assignStations, type ShiftGoal, type TeamState } from '../sim/team';
 import { manifestMass, planAutonomy } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { CargoItem, ModuleType, SimState, SupplyType } from '../sim/types';
@@ -300,6 +301,103 @@ export function editorScreen(app: App, spec: CustomSpec): HTMLElement {
   return sheet('.wide', t('edit.title'), t('edit.sub'), () => app.openMissions(), h('div.sheet-body.editor', controls, side));
 }
 
+/* ------------------------------------------------------------- team mode */
+
+export const stationName = (st: string): string => t(`team.st.${st}`);
+
+/** Set up team mode on the planning screen: who plays, and how long each shift lasts. */
+function teamPanel(app: App, world: 'moon' | 'mars'): HTMLElement {
+  const box = h('div.plan-box.teambox');
+  const tm = app.team;
+  const dayH = world === 'moon' ? 24 : 24.66;
+  const lengths: Array<[number, string]> = [
+    [12, t('team.len.half')],
+    [dayH, t(`team.len.day.${world}`)],
+    [dayH * 3, t(`team.len.three.${world}`)],
+  ];
+  if (!lengths.some(([v]) => Math.abs(v - tm.shiftH) < 0.5)) tm.shiftH = dayH;
+  const render = (): void => {
+    clear(box);
+    box.append(
+      h(
+        'div.kv',
+        h('h4', t('team.title')),
+        h('span'),
+        h('button.btn.small', { class: tm.on ? 'on' : '', 'aria-pressed': String(tm.on), onclick: () => ((tm.on = !tm.on), render()) }, tm.on ? t('set.on') : t('set.off')),
+      ),
+    );
+    if (!tm.on) {
+      box.append(h('div.note', t('team.pitch')));
+      return;
+    }
+    const stations = assignStations(Math.max(1, tm.names.length));
+    tm.names.forEach((name, i) => {
+      const input = h('input.name', { type: 'text', maxlength: '16', value: name, placeholder: t('team.name', { n: i + 1 }), 'aria-label': t('team.name', { n: i + 1 }) }) as HTMLInputElement;
+      input.addEventListener('input', () => (tm.names[i] = input.value));
+      box.append(
+        h(
+          'div.member',
+          input,
+          h('span.sts', stations[i].map(stationName).join(' · ')),
+          tm.names.length > 2 ? h('button.iconbtn.small', { title: t('team.remove'), onclick: () => (tm.names.splice(i, 1), render()) }, icon('close', 14)) : null,
+        ),
+      );
+    });
+    if (tm.names.length < STATIONS.length) box.append(h('button.btn.small.ghost', { onclick: () => (tm.names.push(''), render()) }, t('team.add')));
+    box.append(
+      h('div.note', t('team.shift')),
+      h('div.seg', ...lengths.map(([v, l]) => h('button', { class: Math.abs(v - tm.shiftH) < 0.5 ? 'on' : '', onclick: () => ((tm.shiftH = v), render()) }, l))),
+      h('div.note', t('team.how')),
+    );
+  };
+  render();
+  return box;
+}
+
+const goalLine = (team: TeamState, g: ShiftGoal, done?: boolean): HTMLElement =>
+  h(
+    `div.goalrow${done === undefined ? '' : done ? '.ok' : '.no'}`,
+    done === undefined ? h('span.dot') : icon(done ? 'check' : 'close', 15),
+    h('b', team.members[g.member]?.name ?? '—'),
+    h('span.st', stationName(g.station)),
+    h('span.txt', t(`team.goal.${g.key}`, g.params)),
+  );
+
+/** Change of shift: how the last one went, who takes over, and the goals for the next one. */
+export function shiftScreen(app: App): HTMLElement {
+  const s = app.game.sim!;
+  const team = s.team!;
+  const last = team.history[team.history.length - 1];
+  const pilot = team.members[team.pilot];
+  const met = last ? last.goals.filter((g) => g.met).length : 0;
+  const body = h(
+    'div.sheet-body.shift',
+    last
+      ? h('div', h('h3.sec', t('team.lastShift', { n: last.shift, name: team.members[last.pilot]?.name ?? '', met, total: last.goals.length })), ...last.goals.map((g) => goalLine(team, g, g.met)))
+      : null,
+    h('div.pilot', h('span', t('team.atControls')), h('strong', pilot.name), h('small', t('team.duty'))),
+    h('h3.sec', t('team.nextGoals', { n: team.shift })),
+    ...team.goals.map((g) => goalLine(team, g)),
+  );
+  const foot = h('div.sheet-foot', h('span.muted', t('team.talk')), h('span.spacer'), h('button.btn.primary', { onclick: () => app.startShift() }, t('team.start', { name: pilot.name })));
+  return sheet('.mid', t('team.change', { n: team.shift }), null, null, body, foot);
+}
+
+/** The team's results for the debrief. */
+export function teamTable(team: TeamState): HTMLElement {
+  const rows = team.members.map((m, i) => {
+    const pct = m.set ? Math.round((100 * m.met) / m.set) : 0;
+    const best = team.history.filter((x) => x.pilot === i && x.goals.every((g) => g.met)).length;
+    return h('tr', h('td', h('b', m.name)), h('td', m.stations.map(stationName).join(' · ')), h('td.n', String(m.shifts)), h('td.n', `${m.met} / ${m.set}`), h('td', h('div.bar', h('i', { style: { width: `${pct}%` } }))), h('td.n', String(best)));
+  });
+  return h(
+    'div.teamres',
+    h('h3.sec', t('team.results')),
+    h('table', h('thead', h('tr', ...['team.col.name', 'team.col.st', 'team.col.shifts', 'team.col.goals', 'team.col.pct', 'team.col.perfect'].map((k) => h('th', t(k))))), h('tbody', ...rows)),
+    h('p.note', t('team.resultsNote')),
+  );
+}
+
 /* -------------------------------------------------------------- planning */
 
 export function planningScreen(app: App, missionId: string): HTMLElement {
@@ -312,6 +410,7 @@ export function planningScreen(app: App, missionId: string): HTMLElement {
   const list = h('div.plan-list');
   const side = h('div.plan-side');
   const launch = h('button.btn.primary', { onclick: () => app.launch(m.id, manifest) }, icon('rocket'), t('plan.launch')) as HTMLButtonElement;
+  const teamBox = teamPanel(app, world);
   const rows = new Map<CargoItem, { row: HTMLElement; n: HTMLElement }>();
 
   const change = (item: CargoItem, d: number): void => {
@@ -398,6 +497,7 @@ export function planningScreen(app: App, missionId: string): HTMLElement {
         h('div.kv', h('span.muted', t('plan.demand')), h('span'), h('span.v', { style: { color: a.demandKw > avgGen * 1.1 ? 'var(--accent)' : '' } }, `${fmt(a.demandKw, 1)} kW`)),
       ),
       h('div.plan-box', h('h4', t('hud.orbi')), h('ul.tips', ...tips.slice(0, 4).map(([k, ok]) => h(`li${ok ? '.ok' : ''}`, icon(ok ? 'check' : 'warn', 16), h('span', t(k)))))),
+      teamBox,
     );
   };
   refresh();
@@ -894,6 +994,7 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
   };
   const earnedSec = h('div.hidden', h('h3.sec', t('end.ach')), earned);
   body.insertBefore(earnedSec, classroom);
+  if (sim.team) body.insertBefore(teamTable(sim.team), earnedSec);
   showEarned(checkAchievements(progress()));
   quiz.addEventListener('click', () => setTimeout(() => showEarned(checkAchievements(progress())), 0));
   if (sim.missionId.startsWith('daily-')) {

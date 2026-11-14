@@ -2,6 +2,7 @@ import { speak } from './voice';
 import { check as checkAchievements } from './achievements';
 import { avatarSvg, ROLE_COLOR } from './avatar';
 import { controlRoundTripH, emergencyOptions } from '../sim/emergency';
+import { addressee } from '../sim/team';
 import { clamp01 } from '../core/math';
 import type { Game } from '../game/game';
 import { advise, type Advice } from '../sim/advisor';
@@ -121,6 +122,7 @@ export class Hud {
   private sunState = h('span.state', '');
   private dustEl = h('span', '');
   private linkEl = h('b');
+  private shiftEl = h('div.clock.shiftchip');
   // left
   private vPower = vital('power', t('hud.power'), '.sun');
   private vO2 = vital('o2', t('hud.o2'));
@@ -232,6 +234,7 @@ export class Hud {
         h('button.iconbtn', { onclick: () => this.app.openPause(), title: t('hud.menu') }, icon('menu', 20)),
         h('div.clock', h('div.mission', t(`mission.${m.id}.name`)), this.dayEl),
         h('div.clock', this.timeEl, h('div.bar.missionbar', this.missionFill)),
+        g.sim?.team ? this.shiftEl : null,
       ),
       h(
         'div.topbox.panel.forecast',
@@ -385,7 +388,15 @@ export class Hud {
     const p: Record<string, string | number> = { ...(a.params ?? {}) };
     if (typeof p.type === 'string' && has(`mod.${p.type}`)) p.type = t(`mod.${p.type}`);
     if (typeof p.crop === 'string' && has(`crop.${p.crop}`)) p.crop = t(`crop.${p.crop}`);
-    return t(`tip.${a.key}`, p);
+    return this.forWhom(`tip.${a.key}`, a.sev) + t(`tip.${a.key}`, p);
+  }
+
+  /** Team mode: "Lucía · Power — " in front of a warning, so the right student reacts. */
+  private forWhom(key: string, sev: string): string {
+    const team = this.sim.team;
+    if (!team || sev === 'good' || sev === 'info') return '';
+    const m = addressee(team, key);
+    return m ? `${m.name} → ` : '';
   }
 
   private tipCard(a: Advice): HTMLElement {
@@ -877,7 +888,7 @@ export class Hud {
         if (e.key === 'log.shelter.on') this.tutorial.shelter = true;
         if (e.key === 'log.experiment' && e.params?.kind === 'drop') this.tutorial.drop = true;
         this.radioCall(e);
-        this.toast(logText(e), e.sev);
+        this.toast(this.forWhom(e.key, e.sev) + logText(e), e.sev);
       }),
       g.events.on('toast', (e) => this.toast(t(e.key, e.params), e.sev)),
       g.events.on('placed', (type) => this.toast(t('toast.placed', { what: t(`mod.${type}`) }), 'info')),
@@ -1061,6 +1072,17 @@ export class Hud {
     const d = s.cfg.commsDelayMin ?? 0;
     setText(this.linkEl, !s.flows.comms ? t('link.none') : d < 1 ? t('link.sec', { s: fmt(d * 60, 1) }) : t('link.min', { m: fmt(d, d < 10 ? 1 : 0) }));
     this.linkEl.className = s.flows.comms ? '' : 'warn';
+    if (s.team) {
+      const tm = s.team;
+      const left = Math.max(0, tm.endH - s.timeH);
+      const txt = `${t('team.chip', { n: tm.shift })}|${tm.members[tm.pilot]?.name ?? ''}|${t('team.left', { h: fmt(left, left < 10 ? 1 : 0) })}`;
+      if (this.shiftEl.dataset.sig !== txt) {
+        this.shiftEl.dataset.sig = txt;
+        const [a, b, c] = txt.split('|');
+        clear(this.shiftEl);
+        this.shiftEl.append(h('div.mission', a), h('div.who', b), h('div.left', c));
+      }
+    }
     setText(this.dayEl, ck.day);
     setText(this.timeEl, ck.time);
     this.missionFill.style.width = s.cfg.endless ? '0%' : `${clamp01(s.timeH / s.cfg.durationH) * 100}%`;

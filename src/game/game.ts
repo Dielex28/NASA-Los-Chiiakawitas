@@ -1,6 +1,7 @@
 import * as THREE from 'three';
 import { AudioEngine } from '../audio/audio';
 import { Emitter } from '../core/events';
+import { closeTeam, createTeam, shiftDue } from '../sim/team';
 import { clamp01, damp, dampAngle } from '../core/math';
 import { Orbi } from '../entities/astronaut';
 import { Kit } from '../entities/kit';
@@ -82,6 +83,8 @@ export interface GameEvents extends Record<string, unknown> {
   placed: ModuleType;
   speed: number;
   photo: boolean;
+  /** Team mode: a shift has ended and the group hands over. */
+  shift: number;
 }
 
 /** Game hours that pass per real second at each command-console speed. */
@@ -362,13 +365,19 @@ export class Game {
 
   /* ----------------------------------------------------------- mission */
 
-  async startMission(missionId: string, manifest: Partial<Record<CargoItem, number>>, level: 1 | 2 | 3 = 2): Promise<void> {
+  async startMission(
+    missionId: string,
+    manifest: Partial<Record<CargoItem, number>>,
+    level: 1 | 2 | 3 = 2,
+    team?: { names: string[]; shiftH: number },
+  ): Promise<void> {
     const mission = missionById(missionId);
     this.setPhase('loading');
     this.events.emit('loading', { fraction: 0, stage: 'terrain' });
     const st = await this.ensureStage(mission.world, mission.startLocalH, !!mission.realSite);
     const hf = st.world.hf;
     const sim = createMission(mission, manifest, mission.seed, hf, hf.padHeight(0, 0, 5).top, { level });
+    if (team && team.names.filter((n) => n.trim()).length >= 2) createTeam(sim, team.names, team.shiftH);
     this.beginPlay(st, mission, sim, [], [], true);
   }
 
@@ -710,8 +719,11 @@ export class Game {
     let rate = 0;
     if (playing && !this.photo) rate = this.mode === 'eva' ? EVA_RATE : SPEEDS[this.speed];
     else if (this.phase === 'menu') rate = 0.03;
+    // team mode: hold the clock at a change of shift (on the console; an EVA finishes first)
+    if (playing && sim.team?.handover) rate = 0;
     if (rate > 0) step(sim, rate * dt);
     if (playing) this.drainLog(sim);
+    if (playing && this.mode !== 'eva' && !sim.outcome && shiftDue(sim)) this.events.emit('shift', sim.team!.shift);
 
     st.base.sync(sim);
     const env = sim.env;
@@ -843,6 +855,7 @@ export class Game {
         this.save();
       }
       if (sim.outcome) {
+        closeTeam(sim);
         if (this.mode === 'eva') this.exitEva(true);
         this.clearSave();
         this.audio.ui(sim.outcome.result === 'success' ? 'good' : 'bad');
