@@ -79,6 +79,7 @@ export interface GameEvents extends Record<string, unknown> {
   loading: { fraction: number; stage: string };
   placed: ModuleType;
   speed: number;
+  photo: boolean;
 }
 
 /** Game hours that pass per real second at each command-console speed. */
@@ -155,6 +156,12 @@ export class Game {
   private poseT = 0;
   /** The commander is at the controls of the rover. */
   driving = false;
+  /** Photo mode: time stands still and the camera flies freely. */
+  photo = false;
+  private photoYaw = 0;
+  private photoPitch = 0;
+  private photoFov = 52;
+  private photoSpeed = 0;
   private pendingRover: SaveFile['rover'] | null = null;
   private roverHelped = false;
   private roverSkidTold = false;
@@ -699,7 +706,7 @@ export class Game {
 
     // ---- simulate
     let rate = 0;
-    if (playing) rate = this.mode === 'eva' ? EVA_RATE : SPEEDS[this.speed];
+    if (playing && !this.photo) rate = this.mode === 'eva' ? EVA_RATE : SPEEDS[this.speed];
     else if (this.phase === 'menu') rate = 0.03;
     if (rate > 0) step(sim, rate * dt);
     if (playing) this.drainLog(sim);
@@ -709,11 +716,14 @@ export class Game {
 
     // ---- player / camera
     st.crewmates.update(dt, this.phase === 'playing' ? sim : null, st.world, st.base.colliders, st.world.atmosphere.darkness, this.time);
-    // the rover moves first, so the driver is drawn on this frame's seat
-    this.updateRover(dt, st, sim, rate * dt, playing && this.mode === 'eva' && allowInput);
-    if (playing && this.mode === 'eva') this.updateEva(dt, st, sim, allowInput);
-    else this.updateCommand(dt, st, sim, allowInput);
-    this.blend.apply(this.camera, dt);
+    if (this.photo) this.updatePhoto(dt, st);
+    else {
+      // the rover moves first, so the driver is drawn on this frame's seat
+      this.updateRover(dt, st, sim, rate * dt, playing && this.mode === 'eva' && allowInput);
+      if (playing && this.mode === 'eva') this.updateEva(dt, st, sim, allowInput);
+      else this.updateCommand(dt, st, sim, allowInput);
+      this.blend.apply(this.camera, dt);
+    }
 
     // ---- scanner pulse
     this.scanCooldown = Math.max(0, this.scanCooldown - dt);
@@ -821,7 +831,7 @@ export class Game {
     const wu = st.world.uniforms;
     const airLit = this.renderer.setVolume(this.camera, atm.sun, atm.sunDir, atm.airSun, atm.airAmbient, atm.scatter, env.storm, this.time, wu.uHeightMap.value, wu.uHf.value, wu.uNoise.value);
     this.renderer.setRays(this.camera, atm.sunDir, airLit ? 0 : atm.shafts, atm.shaftTint);
-    this.renderer.render(st.world.scene, this.camera, atm.exposure, this.time);
+    this.renderer.render(st.world.scene, this.camera, atm.exposure * (this.photo ? Math.pow(2, this.photoExposure) : 1), this.time);
 
     // ---- housekeeping
     if (playing) {
@@ -1223,6 +1233,92 @@ export class Game {
     const lander = this.sim?.modules[0];
     if (!site || !lander) return null;
     return { kind: site.poi.kind, distance: Math.hypot(site.poi.x - lander.x, site.poi.z - lander.z), done: site.collected };
+  }
+
+  /* -------------------------------------------------------- photo mode */
+
+  /** Freeze the moment and fly the camera freely to compose a picture. */
+  setPhoto(on: boolean): void {
+    if (on === this.photo || this.phase !== 'playing') return;
+    this.photo = on;
+    if (on) {
+      const e = new THREE.Euler().setFromQuaternion(this.camera.quaternion, 'YXZ');
+      this.photoYaw = e.y;
+      this.photoPitch = e.x;
+      this.photoFov = this.camera.fov;
+      this.input.unlock();
+      this.audio.setJet(false);
+      this.setTool(false);
+    } else {
+      this.camera.fov = 52;
+      this.camera.updateProjectionMatrix();
+      this.renderer.final.uniforms.uFilter.value = 0;
+      this.blend.start(this.camera, 0.8);
+    }
+    this.events.emit('photo', on);
+  }
+
+  /** Photo settings, from the photo panel. */
+  photoSet(opts: { fov?: number; filter?: number; exposure?: number }): void {
+    if (opts.fov !== undefined) this.photoFov = opts.fov;
+    if (opts.filter !== undefined) this.renderer.final.uniforms.uFilter.value = opts.filter;
+    if (opts.exposure !== undefined) this.photoExposure = opts.exposure;
+  }
+  /** Exposure compensation in photo mode, stops. */
+  photoExposure = 0;
+
+  private updatePhoto(dt: number, st: Stage): void {
+    const input = this.input;
+    const cam = this.camera;
+    if (input.button(0) || input.button(2) || input.locked) {
+      this.photoYaw -= input.dx * 0.0035;
+      this.photoPitch = Math.max(-1.45, Math.min(1.45, this.photoPitch - input.dy * 0.0035));
+    }
+    this.photoYaw -= input.padLookX * 1.6 * dt;
+    this.photoPitch = Math.max(-1.45, Math.min(1.45, this.photoPitch - input.padLookY * 1.2 * dt));
+    if (input.wheel) this.photoFov = Math.max(14, Math.min(90, this.photoFov * Math.pow(1.08, input.wheel)));
+    cam.quaternion.setFromEuler(new THREE.Euler(this.photoPitch, this.photoYaw, 0, 'YXZ'));
+    const fwd = new THREE.Vector3(0, 0, -1).applyQuaternion(cam.quaternion);
+    const right = new THREE.Vector3(1, 0, 0).applyQuaternion(cam.quaternion);
+    const up = (input.key('KeyE') || input.key('Space') ? 1 : 0) - (input.key('KeyQ') || input.key('KeyC') ? 1 : 0);
+    const want = (input.key('ShiftLeft') || input.key('ShiftRight') ? 40 : 8) * (input.axisX() || input.axisY() || up ? 1 : 0);
+    this.photoSpeed = damp(this.photoSpeed, want, 6, dt);
+    const move = new THREE.Vector3().addScaledVector(fwd, input.axisY()).addScaledVector(right, input.axisX()).addScaledVector(new THREE.Vector3(0, 1, 0), up);
+    if (move.lengthSq() > 1) move.normalize();
+    cam.position.addScaledVector(move, this.photoSpeed * dt);
+    // stay above the ground and inside the mapped area
+    const floor = st.world.ground(cam.position.x, cam.position.z) + 0.6;
+    if (cam.position.y < floor) cam.position.y = floor;
+    const r = Math.hypot(cam.position.x, cam.position.z);
+    if (r > 1180) cam.position.multiplyScalar(1180 / r);
+    if (Math.abs(cam.fov - this.photoFov) > 0.01) {
+      cam.fov = this.photoFov;
+      cam.updateProjectionMatrix();
+    }
+    this.focus.copy(cam.position).addScaledVector(fwd, 20);
+    if (input.hit('Escape')) this.setPhoto(false);
+  }
+
+  /** Render the current view without the interface and save it as a PNG. */
+  capturePhoto(): void {
+    const st = this.stage;
+    if (!st) return;
+    const atm = st.world.atmosphere;
+    this.renderer.render(st.world.scene, this.camera, atm.exposure * Math.pow(2, this.photo ? this.photoExposure : 0), this.time);
+    const canvas = this.renderer.canvas;
+    canvas.toBlob((blob) => {
+      if (!blob) return;
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      const stamp = new Date().toISOString().slice(0, 19).replace(/[:T]/g, '-');
+      a.href = url;
+      a.download = `helios-${st.world.id}-${stamp}.png`;
+      document.body.append(a);
+      a.click();
+      a.remove();
+      setTimeout(() => URL.revokeObjectURL(url), 4000);
+    }, 'image/png');
+    this.audio.ui('place');
   }
 
   /** The commander's answer to the running emergency. */

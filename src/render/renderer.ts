@@ -56,6 +56,8 @@ const FinalShader = {
     uTint: { value: new THREE.Vector4(0, 0, 0, 0) },
     uVisor: { value: 0 },
     uAspect: { value: 1 },
+    /** Photo filter: 0 none · 1 black and white · 2 film (warm, soft contrast) · 3 high-contrast noir */
+    uFilter: { value: 0 },
   },
   vertexShader: /* glsl */ `varying vec2 vUv; void main(){ vUv = uv; gl_Position = vec4(position.xy, 0.0, 1.0); }`,
   fragmentShader: /* glsl */ `
@@ -63,6 +65,7 @@ const FinalShader = {
     varying vec2 vUv;
     uniform sampler2D tDiffuse;
     uniform float uTime, uVignette, uGrain, uRad, uVisor, uAspect;
+    uniform int uFilter;
     uniform vec4 uTint;
     float hash(vec2 p) { vec3 p3 = fract(vec3(p.xyx) * 0.1031); p3 += dot(p3, p3.yzx + 33.33); return fract((p3.x + p3.y) * p3.z); }
     void main() {
@@ -86,6 +89,15 @@ const FinalShader = {
         col += vec3(0.7, 0.8, 1.0) * step(1.0 - 0.0015 * uRad, streak) * 0.7;
       }
       col = mix(col, col * uTint.rgb, uTint.a);
+      if (uFilter > 0) {
+        float l = dot(col, vec3(0.2126, 0.7152, 0.0722));
+        if (uFilter == 1) col = vec3(l);
+        else if (uFilter == 2) {
+          // a warm print with lifted blacks and gently rolled-off highlights, like the Hasselblad colour film
+          col = mix(vec3(l), col, 0.8) * vec3(1.05, 1.0, 0.9);
+          col = 0.03 + 0.94 * smoothstep(0.0, 1.05, col);
+        } else col = vec3(smoothstep(0.08, 0.72, l));
+      }
       gl_FragColor = vec4(col, 1.0);
     }
   `,

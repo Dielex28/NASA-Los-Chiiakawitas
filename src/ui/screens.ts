@@ -482,10 +482,14 @@ export function pauseScreen(app: App): HTMLElement {
     h(
       'nav.menu-list',
       menuRow(1, t('menu.resume'), () => app.closeOverlay(), { primary: true }),
-      menuRow(2, t('menu.codex'), () => app.openCodex()),
-      menuRow(3, t('menu.help'), () => app.openHelp()),
-      menuRow(4, t('menu.settings'), () => app.openSettings()),
-      menuRow(5, t('menu.quit'), () => app.quit(), { quiet: true }),
+      menuRow(2, t('photo.title'), () => {
+        app.closeOverlay();
+        app.game.setPhoto(true);
+      }, { hint: 'O' }),
+      menuRow(3, t('menu.codex'), () => app.openCodex()),
+      menuRow(4, t('menu.help'), () => app.openHelp()),
+      menuRow(5, t('menu.settings'), () => app.openSettings()),
+      menuRow(6, t('menu.quit'), () => app.quit(), { quiet: true }),
     ),
   );
   return sheet('.narrow', t('menu.paused'), null, () => app.closeOverlay(), body);

@@ -523,6 +523,10 @@ input[type='range']::-moz-range-thumb { width: 12px; height: 18px; background: v
 .marker.base { color: var(--accent); }
 .marker.alert { color: var(--bad-text); }
 .marker.rover { color: var(--ok); }
+.hud.photo > *:not(.photopanel) { display: none !important; }
+.photopanel { position: absolute; right: 12px; bottom: 12px; width: 22em; padding: 1em 1.1em; display: flex; flex-direction: column; gap: 0.7em; pointer-events: auto; }
+.photopanel h4 { margin: 0; font-size: 0.98em; letter-spacing: 0.1em; text-transform: uppercase; }
+.photopanel .row { display: flex; gap: 8px; align-items: center; }
 .marker.goal { color: #ffb347; }
 .marker.goal i { width: 1.1em; height: 1.1em; border-width: 2px; }
 .compass { position: absolute; left: 50%; top: 5.6em; transform: translateX(-50%); width: 30em; max-width: 44vw; height: 2.3em; overflow: hidden; background: var(--panel); border: 1px solid var(--line); }

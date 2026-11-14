@@ -79,6 +79,8 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 
 **Sonido.** Todo se sintetiza en el momento. El róver tiene un motor eléctrico cuyo tono sube con la velocidad y ruido de ruedas sobre el regolito; en la Luna suena apagado, porque sin aire solo llega lo que transmite el asiento. La música generativa cambia de ánimo: tranquila de día, más grave y escasa de noche, y tensa, con un pulso grave, durante una emergencia, una tormenta solar sin refugio o un apagón.
 
+**Modo foto.** Con `O` (o desde la pausa) el tiempo se detiene, la interfaz desaparece y la cámara vuela libre: campo de visión, exposición, filtros (natural, blanco y negro, película, contraste) e `Intro` para guardar la imagen en PNG.
+
 **Accesibilidad.** En Ajustes: tamaño del texto (90–150 %), paleta para daltonismo rojo-verde (azul, amarillo y naranja de la paleta Okabe–Ito; los estados también llevan símbolos ▲ y ■, no solo color), lectura en voz alta de los avisos de ORBI y de la radio con la voz del sistema, y mando de consola estándar para mover, conducir, mirar y usar herramientas.
 
 **Reto del día y logros.** Cada día hay un reto corto cuyo mundo, sucesos y dos condiciones especiales salen de la fecha: todo el que juegue el mismo código (por ejemplo, `20261114`) tiene exactamente la misma misión, así que una clase entera —o dos clases de colegios distintos— pueden comparar puntuaciones. Se puede escribir el código de otro día para repetirlo. Además hay 18 logros (como Galileo, brazo lunar, sangre fría, billete de vuelta…) que se guardan en el propio ordenador.
@@ -107,6 +109,7 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 | `G` | Experimento de Galileo: soltar un martillo y una pluma a la vez |
 | `R` | Lanzar una roca (la cámara apunta: mirar arriba la eleva) |
 | `V` | Subir al róver (junto a él) o bajar (parado) |
+| `O` | Modo foto (`Intro` captura, `Esc` sale) |
 | Al volante: `W` `S` · `A` `D` · `Espacio` | Acelerar y retroceder · girar · frenar |
 | `Tab` | Volver a la base |
 

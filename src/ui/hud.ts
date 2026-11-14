@@ -842,6 +842,15 @@ export class Hud {
   private onKey = (e: KeyboardEvent): void => {
     const g = this.game;
     if (g.phase !== 'playing' || this.app.overlayOpen) return;
+    // photo mode: O toggles it, Enter takes the picture; Escape is handled by the free camera
+    if (e.code === 'KeyO') {
+      g.setPhoto(!g.photo);
+      return;
+    }
+    if (g.photo) {
+      if (e.code === 'Enter') g.capturePhoto();
+      return;
+    }
     if (e.code === 'KeyB' && g.mode === 'eva') {
       this.evaBuild = !this.evaBuild;
       if (this.evaBuild) g.input.unlock();
@@ -872,6 +881,11 @@ export class Hud {
       g.events.on('select', (id) => {
         if (id !== null) this.showTab('module');
       }),
+      g.events.on('photo', (on) => {
+        this.el.classList.toggle('photo', on);
+        if (on) this.buildPhotoPanel();
+        else this.photoPanel?.remove();
+      }),
       g.events.on('mode', (mode) => {
         if (mode === 'eva') this.tutorial.eva = true;
         else if (this.tutorial.eva) this.tutorial.back = true;
@@ -901,6 +915,36 @@ export class Hud {
     this.corner.classList.toggle('hidden', evaMode);
     setText(this.evaBtn.lastElementChild!, evaMode ? t('hud.evaBack') : t('hud.eva'));
     this.evaBtn.classList.toggle('on', evaMode);
+  }
+
+  private photoPanel: HTMLElement | null = null;
+
+  /** Field of view, exposure, filter, capture and exit, while photo mode is on. */
+  private buildPhotoPanel(): void {
+    const g = this.game;
+    this.photoPanel?.remove();
+    const range = (min: number, max: number, step: number, value: number, on: (v: number) => void): HTMLElement =>
+      h('input', { type: 'range', min: String(min), max: String(max), step: String(step), value: String(value), oninput: (e: Event) => on(Number((e.target as HTMLInputElement).value)) });
+    const filters = h('div.seg');
+    const fb: HTMLElement[] = [];
+    ['photo.f.none', 'photo.f.bw', 'photo.f.film', 'photo.f.noir'].forEach((k, i) => {
+      const b = h('button', { class: i === 0 ? 'on' : '', onclick: () => {
+        g.photoSet({ filter: i });
+        fb.forEach((x, j) => x.classList.toggle('on', j === i));
+      } }, t(k));
+      fb.push(b);
+      filters.append(b);
+    });
+    this.photoPanel = h(
+      'div.photopanel.panel',
+      h('div.row', icon('eye', 18), h('h4', t('photo.title'))),
+      h('div.note', t('photo.help')),
+      h('div.slider', h('span', t('photo.fov')), range(14, 90, 1, this.game.camera.fov, (v) => g.photoSet({ fov: v }))),
+      h('div.slider', h('span', t('photo.exposure')), range(-2, 2, 0.1, 0, (v) => g.photoSet({ exposure: v }))),
+      filters,
+      h('div.row', h('button.btn.primary', { onclick: () => g.capturePhoto() }, icon('download'), t('photo.capture')), h('button.btn.ghost', { onclick: () => g.setPhoto(false) }, t('photo.exit'))),
+    );
+    this.el.append(this.photoPanel);
   }
 
   /** A crew member comments on the radio — the one whose job the event is. */
