@@ -77,6 +77,8 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 
 **La tripulación** tiene nombre, cara y especialidad, y cada especialidad cuenta: el ingeniero repara un 30 % más rápido, la botánica acelera los cultivos, el geólogo saca más ciencia de las muestras, la médica acelera la recuperación y el piloto agiliza el montaje. Si alguien enferma, su ventaja se pierde. Hablan por radio cuando pasa algo de su campo, y dos de ellos salen a trabajar a los módulos que lo necesitan (y se meten dentro de noche, con tormenta solar o cuando ordenas refugio).
 
+**Sonido.** Todo se sintetiza en el momento. El róver tiene un motor eléctrico cuyo tono sube con la velocidad y ruido de ruedas sobre el regolito; en la Luna suena apagado, porque sin aire solo llega lo que transmite el asiento. La música generativa cambia de ánimo: tranquila de día, más grave y escasa de noche, y tensa, con un pulso grave, durante una emergencia, una tormenta solar sin refugio o un apagón.
+
 **Accesibilidad.** En Ajustes: tamaño del texto (90–150 %), paleta para daltonismo rojo-verde (azul, amarillo y naranja de la paleta Okabe–Ito; los estados también llevan símbolos ▲ y ■, no solo color), lectura en voz alta de los avisos de ORBI y de la radio con la voz del sistema, y mando de consola estándar para mover, conducir, mirar y usar herramientas.
 
 **Reto del día y logros.** Cada día hay un reto corto cuyo mundo, sucesos y dos condiciones especiales salen de la fecha: todo el que juegue el mismo código (por ejemplo, `20261114`) tiene exactamente la misma misión, así que una clase entera —o dos clases de colegios distintos— pueden comparar puntuaciones. Se puede escribir el código de otro día para repetirlo. Además hay 18 logros (como Galileo, brazo lunar, sangre fría, billete de vuelta…) que se guardan en el propio ordenador.
@@ -142,7 +144,7 @@ src/
   render/     Canal HDR (MSAA → oclusión ambiental → bloom → ACES), reflejos del entorno, materiales, partículas en GPU
   entities/   Modelos procedurales: 16 módulos, astronauta con traje EVA articulado, dron ORBI
   game/       Bucle, cámaras, jugador, construcción, escáner, guardado
-  audio/      Síntesis completa con Web Audio (ambiente, herramientas, música generativa)
+  audio/      Síntesis completa con Web Audio (ambiente, herramientas, motor del róver, música generativa que cambia con la situación)
   ui/         Interfaz en español e inglés: menús, HUD, bitácora, informe
 tests/        Pruebas de la simulación (Vitest)
 electron/     Envoltorio de escritorio: ventana, pantalla completa, salir (la página no recibe acceso a Node.js)

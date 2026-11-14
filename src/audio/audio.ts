@@ -22,6 +22,13 @@ export class AudioEngine {
   private jetGain!: GainNode;
   private toolGain!: GainNode;
   private alarmGain!: GainNode;
+  private motor: OscillatorNode[] = [];
+  private motorGain!: GainNode;
+  private motorFilter!: BiquadFilterNode;
+  private crunchGain!: GainNode;
+  private crunchFilter!: BiquadFilterNode;
+  private mood: 'calm' | 'night' | 'tension' = 'calm';
+  private pulseTimer = 0;
   private noise!: AudioBuffer;
   private reverb!: ConvolverNode;
   private started = false;
@@ -163,6 +170,38 @@ export class AudioEngine {
     tool.connect(toolFilter).connect(this.toolGain).connect(this.sfxGain);
     tool.start();
     toolLfo.start();
+
+    // rover: electric drive motors (a whine that rises with speed, with a gear harmonic) and
+    // the wheels churning the regolith. On the Moon there is no air: the driver hears only what
+    // comes up through the seat, so both are duller.
+    this.motorGain = ctx.createGain();
+    this.motorGain.gain.value = 0;
+    this.motorFilter = ctx.createBiquadFilter();
+    this.motorFilter.type = 'lowpass';
+    this.motorFilter.frequency.value = 900;
+    for (const [type, mult, g] of [
+      ['sawtooth', 1, 0.5],
+      ['triangle', 2.02, 0.35],
+      ['sine', 5.6, 0.12],
+    ] as const) {
+      const o = ctx.createOscillator();
+      o.type = type;
+      o.frequency.value = 60 * mult;
+      (o as unknown as { userData: number }).userData = mult;
+      const og = ctx.createGain();
+      og.gain.value = g;
+      o.connect(og).connect(this.motorFilter);
+      o.start();
+      this.motor.push(o);
+    }
+    this.motorFilter.connect(this.motorGain).connect(this.sfxGain);
+    this.crunchFilter = ctx.createBiquadFilter();
+    this.crunchFilter.type = 'bandpass';
+    this.crunchFilter.frequency.value = 700;
+    this.crunchFilter.Q.value = 0.7;
+    this.crunchGain = ctx.createGain();
+    this.crunchGain.gain.value = 0;
+    loopNoise().connect(this.crunchFilter).connect(this.crunchGain).connect(this.sfxGain);
 
     // master alarm
     this.alarmGain = ctx.createGain();
@@ -308,6 +347,46 @@ export class AudioEngine {
   }
 
   /**
+   * Rover sound. `speed` m/s (0 when nobody is driving), `load` 0..1 how hard the motors
+   * pull, `slip` above 1 when the wheels are sliding.
+   */
+  setRover(speed: number, load: number, slip: number, hasAir: boolean): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    const t = ctx.currentTime;
+    const v = Math.min(1, Math.abs(speed) / 9);
+    const on = speed !== 0 || load > 0;
+    for (const o of this.motor) o.frequency.setTargetAtTime((55 + 330 * v + 40 * load) * (o as unknown as { userData: number }).userData, t, 0.08);
+    this.motorGain.gain.setTargetAtTime(on ? (0.02 + 0.05 * load + 0.03 * v) * (hasAir ? 1 : 0.7) : 0, t, 0.1);
+    this.motorFilter.frequency.setTargetAtTime(hasAir ? 1800 : 520, t, 0.2);
+    const churn = Math.min(1, v * 1.4 + Math.max(0, slip - 0.9) * 2);
+    this.crunchGain.gain.setTargetAtTime(on ? churn * (hasAir ? 0.09 : 0.05) : 0, t, 0.1);
+    this.crunchFilter.frequency.setTargetAtTime(hasAir ? 900 + 600 * v : 260 + 120 * v, t, 0.2);
+  }
+
+  /**
+   * What the music should feel like: calm by default, sparse and low at night, uneasy when
+   * something is wrong (an emergency, an unsheltered solar storm, a blackout).
+   */
+  setMood(mood: 'calm' | 'night' | 'tension'): void {
+    if (mood === this.mood) return;
+    const was = this.mood;
+    this.mood = mood;
+    // change at once when trouble starts; ease back otherwise
+    if (mood === 'tension' || was === 'tension') this.musicTimer = Math.min(this.musicTimer, 0.5);
+  }
+
+  /** A short rising cue for an achievement worth celebrating. */
+  fanfare(): void {
+    const ctx = this.ctx;
+    if (!ctx) return;
+    [587.33, 739.99, 880.0, 1174.66].forEach((f, i) => {
+      this.tone(f, 1.6 - i * 0.2, 'triangle', 0.05, this.musicGain, i * 0.14);
+      this.tone(f * 1.5, 1.2, 'sine', 0.014, this.musicGain, i * 0.14 + 0.02);
+    });
+  }
+
+  /**
    * Per-frame mix update.
    * @param eva player is outside in a suit
    * @param hasAir world has an atmosphere
@@ -343,22 +422,39 @@ export class AudioEngine {
     // generative music: slow pads from a fixed progression, with sparse bell notes
     this.musicTimer -= dt;
     if (this.musicTimer <= 0) {
-      this.musicTimer = 9.5;
+      this.musicTimer = this.mood === 'tension' ? 6.5 : this.mood === 'night' ? 12 : 9.5;
       this.playChord();
+    }
+    // under tension a low pulse, like a heartbeat, keeps time
+    if (this.mood === 'tension') {
+      this.pulseTimer -= dt;
+      if (this.pulseTimer <= 0) {
+        this.pulseTimer = 1.25;
+        this.tone(55, 0.35, 'sine', 0.09, this.musicGain, 0, 42);
+        this.tone(55, 0.3, 'sine', 0.05, this.musicGain, 0.28, 42);
+      }
     }
   }
 
   private playChord(): void {
     const ctx = this.ctx;
     if (!ctx) return;
-    // D lydian colours: open, weightless, a little bright
-    const chords = [
+    // calm: D lydian colours, open and a little bright · night: the same, an octave down and
+    // thinner · tension: D minor with a flat second and a tritone, closer and darker
+    const calm = [
       [146.83, 220.0, 329.63, 415.3],
       [123.47, 185.0, 293.66, 440.0],
       [110.0, 164.81, 277.18, 369.99],
       [146.83, 207.65, 329.63, 493.88],
       [98.0, 146.83, 246.94, 369.99],
     ];
+    const tension = [
+      [146.83, 155.56, 220.0, 349.23],
+      [138.59, 207.65, 293.66, 311.13],
+      [116.54, 174.61, 233.08, 329.63],
+      [146.83, 207.65, 261.63, 349.23],
+    ];
+    const chords = this.mood === 'tension' ? tension : this.mood === 'night' ? calm.map((c) => c.slice(0, 3).map((f) => f / 2)) : calm;
     const chord = chords[this.chordIndex % chords.length];
     this.chordIndex++;
     const t = ctx.currentTime;
@@ -384,9 +480,10 @@ export class AudioEngine {
         o.stop(t + 13);
       }
     }
-    // bells
+    // bells (none when tense; fewer at night)
+    if (this.mood === 'tension') return;
     const scale = [587.33, 659.25, 739.99, 830.61, 987.77, 1108.73, 1174.66];
-    const n = 1 + Math.floor(Math.random() * 3);
+    const n = this.mood === 'night' ? Math.floor(Math.random() * 2) : 1 + Math.floor(Math.random() * 3);
     for (let k = 0; k < n; k++) {
       const when = 1 + Math.random() * 7;
       const f = scale[Math.floor(Math.random() * scale.length)];

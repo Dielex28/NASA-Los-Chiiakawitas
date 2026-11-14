@@ -808,6 +808,12 @@ export class Game {
     this.renderer.bloom.strength = st.world.id === 'moon' ? 0.3 : 0.26;
 
     this.audio.update(dt, this.mode === 'eva' && playing, st.world.id === 'mars', env.storm, clamp01(st.player.vel.length() / 5) + st.player.working * 0.5, !playing);
+    const rv = st.rover.vehicle;
+    this.audio.setRover(this.driving && playing ? rv.speed || 1e-3 : 0, this.driving ? clamp01(st.rover.draw / 2000) : 0, rv.slip, st.world.id === 'mars');
+    const trouble =
+      playing &&
+      ((!!sim.emergency && !sim.emergency.choice) || (env.speMsvH > 0.05 && !sim.shelterOrder) || sim.power.blackout || sim.flows.o2Days < 2 || sim.flows.co2MmHg > 6);
+    this.audio.setMood(trouble ? 'tension' : st.world.atmosphere.darkness > 0.8 ? 'night' : 'calm');
     const emergency = playing && (env.speMsvH > 0.3 || sim.power.blackout);
     this.alarmT = emergency ? this.alarmT + dt : 0;
     this.audio.setAlarm(emergency && this.alarmT < 9 && (this.mode === 'eva' || this.speed > 0));
@@ -849,6 +855,7 @@ export class Game {
         if (this.speed > 2) this.setSpeed(2);
       } else if (e.sev === 'good') this.audio.ui('good');
       if (e.key === 'log.spe.warn' || e.key === 'log.storm.warn' || e.key === 'log.resupply.arrived') this.audio.radio();
+      if (e.key === 'log.expedition' || e.key === 'log.fuel.done' || e.key === 'log.success') this.audio.fanfare();
       if (e.key === 'log.emg.leak' || e.key === 'log.emg.meteor' || e.key === 'log.emg.eclss') {
         // the clock is running: slow time down and free the mouse so the commander can answer
         if (this.speed > 1) this.setSpeed(1);
