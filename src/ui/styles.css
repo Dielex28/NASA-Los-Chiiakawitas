@@ -751,3 +751,14 @@ h3.sec { font-family: var(--mono); font-weight: 400; letter-spacing: 0.16em; tex
 .demo-caption p { margin: 0; font-size: 1.12em; line-height: 1.45; color: var(--text); }
 .demo-caption small { color: var(--text-2); font-size: 0.78em; }
 .demo-caption.flash { animation: rise 0.45s ease both; }
+
+/* class results */
+.classsend { display: flex; align-items: center; gap: 0.8em; margin-top: 0.8em; flex-wrap: wrap; }
+.classres .row { margin: 0.6em 0 1em; align-items: flex-end; }
+.classres label { display: flex; flex-direction: column; gap: 4px; font-size: 0.76em; letter-spacing: 0.12em; text-transform: uppercase; color: var(--text-2); }
+.classpick { background: var(--ground); color: var(--text); border: 1px solid var(--line); padding: 0.5em 0.6em; font: inherit; font-size: 1.2em; min-width: 18em; text-transform: none; letter-spacing: 0; }
+.classtable table { width: 100%; border-collapse: collapse; font-size: 0.94em; }
+.classtable th { text-align: left; font-size: 0.78em; letter-spacing: 0.08em; text-transform: uppercase; color: var(--text-2); font-weight: 600; padding: 0.45em 0.6em; border-bottom: 1px solid var(--line); }
+.classtable td { padding: 0.55em 0.6em; border-bottom: 1px solid var(--line); }
+.classtable td.n { font-family: var(--mono); }
+.classtable td.ok { color: var(--ok); } .classtable td.bad { color: var(--bad-text); }

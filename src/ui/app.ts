@@ -8,7 +8,8 @@ import { h } from './dom';
 import { Hud } from './hud';
 import { startNextShift } from '../sim/team';
 import { Demo } from './demo';
-import { achievementsScreen, campaignScreen, codexScreen, debriefScreen, editorScreen, shiftScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
+import { classroom } from './classroom';
+import { achievementsScreen, campaignScreen, classScreen, codexScreen, debriefScreen, editorScreen, shiftScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
 import { DEFAULT_CUSTOM, type CustomSpec } from '../sim/custom';
 import { initLang, setLang, type Lang } from './strings';
 import './styles.css';
@@ -125,6 +126,11 @@ export class App {
   }
 
   async start(): Promise<void> {
+    // inside claude.ai the page may have a class database: offer the class results once it answers
+    void classroom().then((c) => {
+      this.classOpen = !!c;
+      if (c && this.game.phase === 'menu' && !this.overlayOpen) this.rerender();
+    });
     this.showLoading();
     this.game.run();
     await this.game.boot('moon');
@@ -176,6 +182,14 @@ export class App {
 
   demoEnded(): void {
     this.demo = null;
+  }
+
+  /** A class database is available (inside claude.ai): the menu offers the class results. */
+  classOpen = false;
+
+  openClass(): void {
+    this.current = () => this.setScreen(classScreen(this));
+    this.current();
   }
 
   openCampaign(): void {

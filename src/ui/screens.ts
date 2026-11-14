@@ -4,6 +4,8 @@ import { CUSTOM_LIMITS, DEFAULT_CUSTOM, clampSpec, encodeCustom, normalizeCode, 
 import { MISSIONS, dailyCode, missionById, scoreMission, type MissionDef } from '../sim/missions';
 import { STATIONS, assignStations, type ShiftGoal, type TeamState } from '../sim/team';
 import { CHAPTERS, isChapter, medals, nextChapter, recordChapter, unlockedChapters, type Medal } from './campaign';
+import { classCsv, classroom, entryFor, missionKey, sendResult, watchClass, type ClassRow } from './classroom';
+import { saveFile } from './save';
 import { manifestMass, planAutonomy } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { CargoItem, ModuleType, SimState, SupplyType } from '../sim/types';
@@ -97,6 +99,7 @@ export function menuScreen(app: App): HTMLElement {
   rows.push(menuRow(n++, t('menu.achievements'), () => app.openAchievements()));
   rows.push(menuRow(n++, t('menu.help'), () => app.openHelp()));
   rows.push(menuRow(n++, t('menu.settings'), () => app.openSettings()));
+  if (app.classOpen) rows.push(menuRow(n++, t('class.title'), () => app.openClass(), { hint: t('class.hint') }));
   rows.push(menuRow(n++, t('menu.demo'), () => app.startDemo(), { quiet: true, hint: t('menu.demo.hint') }));
   if (app.canQuit) rows.push(menuRow(n++, t('menu.exit'), () => app.exitApp(), { quiet: true }));
 
@@ -308,6 +311,107 @@ export function editorScreen(app: App, spec: CustomSpec): HTMLElement {
     h('button.btn.primary', { onclick: () => app.openPlanning(id) }, icon('rocket'), t('edit.play')),
   );
   return sheet('.wide', t('edit.title'), t('edit.sub'), () => app.openMissions(), h('div.sheet-body.editor', controls, side));
+}
+
+/* --------------------------------------------------------- class results */
+
+/** The class's results (claude.ai only): the teacher sees everyone's, a student their own. */
+export function classScreen(app: App): HTMLElement {
+  const es = getLang() === 'es';
+  const status = h('p.note', t('class.loading'));
+  const pick = h('select.classpick', { 'aria-label': t('class.mission') }) as HTMLSelectElement;
+  const table = h('div.classtable');
+  const csvBtn = h('button.btn.small', {}, icon('download'), t('class.csv')) as HTMLButtonElement;
+  const help = h('p.note', '');
+  const body = h('div.sheet-body.classres', help, h('div.row', h('label', t('class.mission'), pick), h('span.grow'), csvBtn), status, table);
+  let rows: ClassRow[] = [];
+  let named: Array<ClassRow & { name: string }> = [];
+  let stop: (() => void) | null = null;
+  const missionName = (id: string): string => {
+    ensureMissionStrings(id);
+    return t(`mission.${id}.name`);
+  };
+  const render = async (): Promise<void> => {
+    const c = await classroom();
+    if (!c) return;
+    const keys = [...new Set(rows.map((r) => missionKey(r.mission)))];
+    // newest mission first in the picker
+    keys.sort((a, b) => {
+      const la = Math.max(...rows.filter((r) => missionKey(r.mission) === a).map((r) => Date.parse(r.at)));
+      const lb = Math.max(...rows.filter((r) => missionKey(r.mission) === b).map((r) => Date.parse(r.at)));
+      return lb - la;
+    });
+    const chosen = keys.includes(pick.value) ? pick.value : keys[0] ?? '';
+    clear(pick);
+    for (const k of keys) {
+      const r = rows.find((x) => missionKey(x.mission) === k)!;
+      pick.append(h('option', { value: k, selected: k === chosen ? 'selected' : null }, `${missionName(r.mission)} · ${r.mission.startsWith('custom-') ? r.mission.slice(7) : r.mission.replace('daily-', '')}`));
+    }
+    pick.value = chosen;
+    const shown = rows.filter((r) => missionKey(r.mission) === chosen).sort((a, b) => b.score - a.score);
+    const ids = [...new Set(rows.map((r) => r.student))];
+    const ps = await c.user.profiles(ids);
+    const order = new Map(ids.map((id, i) => [id, i + 1]));
+    const nameOf = (id: string): string => ps[id]?.name || `${t('class.student')} ${order.get(id)}`;
+    named = rows.map((r) => ({ ...r, name: nameOf(r.student) }));
+    clear(table);
+    if (!shown.length) {
+      table.append(h('p.note', t(c.teacher ? 'class.empty.teacher' : 'class.empty.student')));
+      return;
+    }
+    const fmtD = (iso: string): string => new Date(iso).toLocaleString(es ? 'es-ES' : 'en-GB', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+    table.append(
+      h(
+        'table',
+        h('thead', h('tr', ...['class.col.student', 'class.col.result', 'class.col.score', 'class.col.dose', 'class.col.science', 'class.col.when'].map((k) => h('th', t(k))))),
+        h(
+          'tbody',
+          ...shown.map((r) =>
+            h(
+              'tr',
+              h('td', h('b', nameOf(r.student))),
+              h(`td.${r.result === 'success' ? 'ok' : 'bad'}`, r.result === 'success' ? t('end.success') : t('end.abort')),
+              h('td.n', String(r.score)),
+              h('td.n', `${fmt(r.dose, 1)} mSv`),
+              h('td.n', `${r.science} / ${r.scienceGoal}`),
+              h('td.n', fmtD(r.at)),
+            ),
+          ),
+        ),
+      ),
+    );
+  };
+  pick.onchange = () => void render();
+  csvBtn.onclick = () => void saveFile(es ? 'helios-resultados-clase.csv' : 'helios-class-results.csv', classCsv(named, es), 'text/csv');
+  void classroom().then((c) => {
+    if (!c) {
+      status.textContent = t('class.none');
+      return;
+    }
+    help.textContent = t(c.teacher ? 'class.help.teacher' : 'class.help.student');
+    csvBtn.classList.toggle('hidden', !c.teacher);
+    // the store may not answer at once (or at all, offline): say so after 10 s
+    const timer = window.setTimeout(() => (status.textContent = t('class.slow')), 10000);
+    stop = watchClass(
+      c,
+      (next, confirmed) => {
+        rows = next;
+        if (confirmed) {
+          window.clearTimeout(timer);
+          status.textContent = '';
+        }
+        void render();
+      },
+      () => {
+        window.clearTimeout(timer);
+        status.textContent = t('class.error');
+      },
+    );
+  });
+  return sheet('.mid', t('class.title'), null, () => {
+    stop?.();
+    app.openMenu();
+  }, body);
 }
 
 /* -------------------------------------------------------------- campaign */
@@ -1011,7 +1115,8 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
     }),
   );
   const student = h('input.student', { type: 'text', placeholder: t('end.student'), maxlength: '60' }) as HTMLInputElement;
-  const classroom = h(
+  const classroomRow = h('div');
+  const classroomBox = h(
     'div',
     h('h3.sec', t('end.quiz'), tally),
     h('p.note', t('end.quiz.lead')),
@@ -1023,8 +1128,23 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
       h('button.btn.ghost', { onclick: () => downloadTelemetry(sim), title: t('end.csv.d') }, icon('download'), t('end.csv')),
       h('span.note', t('end.report.note')),
     ),
+    classroomRow,
   );
-  body.insertBefore(classroom, body.querySelector('h3.sec'));
+  // inside claude.ai with a class database: send this result to the teacher
+  if (sim.missionId !== 'demo-moon')
+    void classroom().then((c) => {
+      if (!c || !c.me) return;
+      const msg = h('span.note', '');
+      const btn = h('button.btn.primary', {}, icon('crew'), t('class.send')) as HTMLButtonElement;
+      btn.onclick = async () => {
+        btn.disabled = true;
+        const r = await sendResult(c, entryFor(sim, level));
+        msg.textContent = t(`class.sent.${r}`);
+        btn.disabled = r === 'sent' || r === 'kept';
+      };
+      classroomRow.append(h('div.classsend', btn, msg));
+    });
+  body.insertBefore(classroomBox, body.querySelector('h3.sec'));
 
   // achievements unlocked by this mission, and the daily challenge result
   const earned = h('div.achlist');
@@ -1044,7 +1164,7 @@ export function debriefScreen(app: App, sim: SimState): HTMLElement {
     earnedSec.classList.toggle('hidden', earned.childElementCount === 0);
   };
   const earnedSec = h('div.hidden', h('h3.sec', t('end.ach')), earned);
-  body.insertBefore(earnedSec, classroom);
+  body.insertBefore(earnedSec, classroomBox);
   if (sim.team) body.insertBefore(teamTable(sim.team), earnedSec);
   const chapter = recordChapter(sim);
   const next = nextChapter(sim.missionId);
