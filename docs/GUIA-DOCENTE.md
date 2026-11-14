@@ -28,6 +28,15 @@ En **Ajustes → Nivel** se elige uno de tres niveles. Cambia cuántas averías 
 | La latitud decide la luz | Los cuatro sitios lunares reales: el Sol casi no se pone junto al polo y se pone dos semanas a 120 km de él |
 | El cuerpo se adapta a la gravedad | Hueso y músculo de cada tripulante; ejercicio diario frente a horas de trabajo |
 | Planificar con márgenes | Planificador de rutas EVA y límite de regreso a pie del Apolo |
+| Un fallo se encadena con otros | *Abril de 1970*: el tanque de oxígeno estalla, cae la celda de combustible y fallan los depuradores de CO₂ a la vez |
+| La autonomía de una tripulación | Conjunción solar en Marte: dos semanas sin avisos ni ayuda de la Tierra |
+| Leer datos y hacer gráficas | *Descargar datos (CSV)*: la telemetría de la misión, lista para una hoja de cálculo |
+
+## Antes de empezar
+
+- **Presentarlo en dos minutos:** *Demostración* en el menú principal juega sola una misión corta con subtítulos (construir, explorar, refugiarse, resolver una emergencia, informe). Proyectadla al empezar la primera sesión; cualquier tecla devuelve el control.
+- **Idioma:** español, inglés, portugués y francés, en el menú principal o en Ajustes. Útil para clases bilingües o alumnado recién llegado: cada estudiante puede jugar en su idioma la misma misión que el resto.
+- **Tabletas y Chromebooks:** el juego elige solo la calidad *Mínima* y muestra botones táctiles para todas las acciones. Si un equipo va lento, en Ajustes → Calidad se puede bajar a mano.
 
 ## Cuatro sesiones de 45 minutos
 
@@ -39,6 +48,14 @@ En **Ajustes → Nivel** se elige uno de tres niveles. Cambia cuántas averías 
 
 **Sesión 4 · Planificar una salida (Cadete y Experto).** Misión *Cresta de conexión* o *Macizo de Malapert*. Antes de salir, cada grupo dibuja con *Ruta EVA* una ruta hasta la expedición y anota lo que predice el planificador: distancia, desnivel, traje a pie y en róver, batería. Luego hacen la EVA y comparan con el traje que les queda al volver. Para debatir: ¿por qué las misiones Apolo nunca llevaban el róver más lejos de lo que podían volver andando? ¿Qué margen de reserva dejaríais vosotros y por qué?
 
+## Más sesiones
+
+**Sesión 5 · Un fracaso con éxito (Cadete y Experto).** Escenario *Abril de 1970*. Antes de jugar, contad lo que pasó en el Apolo 13: a las 55 horas y 55 minutos estalló un tanque de oxígeno y tres astronautas sobrevivieron en un módulo pensado para dos, improvisando filtros de CO₂ con cinta y cartón. En el juego pasa lo mismo, pero en la superficie lunar. Para debatir después: ¿qué apagasteis primero y por qué? ¿Qué habría pasado sin los cartuchos de reserva? ¿Por qué la NASA lo llama «un fracaso con éxito»?
+
+**Sesión 6 · La tormenta que apagó a Opportunity (Experto).** Escenario *Junio de 2018*. En 2018 una tormenta de polvo global dejó el cielo marciano casi negro durante semanas y el róver Opportunity, que funcionaba con paneles, no volvió a despertar. Que la mitad de la clase lleve reactores y la otra mitad solo paneles, y comparad. Después, con *Descargar datos (CSV)*, haced en la hoja de cálculo una gráfica de la luz solar y de la energía a lo largo de la misión: ¿cuántos soles duró la oscuridad? ¿Cuándo empezó a recuperarse la producción?
+
+**Actividad de matemáticas con los datos.** Cualquier misión sirve: el CSV tiene una fila cada pocas horas con energía, oxígeno, agua, comida, CO₂, dosis, salud, ánimo, ciencia, temperatura y luz solar. Ideas: calcular la pendiente del oxígeno (kg por día) y compararla con el consumo de 0,84 kg por persona; encontrar la noche lunar en la columna de luz; sumar la dosis por día y compararla con la de una radiografía.
+
 ## Preguntas para el debate
 
 1. Si cada kilo que se lleva a Marte cuesta muchísimo, ¿qué conviene más: llevar agua o una máquina que la recicla? ¿A partir de cuántos días cambia la respuesta?
@@ -46,6 +63,8 @@ En **Ajustes → Nivel** se elige uno de tres niveles. Cambia cuántas averías 
 3. ¿Por qué el juego no deja ir a pie hasta la expedición? ¿Qué limita realmente a un astronauta en la superficie?
 4. El límite de dosis no es un muro: por debajo de él sigue valiendo la pena recibir menos (ALARA). ¿Por qué?
 5. Desde Marte, una pregunta a la Tierra tarda media hora en tener respuesta. ¿Qué decisiones debe estar preparada para tomar sola una tripulación marciana?
+6. Durante la conjunción solar no hay contacto con la Tierra durante dos semanas. ¿Qué prepararíais antes? ¿Qué reglas acordaría la tripulación para decidir sin ayuda?
+7. En el Apolo 13 no falló una sola cosa, sino varias a la vez porque estaban conectadas. Buscad en vuestra base un fallo que pueda arrastrar a otros. ¿Cómo lo evitaríais?
 
 ## La campaña
 
@@ -53,7 +72,7 @@ En el menú, **Campaña** ordena nueve misiones de menos a más: cada capítulo 
 
 ## El editor de misiones
 
-En *Nueva misión → Editor de misiones* podéis diseñar vuestra propia misión: destino, duración, tripulación, carga máxima, objetivo de ciencia, límite de dosis, cuántas tormentas solares y de polvo (y su intensidad), emergencias, retraso de radio, combustible de regreso, reabastecimientos y si se juega sobre uno de los cinco terrenos reales. Todo queda en un **código de 15 caracteres** que se copia en la pizarra; cada estudiante lo escribe en *Código de tu docente* y juega exactamente la misma misión, con los mismos sucesos en el mismo orden. *Variante* baraja el momento de los sucesos sin cambiar nada más: útil para que dos grupos no se copien. Ideas:
+En *Nueva misión → Editor de misiones* podéis diseñar vuestra propia misión: destino, duración, tripulación, carga máxima, objetivo de ciencia, límite de dosis, cuántas tormentas solares y de polvo (y su intensidad), emergencias, retraso de radio, combustible de regreso, reabastecimientos, si se juega sobre uno de los cinco terrenos reales y, en Marte, si hay conjunción solar (misiones de 20 soles o más). Todo queda en un **código de 15 caracteres** que se copia en la pizarra; cada estudiante lo escribe en *Código de tu docente* y juega exactamente la misma misión, con los mismos sucesos en el mismo orden. *Variante* baraja el momento de los sucesos sin cambiar nada más: útil para que dos grupos no se copien. Ideas:
 
 - **Comparar variables**: dos códigos que solo difieren en una cosa (por ejemplo, con y sin reciclaje por falta de presupuesto, o 3 frente a 20 minutos de retraso) y que cada mitad de la clase juegue uno.
 - **Reto adaptado**: para Junior, una misión corta sin emergencias; para Experto, tormentas severas y poca carga.
@@ -65,11 +84,23 @@ En el manifiesto de carga, **Jugar en equipo** permite que de 2 a 5 estudiantes 
 
 ## El reto del día
 
-En la lista de misiones, el **reto del día** es una misión corta generada a partir de la fecha. El mismo código da la misma misión a todo el mundo: proyectad el código en la pizarra, que cada estudiante (o cada pareja) la juegue y comparad puntuaciones e informes. Para repetir el reto otro día basta con escribir su código. Las puntuaciones solo se guardan en cada ordenador: no hay ranking en línea.
+En la lista de misiones, el **reto del día** es una misión corta generada a partir de la fecha. El mismo código da la misma misión a todo el mundo: proyectad el código en la pizarra, que cada estudiante (o cada pareja) la juegue y comparad puntuaciones e informes. Para repetir el reto otro día basta con escribir su código. Las puntuaciones se guardan en cada ordenador; si usáis la página publicada en claude.ai, también podéis reunirlas con *Resultados de la clase* (ver más abajo).
 
 ## El informe
 
-Al final de cada misión, **Descargar informe para el docente** genera un archivo HTML con el resultado, la puntuación por áreas, las lecciones de la misión y las respuestas a las preguntas (con la correcta y la explicación). Se abre en cualquier navegador y se imprime en una o dos páginas. El nombre del estudiante es opcional y no sale del ordenador: el juego no envía datos a ningún sitio.
+Al final de cada misión, **Descargar informe para el docente** genera un archivo HTML con el resultado, la puntuación por áreas, las lecciones de la misión y las respuestas a las preguntas (con la correcta y la explicación). Se abre en cualquier navegador y se imprime en una o dos páginas. El nombre del estudiante es opcional y no sale del ordenador.
+
+Al lado, **Descargar datos (CSV)** guarda la telemetría de la misión para trabajarla en una hoja de cálculo (también está en el menú de pausa). En español, portugués y francés usa punto y coma y coma decimal, así que Excel, LibreOffice o Google Sheets lo abren bien a la primera.
+
+## Resultados de la clase
+
+Si publicáis el juego como página de claude.ai (la versión `dist-web/helios-outpost.html`, que tiene base de datos compartida), aparece **Resultados de la clase**:
+
+1. Compartid la página con el alumnado con permiso para **participar** (*Contributor*). Con permiso de solo lectura pueden jugar, pero no enviar.
+2. Al terminar una misión, cada estudiante pulsa **Enviar a la clase**. Se guarda su mejor puntuación en esa misión; si repite y lo hace peor, se conserva la mejor.
+3. Quien publicó la página (o quien tenga permiso de edición) abre **Resultados de la clase** en el menú principal, elige la misión y ve la tabla de todos: nombre, resultado, puntos, dosis máxima, ciencia y fecha de envío. La tabla se actualiza sola y se descarga en CSV.
+
+Cada estudiante solo puede ver y cambiar su propia fila. Solo se envían números y el identificador de la misión, nunca un texto escrito por el estudiante, y solo cuando se pulsa el botón. El nombre que ve el docente es el de la cuenta de cada estudiante. En el programa de escritorio y en el archivo `helios-outpost.html` no hay base de datos: el juego no envía nada a ningún sitio.
 
 ## Rigor y límites
 

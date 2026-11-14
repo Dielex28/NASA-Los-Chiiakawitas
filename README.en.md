@@ -50,7 +50,9 @@ npm install
 npm start          # opens http://localhost:5173 with hot reload
 ```
 
-It needs a browser with WebGL 2 (recent Chrome, Edge or Firefox). It is designed for keyboard and mouse; tablets get basic touch controls (drag, pinch, tap and an on-screen joystick on EVA).
+It needs a browser with WebGL 2 (recent Chrome, Edge or Firefox). It plays with keyboard and mouse, a gamepad or a touch screen. **On tablets and Chromebooks** the game picks the *Minimal* quality by itself (lower resolution, 30 frames per second and none of the most expensive effects) and shows buttons for every EVA action — use, jump, scan, rover, run, throw, Galileo, build and camera — as well as drag, pinch and an on-screen joystick. While building, rotate and cancel buttons appear.
+
+**Address parameters** (handy for preparing a class or a fair): `?m=<mission>` opens a mission straight away (for example `?m=moon-1970`), `?q=lite|low|medium|high|ultra` sets the quality, and `?demo=1` starts the demo mode (`?demo=loop` repeats it forever).
 
 | Command | What it does |
 | --- | --- |
@@ -68,7 +70,7 @@ After changing the code, run `npm run build` so that `helios-outpost.html` stays
 
 ## How to play
 
-1. **Choose a mission.** An 8-day training run on the Moon, 30 days on Shackleton ridge, 60 or 180 sols on Mars, or free play. Two missions relive **real solar storms** (Moon, August 1972; Mars, September 2017). Five places use **real terrain measured by NASA spacecraft**: four at the lunar south pole (Shackleton rim, the connecting ridge, Malapert massif and Nobile rim, measured by the LOLA laser altimeter) and the spot in Jezero where Perseverance landed (CTX camera). On the real lunar sites **the Sun moves as it really does there**, computed from each place's latitude: on the ridges next to the pole it never quite sets, and 4–5° from the pole there are nights of almost two weeks.
+1. **Choose a mission.** An 8-day training run on the Moon, 30 days on Shackleton ridge, 60 or 180 sols on Mars, or free play. Four **historic scenarios** relive real events: two solar storms (Moon, August 1972; Mars, September 2017), the **Apollo 13 oxygen-tank explosion** (April 1970: at 55 h 55 min into the mission most of the oxygen is lost, the fuel cell dies and the CO₂ scrubbers fail, this time on the lunar surface) and the **global dust storm of June 2018**, the one that silenced the Opportunity rover (the sky goes almost black for weeks). Five places use **real terrain measured by NASA spacecraft**: four at the lunar south pole (Shackleton rim, the connecting ridge, Malapert massif and Nobile rim, measured by the LOLA laser altimeter) and the spot in Jezero where Perseverance landed (CTX camera). On the real lunar sites **the Sun moves as it really does there**, computed from each place's latitude: on the ridges next to the pole it never quite sets, and 4–5° from the pole there are nights of almost two weeks.
 2. **Plan the cargo.** You have a mass limit. Water for the whole trip, or a machine that recycles it? Arrays or a reactor? A shelter or an excavator? ORBI, your assistant drone, tells you what is missing.
 3. **Build the base** from the command console: modules connect themselves to the utility grid and the crew assembles them.
 4. **Go outside (EVA).** Walk and jump in each world's real gravity, scan the ground for ice and samples, repair breakdowns, brush dust off the arrays. Drive the rover to go further on less suit: every mission has an **expedition** a kilometre from the base, further than a suit allows on foot there and back. Drop a hammer and a feather as on Apollo 15, or throw a rock and compare with what would have happened on Earth. Running drains the suit faster, and a hard fall damages it.
@@ -77,6 +79,10 @@ After changing the code, run `npm run build` so that `helios-outpost.html` stays
 **The campaign** (*The Helios programme*) puts nine missions in an order where each one teaches one idea, from a first night in the lander to a long stay on Mars. Each chapter opens when you complete the previous one and earns a bronze, silver or gold medal by score. Every mission is still open in *New mission*.
 
 **Earth is far away.** Every mission has its radio delay: 1.3 s from the Moon; from Mars, between 3 and 22 minutes depending on where the two planets are (11.4 min on the day Perseverance landed; 20 min in September 2017, just after conjunction). In an emergency you can **ask Mission Control for help**: the answer brings a tested procedure that speeds up the fix, but it takes the signal's round trip plus the analysis, and the problem goes on meanwhile. On Mars the distance also weighs on morale: no conversations with home, only messages.
+
+**Solar conjunction.** Every two years, seen from Earth, Mars passes behind the Sun and the radio goes quiet for about two weeks; the agencies stop sending commands to their spacecraft. In *Mars · long stay* it happens between sols 88 and 102, and the mission editor can add it to any Mars mission of 20 sols or more. While it lasts no solar-storm warnings arrive from Earth, Mission Control cannot be asked for help and morale feels it: the base is on its own.
+
+**Inside.** In the inspector of the habitat, lab, greenhouse or lander, *Look inside* walks you into the module: bunks, galley, treadmill and lockers; workbench, glovebox and microscope; growing trays under magenta light whose plants grow with the harvest; seats and console. A wall screen shows live O₂, water, CO₂, power, dose and temperature. The crew sleeps at night, runs on the treadmill when exercise is on and stands up in an emergency; in a blackout the lights dim. `Esc` or `Tab` to leave.
 
 **Long-term health.** Low gravity takes bone (1–1.5 % a month on the ISS) and muscle. In the *Crew* tab you choose how much the crew exercises each day (none, 1 h, or 2 h as on the ISS): it protects body and morale, but costs work hours. The debrief estimates the months of rehabilitation the crew would need back home.
 
@@ -92,12 +98,18 @@ After changing the code, run `npm run build` so that `helios-outpost.html` stays
 
 **Accessibility.** In Settings: text size (90–150 %), a palette for red-green colour blindness (blue, yellow and orange from the Okabe–Ito palette; states also carry ▲ and ■ symbols, not just colour), ORBI's and the radio's messages read aloud with the system voice, and a standard game controller to move, drive, look around and use tools.
 
-**Daily challenge and achievements.** Every day there is a short challenge whose world, events and two special conditions come from the date: everyone who plays the same code (for example `20261114`) gets exactly the same mission, so a whole class — or two classes in different schools — can compare scores. You can type another day's code to replay it. There are also 20 achievements (Galileo, lunar pitcher, cool head, ticket home, Helios programme…) saved on the computer itself.
+**Daily challenge and achievements.** Every day there is a short challenge whose world, events and two special conditions come from the date: everyone who plays the same code (for example `20261114`) gets exactly the same mission, so a whole class — or two classes in different schools — can compare scores. You can type another day's code to replay it. There are also 22 achievements (Galileo, lunar pitcher, cool head, ticket home, *A successful failure*, Helios programme…) saved on the computer itself.
+
+**Demo mode.** *Demo* in the main menu (or `?demo=1`) plays a short lunar mission by itself: it deploys and builds the base, goes on EVA to scan, shelters from a solar storm, handles an emergency and shows the debrief, with captions explaining each step. It presents the game in two minutes, or loops at a stand (`?demo=loop`). Any key, click or touch hands control back, and it does not count towards achievements.
+
+**Four languages.** Spanish, English, Portuguese (Brazil) and French, including the science journal, the glossary, the quiz, the teacher report and the spoken warnings. The game follows the browser's language the first time and can be switched from the main menu or Settings.
 
 **In the classroom:** three age levels (Junior 8–11, Cadet 12–14, Expert 15+) change the breakdowns and the questions; the science codex has a twenty-term glossary; and a [teacher guide](docs/TEACHER-GUIDE.md) offers four 45-minute sessions and discussion questions.
 
 - **Mission editor for teachers** (in *New mission*): destination, length, crew, cargo budget, science goal, dose limit, solar and dust storms, emergencies, radio delay, return fuel, resupplies and real terrain. All of it fits in a **15-character code** (for example `H0022-EA4QK-BM0DN`) you write on the board: anyone who types it into *Your teacher's code* plays exactly that mission, with the same events. The last character is a check digit, so a mistyped code is caught.
 - **Team mode**: 2 to 5 students share one computer. Each looks after one or two stations (power, life support, health and radiation, science, maintenance) and the controls rotate in shifts of 12 h, a day or three. At every change of shift the game stops: which goals each station met, who takes the controls and the goals for the next shift. Warnings carry the name of whoever should react ("Lucía → battery low"), and the debrief adds a team table.
+- **Mission data as CSV**: from the debrief or the pause menu, *Download data (CSV)* saves the telemetry every few hours (power, oxygen, water, food, CO₂, dose, health, morale, science, temperature and sunlight) for charting in maths or science lessons. In Spanish, Portuguese and French it uses semicolons and decimal commas so the spreadsheet opens it correctly first time.
+- **Class results** (only in the version published as a claude.ai page, which has a shared database): after a mission, *Send to the class* stores each student's best score for that mission. Whoever published the page sees under *Class results* a live table of everyone (name, result, score, peak dose, science and when it was sent) and can download it as CSV. Each student only sees and changes their own row, and only numbers and ids are sent, never text a student typed. To send, students need permission to take part in the page (*Contributor*); with view-only access the button says it could not send. In the desktop program and in `helios-outpost.html` the option does not appear.
 
 ### Controls
 
@@ -144,6 +156,7 @@ After changing the code, run `npm run build` so that `helios-outpost.html` stays
 | **Exercise or work** | Two hours of exercise a day hold back almost all the loss of bone and muscle… and are two hours less of assembly, science and maintenance. |
 | **On foot or by rover** | On foot the suit gives about 1.7 km there and back on the flat, less uphill. The rover goes further, but only as far as you could walk back if it broke down. |
 | **Pole or lower latitudes** | On the ridges next to the pole the Sun hardly sets, but it grazes the horizon. 120 km from the pole it climbs higher… and sets for almost two weeks. |
+| **Preparing for the silence** | During solar conjunction nobody warns of storms or answers emergencies. Whatever is not ready beforehand — shelter, spares, spare power — will not arrive in time. |
 
 ## Scientific rigour
 
@@ -164,12 +177,13 @@ src/
     team.ts         team mode: stations, shifts and goals
     sites.ts        real-terrain sites: latitude and the Sun's path
     route.ts        EVA route planner and walkback limit
+    csv.ts          telemetry export to CSV
   world/      Analytic terrain (craters, massifs, dunes), quadtree LOD, sky, atmosphere, rocks
   render/     HDR pipeline (MSAA → ambient occlusion → bloom → ACES), environment reflections, materials, GPU particles
   entities/   Procedural models: 16 modules, astronaut in an articulated EVA suit, the ORBI drone
-  game/       Loop, cameras, player, building, scanner, saving
+  game/       Loop, cameras, player, building, scanner, saving, module interiors
   audio/      Full Web Audio synthesis (ambience, tools, rover motor, generative music that follows the situation)
-  ui/         Spanish and English interface: menus, HUD, codex, debrief
+  ui/         Spanish, English, Portuguese and French interface (i18n/): menus, HUD, codex, debrief, demo mode, class results
 tests/        Simulation tests (Vitest)
 electron/     Desktop wrapper: window, full screen, quit (the page gets no Node.js access)
 ```
@@ -195,11 +209,11 @@ Technical details behind the design:
 - **Ambient occlusion (GTAO)** at high and ultra quality: joints, the gaps under modules and contact with the ground darken as in a photograph.
 - **Articulated EVA suit**: rigid torso with a chest display, life-support backpack with hoses, bearing rings, bellows at elbows and knees, gloves with fingers, lugged boots and a gold visor. It leaves boot prints in the regolith.
 - **Fractured rocks**: each stone is a deformed sphere cut by fracture planes, with mineral veins and fine dust settled on the faces that look up.
-- **Dynamic resolution**: if the frame rate drops, the game lowers the render resolution automatically.
+- **Dynamic resolution**: if the frame rate drops, the game lowers the render resolution automatically. The *Minimal* quality (the one tablets and modest Chromebooks pick by themselves) also caps the frame rate at 30 per second, to keep the device cool and save battery.
 
 ## Tests
 
-`npm test` runs 103 tests in 16 files. Twenty-four cover the simulation: consumption rates against NASA reference values, power-grid priorities, the effect of dust and shielding, doses with and without shelter, harvests, whole missions with the recommended cargo and both historical scenarios (sheltering in time keeps the dose under the limit; not doing so does not). Six check the emergencies, three the expedition, twelve the physics engine against the formulas (fall time √(2h/g), terminal velocity, projectile range, wind drift, bounce losses, sliding on slopes) and ten the rover (static sag and load per wheel on both worlds, top speed, turning, traction, stopping distance against v²/(2·μ·g), slopes, obstacles and rough ground). The rest cover what was added later: editor codes (round trip, typo detection, missions that fit the budget and can be won), radio delay (1.3 s from the Moon, 11.4 min on Perseverance's date, the answer arrives after the round trip, waiting costs air), team mode (rotation, goals judged once, the clock waits for the handover), real sites (latitudes, the Sun never sets on the ridges and sets ~40 % of the month 4–5° from the pole, it moves westwards, the three new missions can be won), health (the Moon takes more than Mars, exercise protects but costs hours), the campaign (unlocks and medals), the route planner (its suit cost matches the game's, climbing costs the work of lifting 165 kg, dangerous slopes and the walkback limit), propellant, the daily challenge and the quiz.
+`npm test` runs 125 tests in 20 files. Twenty-four cover the simulation: consumption rates against NASA reference values, power-grid priorities, the effect of dust and shielding, doses with and without shelter, harvests, whole missions with the recommended cargo and both historical scenarios (sheltering in time keeps the dose under the limit; not doing so does not). Six check the emergencies, three the expedition, twelve the physics engine against the formulas (fall time √(2h/g), terminal velocity, projectile range, wind drift, bounce losses, sliding on slopes) and ten the rover (static sag and load per wheel on both worlds, top speed, turning, traction, stopping distance against v²/(2·μ·g), slopes, obstacles and rough ground). The rest cover what was added later: editor codes (round trip, typo detection, missions that fit the budget and can be won), radio delay (1.3 s from the Moon, 11.4 min on Perseverance's date, the answer arrives after the round trip, waiting costs air), team mode (rotation, goals judged once, the clock waits for the handover), real sites (latitudes, the Sun never sets on the ridges and sets ~40 % of the month 4–5° from the pole, it moves westwards, the three new missions can be won), health (the Moon takes more than Mars, exercise protects but costs hours), the campaign (unlocks and medals), the route planner (its suit cost matches the game's, climbing costs the work of lifting 165 kg, dangerous slopes and the walkback limit), propellant, the daily challenge and the quiz, the two new historic scenarios (in June 2018 the optical depth reaches ~10.8 and a base with reactors rides it out while the same base on solar power alone does not; in the Apollo 13 accident the tank bursts at 55 h 55 min, the fuel cell dies, the scrubbers fail and a crew that uses the backup canisters gets everyone home), the solar conjunction (two weeks without Control or warnings from Earth, with an effect on morale; older editor codes still open the same mission), the CSV export (one row per sample, separator and decimal comma by language, a byte-order mark for accents), class results (numbers and ids only, each student in their own document, the best attempt kept, nothing written without an identity or permission) and the languages (Portuguese and French cover all 1122 strings and keep the same `{placeholders}` as English).
 
 ## Credits and licences
 

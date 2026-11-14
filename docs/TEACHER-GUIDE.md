@@ -28,6 +28,15 @@ Helios Outpost is a simulator in which students run an outpost on the Moon or Ma
 | Latitude decides the light | The four real lunar sites: the Sun hardly sets next to the pole and sets for two weeks 120 km away |
 | The body adapts to gravity | Each crew member's bone and muscle; daily exercise against work hours |
 | Planning with margins | The EVA route planner and Apollo's walkback limit |
+| One failure drags others with it | *April 1970*: the oxygen tank bursts, the fuel cell dies and the CO₂ scrubbers fail all at once |
+| A crew's autonomy | Solar conjunction on Mars: two weeks without warnings or help from Earth |
+| Reading data and charting it | *Download data (CSV)*: the mission telemetry, ready for a spreadsheet |
+
+## Before you start
+
+- **Introduce it in two minutes:** *Demo* in the main menu plays a short mission by itself with captions (building, exploring, sheltering, handling an emergency, the debrief). Project it at the start of the first session; any key hands control back.
+- **Language:** Spanish, English, Portuguese and French, from the main menu or Settings. Useful for bilingual classes or newly arrived students: each can play the same mission as everyone else in their own language.
+- **Tablets and Chromebooks:** the game picks the *Minimal* quality by itself and shows touch buttons for every action. If a device is slow, lower it by hand under Settings → Quality.
 
 ## Four 45-minute sessions
 
@@ -39,6 +48,14 @@ Helios Outpost is a simulator in which students run an outpost on the Moon or Ma
 
 **Session 4 · Planning an outing (Cadet and Expert).** The *Connecting ridge* or *Malapert massif* mission. Before going out, each group draws a route to the expedition with *EVA route* and writes down what the planner predicts: distance, climb, suit on foot and by rover, battery. Then they do the EVA and compare with the suit they have left when they get back. To discuss: why did the Apollo missions never drive the rover further than they could walk back? What reserve would you keep, and why?
 
+## More sessions
+
+**Session 5 · A successful failure (Cadet and Expert).** The *April 1970* scenario. Before playing, tell the story of Apollo 13: at 55 hours and 55 minutes an oxygen tank burst, and three astronauts survived in a module built for two, improvising CO₂ filters out of tape and cardboard. In the game the same happens, but on the lunar surface. To discuss afterwards: what did you switch off first, and why? What would have happened without the backup canisters? Why does NASA call it "a successful failure"?
+
+**Session 6 · The storm that silenced Opportunity (Expert).** The *June 2018* scenario. In 2018 a global dust storm left the Martian sky almost black for weeks, and the solar-powered Opportunity rover never woke up again. Have half the class take reactors and the other half solar arrays only, and compare. Then, with *Download data (CSV)*, chart sunlight and power over the mission in a spreadsheet: how many sols did the darkness last? When did production start to recover?
+
+**A maths activity with the data.** Any mission works: the CSV has a row every few hours with power, oxygen, water, food, CO₂, dose, health, morale, science, temperature and sunlight. Ideas: work out the slope of the oxygen (kg per day) and compare it with 0.84 kg per person; find the lunar night in the sunlight column; add up the dose per day and compare it with a chest X-ray.
+
 ## Discussion questions
 
 1. If every kilo taken to Mars costs a fortune, which is better: carrying water or a machine that recycles it? After how many days does the answer change?
@@ -46,6 +63,8 @@ Helios Outpost is a simulator in which students run an outpost on the Moon or Ma
 3. Why does the game not let you walk to the expedition? What really limits an astronaut on the surface?
 4. The dose limit is not a wall: below it, receiving less is still worth it (ALARA). Why?
 5. From Mars, a question to Earth takes half an hour to be answered. Which decisions should a Martian crew be ready to take alone?
+6. During solar conjunction there is no contact with Earth for two weeks. What would you prepare beforehand? What rules would the crew agree on to decide without help?
+7. On Apollo 13 not one thing failed but several at once, because they were connected. Find a failure in your base that could drag others with it. How would you prevent it?
 
 ## The campaign
 
@@ -53,7 +72,7 @@ In the menu, **Campaign** puts nine missions in order of difficulty: each chapte
 
 ## The mission editor
 
-In *New mission → Mission editor* you can design your own mission: destination, length, crew, maximum cargo, science goal, dose limit, how many solar and dust storms (and how strong), emergencies, radio delay, return fuel, resupplies and whether it is played on one of the five real terrains. All of it becomes a **15-character code** you copy onto the board; each student types it into *Your teacher's code* and plays exactly the same mission, with the same events in the same order. *Variant* reshuffles when events happen without changing anything else: useful so that two groups cannot copy each other. Ideas:
+In *New mission → Mission editor* you can design your own mission: destination, length, crew, maximum cargo, science goal, dose limit, how many solar and dust storms (and how strong), emergencies, radio delay, return fuel, resupplies, whether it is played on one of the five real terrains and, on Mars, whether there is a solar conjunction (missions of 20 sols or more). All of it becomes a **15-character code** you copy onto the board; each student types it into *Your teacher's code* and plays exactly the same mission, with the same events in the same order. *Variant* reshuffles when events happen without changing anything else: useful so that two groups cannot copy each other. Ideas:
 
 - **Compare one variable**: two codes that differ in a single thing (for example a budget that does or does not allow recycling, or 3 versus 20 minutes of radio delay), each half of the class plays one.
 - **A tailored challenge**: for Junior, a short mission with no emergencies; for Expert, severe storms and little cargo.
@@ -65,11 +84,23 @@ On the cargo manifest, **Team play** lets 2 to 5 students share one computer. Ea
 
 ## The daily challenge
 
-In the mission list, the **daily challenge** is a short mission generated from the date. The same code gives everyone the same mission: project the code on the board, have each student (or pair) play it and compare scores and reports. To replay a challenge on another day, type its code. Scores are only kept on each computer: there is no online ranking.
+In the mission list, the **daily challenge** is a short mission generated from the date. The same code gives everyone the same mission: project the code on the board, have each student (or pair) play it and compare scores and reports. To replay a challenge on another day, type its code. Scores are kept on each computer; if you use the page published on claude.ai, you can also gather them with *Class results* (see below).
 
 ## The report
 
-At the end of every mission, **Download report for the teacher** produces an HTML file with the outcome, the score by area, the mission's lessons and the answers to the questions (with the right one and the explanation). It opens in any browser and prints on one or two pages. The student's name is optional and never leaves the computer: the game sends no data anywhere.
+At the end of every mission, **Download report for the teacher** produces an HTML file with the outcome, the score by area, the mission's lessons and the answers to the questions (with the right one and the explanation). It opens in any browser and prints on one or two pages. The student's name is optional and never leaves the computer.
+
+Next to it, **Download data (CSV)** saves the mission telemetry to work on in a spreadsheet (it is also in the pause menu). In Spanish, Portuguese and French it uses semicolons and decimal commas, so Excel, LibreOffice or Google Sheets open it correctly first time.
+
+## Class results
+
+If you publish the game as a claude.ai page (the `dist-web/helios-outpost.html` build, which has a shared database), **Class results** appears:
+
+1. Share the page with your students with permission to **take part** (*Contributor*). With view-only access they can play but not send.
+2. After a mission, each student presses **Send to the class**. Their best score for that mission is stored; if they try again and do worse, the best one is kept.
+3. Whoever published the page (or anyone with edit access) opens **Class results** from the main menu, picks the mission and sees everyone's table: name, result, score, peak dose, science and when it was sent. The table updates by itself and downloads as CSV.
+
+Each student can only see and change their own row. Only numbers and the mission id are sent, never text a student typed, and only when the button is pressed. The name the teacher sees is the one on each student's account. In the desktop program and in the `helios-outpost.html` file there is no database: the game sends nothing anywhere.
 
 ## Rigour and limits
 
