@@ -554,6 +554,65 @@ export class Game {
     this.select(id);
   }
 
+  /* ------------------------------------------------------------- demo */
+
+  /** Demo mode: where the astronaut walks by herself (null: nobody is steering). */
+  demoTarget: { x: number; z: number } | null = null;
+
+  /** Demo mode: set every module in the cargo out around the lander, for the crew to assemble. */
+  demoDeploy(): void {
+    const s = this.sim;
+    const st = this.stage;
+    if (!s || !st) return;
+    const spots: Partial<Record<ModuleType, Array<[number, number]>>> = {
+      solar: [[-26, -18], [-34, -6], [-38, 8]],
+      battery: [[-14, -16]],
+      fuelcell: [[-8, -22]],
+      hab: [[18, 10]],
+      eclss: [[26, -6]],
+      antenna: [[-6, 20]],
+      rassor: [[10, 26]],
+      lab: [[30, 14]],
+      pylon: [[-20, -2], [8, -14], [20, 0], [0, 14]],
+      shelter: [[-2, -30]],
+    };
+    for (const [type, list] of Object.entries(spots) as Array<[ModuleType, Array<[number, number]>]>) {
+      for (const [x, z] of list) if ((s.inventory[type] ?? 0) > 0) placeModule(s, type, x, st.world.ground(x, z), z, 0, st.world.hf);
+    }
+  }
+
+  /** Demo mode: a slow orbit of the command camera around the base, from a fixed height. */
+  demoOrbit(dt: number, distance: number): void {
+    const tac = this.tactical;
+    if (!tac || this.mode !== 'command') return;
+    tac.yaw += dt * 0.08;
+    tac.pitch += (0.62 - tac.pitch) * Math.min(1, dt * 1.5);
+    tac.focus(4, 2);
+    tac.setDistance(distance);
+  }
+
+  /** Demo mode: the crew assembles the next module in moments instead of hours. Returns true when all are up. */
+  demoBuild(dt: number, secondsPerModule: number): boolean {
+    const s = this.sim;
+    if (!s) return true;
+    const next = s.modules.find((m) => m.built < 1);
+    if (!next) return true;
+    next.built = Math.min(1, next.built + dt / secondsPerModule);
+    return false;
+  }
+
+  /** The opening descent is still playing. */
+  get introPlaying(): boolean {
+    return this.intro > 0;
+  }
+
+  /** Demo mode: let go of the virtual stick. */
+  demoRelease(): void {
+    this.demoTarget = null;
+    this.input.stickX = 0;
+    this.input.stickY = 0;
+  }
+
   /* -------------------------------------------------------- EVA route */
 
   /** Where an EVA through this module's hatch starts. */
@@ -1087,6 +1146,16 @@ export class Game {
     }
     // on foot the rover is one more thing to walk around
     if (!this.driving) colliders.push([rover.vehicle.pos[0], rover.vehicle.pos[2], 1.35]);
+    if (this.demoTarget && !this.driving) {
+      // demo: face the target and walk to it with the virtual stick
+      const dx = this.demoTarget.x - player.pos.x;
+      const dz = this.demoTarget.z - player.pos.z;
+      const want = Math.atan2(-dx, -dz);
+      let d = want - follow.yaw;
+      d = Math.atan2(Math.sin(d), Math.cos(d));
+      follow.yaw += d * Math.min(1, dt * 2.5);
+      input.stickY = Math.hypot(dx, dz) > 2.5 && Math.abs(d) < 0.8 ? 1 : 0;
+    }
     if (this.driving) this.rideRover(dt, st);
     else player.update(
       dt,

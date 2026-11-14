@@ -554,7 +554,26 @@ export const customByCode = (code: string): MissionDef | null => {
   return spec ? customMission(spec) : null;
 };
 
+/**
+ * The showcase the demo mode plays by itself: the Shackleton base squeezed into four days, with a
+ * solar storm on the second and a micrometeoroid on the third. Not in the mission list.
+ */
+export const DEMO_MISSION: MissionDef = {
+  ...MISSIONS.find((m) => m.id === 'moon-base')!,
+  id: 'demo-moon',
+  durationSols: 4,
+  scienceGoal: 8,
+  difficulty: 1,
+  seed: 20261114,
+  fuelGoalKg: undefined,
+  spe: [{ sol: [1.6, 1.65], cls: 2 }],
+  emergencies: [{ sol: [2.55, 2.6], kind: 'meteor' }],
+  storms: [],
+  resupply: [],
+};
+
 export const missionById = (id: string): MissionDef => {
+  if (id === DEMO_MISSION.id) return DEMO_MISSION;
   if (id.startsWith('daily-')) return dailyMission(id.slice(6));
   if (id.startsWith('custom-')) return customByCode(id.slice(7)) ?? MISSIONS[0];
   return MISSIONS.find((m) => m.id === id) ?? MISSIONS[0];

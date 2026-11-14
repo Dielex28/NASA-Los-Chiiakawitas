@@ -7,6 +7,7 @@ import './codexData';
 import { h } from './dom';
 import { Hud } from './hud';
 import { startNextShift } from '../sim/team';
+import { Demo } from './demo';
 import { achievementsScreen, campaignScreen, codexScreen, debriefScreen, editorScreen, shiftScreen, helpScreen, loadingScreen, menuScreen, missionsScreen, pauseScreen, planningScreen, settingsScreen } from './screens';
 import { DEFAULT_CUSTOM, type CustomSpec } from '../sim/custom';
 import { initLang, setLang, type Lang } from './strings';
@@ -118,6 +119,7 @@ export class App {
       const dt = Math.min(0.1, (now - this.last) / 1000);
       this.last = now;
       if (this.game.phase === 'playing') this.hud?.update(dt);
+      this.demo?.update(dt);
     };
     tick();
   }
@@ -160,6 +162,20 @@ export class App {
   openMenu(): void {
     this.current = () => this.setScreen(menuScreen(this));
     this.current();
+  }
+
+  /** Demo mode: the game plays itself; any key or click takes over. */
+  private demo: Demo | null = null;
+
+  startDemo(loop = false): void {
+    this.demo?.stop(false);
+    this.game.clearSave();
+    this.demo = new Demo(this, loop);
+    this.demo.start();
+  }
+
+  demoEnded(): void {
+    this.demo = null;
   }
 
   openCampaign(): void {

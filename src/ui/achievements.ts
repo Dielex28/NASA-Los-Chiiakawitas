@@ -64,6 +64,8 @@ export function unlocked(): Record<string, number> {
 
 /** Check every achievement; returns the ids unlocked just now. */
 export function check(p: Progress): string[] {
+  // the demo plays itself: nothing it does counts for the player
+  if (p.sim.missionId === 'demo-moon') return [];
   const have = unlocked();
   const fresh = ACHIEVEMENTS.filter((a) => !have[a.id] && a.test(p)).map((a) => a.id);
   if (!fresh.length) return fresh;

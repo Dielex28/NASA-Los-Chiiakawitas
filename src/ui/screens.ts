@@ -97,6 +97,7 @@ export function menuScreen(app: App): HTMLElement {
   rows.push(menuRow(n++, t('menu.achievements'), () => app.openAchievements()));
   rows.push(menuRow(n++, t('menu.help'), () => app.openHelp()));
   rows.push(menuRow(n++, t('menu.settings'), () => app.openSettings()));
+  rows.push(menuRow(n++, t('menu.demo'), () => app.startDemo(), { quiet: true, hint: t('menu.demo.hint') }));
   if (app.canQuit) rows.push(menuRow(n++, t('menu.exit'), () => app.exitApp(), { quiet: true }));
 
   const world = app.game.world?.id ?? 'moon';

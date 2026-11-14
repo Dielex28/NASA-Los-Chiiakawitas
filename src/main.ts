@@ -36,6 +36,9 @@ async function main(): Promise<void> {
   await app.start();
   const m = params.get('m');
   if (m) await app.game.startMission(m, missionById(m).recommended);
+  // ?demo=1 plays the showcase once; ?demo=loop keeps replaying it (a stand at a fair)
+  const demo = params.get('demo');
+  if (demo) app.startDemo(demo === 'loop');
   (window as any).__ready = true;
 }
 
