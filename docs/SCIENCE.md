@@ -1,6 +1,6 @@
 # Base científica de Helios Outpost
 
-Este documento separa tres cosas: **valores reales** que el simulador usa tal cual, **modelos simplificados** con su justificación, y **ajustes de jugabilidad** que se apartan de la realidad a propósito. Las constantes viven en `src/sim/catalog.ts`, `src/sim/worlds.ts` y `src/sim/environment.ts`.
+Este documento separa tres cosas: **valores reales** que el simulador usa tal cual, **modelos simplificados** con su justificación, y **ajustes de jugabilidad** que se apartan de la realidad a propósito. Las constantes viven en `src/sim/catalog.ts`, `src/sim/worlds.ts`, `src/sim/environment.ts`, `src/sim/sites.ts` y `src/sim/route.ts`. *(English version: [SCIENCE.en.md](SCIENCE.en.md).)*
 
 ## 1. Valores reales
 
@@ -20,6 +20,10 @@ Este documento separa tres cosas: **valores reales** que el simulador usa tal cu
 | Dosis por rayos cósmicos en la superficie de Marte | 0,67 mSv/día | Hassler et al., *Mars' Surface Radiation Environment Measured with the MSL Curiosity Rover*, Science 343 (2014): 0,64 ± 0,12 |
 | Límite de dosis para toda la carrera | 600 mSv | NASA-STD-3001, vol. 1 (límite adoptado en 2022) |
 | Retardo de comunicaciones | Luna ≈ 1,3 s; Marte 3–22 min | NASA Deep Space Network |
+| Retardo el día del aterrizaje de Perseverance (18-2-2021) | 11 min 22 s | NASA/JPL, cobertura del aterrizaje de Mars 2020 |
+| Pérdida de densidad ósea en microgravedad | 1–1,5 % al mes (cadera, columna) | NASA Human Research Program, *Risk of Early Onset Osteoporosis Due to Spaceflight* |
+| Ejercicio diario en la ISS | ≈ 2 h (cinta, bicicleta, ARED) | NASA, *Exercising in Space* |
+| Límite de regreso a pie (walkback) del LRV | El róver no se alejaba más de lo que la tripulación podría volver andando con el soporte vital restante | NASA, *Apollo Lunar Surface Journal* (Apolo 15–17) |
 | Producción de MOXIE | 122 g de O₂ en 16 ensayos (2021–2023) | NASA/JPL, cierre de operaciones de MOXIE, septiembre de 2023 |
 | Polvo sobre paneles en Marte | 0,28 % de potencia perdida por sol | Landis y Jenkins, experimento MAE de Mars Pathfinder, J. Geophys. Res. 105 (2000) |
 | Potencia del reactor Kilopower | 1–10 kWe por unidad | NASA/DOE, ensayo KRUSTY (2018) |
@@ -30,14 +34,19 @@ Este documento separa tres cosas: **valores reales** que el simulador usa tal cu
 
 ### Relieve real
 
-Los modos «relieve real» usan dos modelos digitales de elevación públicos, recortados a 6,4 × 6,4 km y remuestreados a 384 × 384 puntos (unos 17 m por punto):
+Cinco lugares usan modelos digitales de elevación públicos, recortados a 6,4 × 6,4 km y remuestreados a 384 × 384 puntos (unos 17 m por punto):
 
 | Sitio | Fuente | Resolución original | Centro del recorte |
 | --- | --- | --- | --- |
-| Borde de Shackleton, polo sur lunar | LRO-LOLA, «Site04 Shackleton rim». Barker, M.K., et al. (2021), *Planetary & Space Science* 203, 105119, doi:10.1016/j.pss.2020.105119. https://pgda.gsfc.nasa.gov/products/78 | 5 m/px | El punto más llano y alto de la cresta con la pared del cráter a menos de 1 km (cota 1 734 m sobre el datum del modelo); el cráter cae casi 2 km |
+| Borde de Shackleton, polo sur lunar (89,776° S, 156,27° O) | LRO-LOLA, «Site04 Shackleton rim». Barker, M.K., et al. (2021), *Planetary & Space Science* 203, 105119, doi:10.1016/j.pss.2020.105119. https://pgda.gsfc.nasa.gov/products/78 | 5 m/px | El punto más llano y alto de la cresta con la pared del cráter a menos de 1 km (cota 1 734 m sobre el datum del modelo); el cráter cae casi 2 km |
+| Cresta de conexión, polo sur lunar | LRO-LOLA, «Site01 Connecting ridge» (mismo producto) | 5 m/px | Píxel (2542, 1982): 89,373° S, 151,45° O |
+| Macizo de Malapert | LRO-LOLA, «Site23 Malapert massif» | 5 m/px | Píxel (1922, 1170): 85,962° S, 2,41° O, cerca de la cima (≈ 5 km sobre el datum) |
+| Borde del cráter Nobile | LRO-LOLA, «Site06 Nobile rim 1» | 5 m/px | Píxel (1238, 2410): 85,297° S, 37,09° E |
 | Cráter Jezero, Marte | Mosaico DTM CTX de *Mars 2020 Terrain Relative Navigation*. USGS Astrogeology, Fergason et al. (2020), doi:10.5066/P906QQT8 | 20 m/px | Lugar de aterrizaje de Perseverance, 18,4447° N, 77,4508° E (cota −2 566 m) |
 
-Por debajo de esa resolución el juego añade rugosidad generada (≤ 1,7 m), que se anula en los 12 m alrededor de la zona de aterrizaje. En el borde de Shackleton el potencial de hielo crece con la profundidad bajo la cresta, como aproximación a las trampas frías; no es un mapa medido de hielo. La posición del Sol sigue siendo la del modelo general del juego, no la efeméride del sitio. El proceso completo está en `scripts/real-terrain.py`.
+En los sitios lunares nuevos el punto de aterrizaje lo elige el script: la celda de 20 m más alta y llana del archivo (pendiente < 3° en 60 m, máxima prominencia sobre el entorno de 1 km) que deja dentro los 6,4 km del recorte. Con el mismo criterio, para Shackleton sale un punto a 40 m del que se eligió a mano. Por debajo de la resolución de los datos el juego añade rugosidad generada (≤ 1,7 m), que se anula en los 12 m alrededor de la zona de aterrizaje. En los sitios lunares el potencial de hielo crece con la profundidad bajo el punto de aterrizaje, como aproximación a las trampas frías; no es un mapa medido de hielo. El proceso completo está en `scripts/real-terrain.py`.
+
+**El Sol en cada sitio.** Latitud y longitud salen de la georreferencia de cada archivo (proyección estereográfica polar sur, x = ρ·sen λ, y = ρ·cos λ, con ρ = 2R·tan(colatitud/2) y R = 1 737,4 km). Cerca del polo el Sol da una vuelta al horizonte cada mes sinódico, hacia el oeste, y su elevación es δ + (90° − |latitud|)·cos H: δ es la latitud del punto subsolar (oscila entre −1,54° y +1,54° en un «año de eclipses» de 346,6 días) y H el ángulo entre el meridiano del Sol y el del sitio. Las misiones usan δ = +1,2° (verano austral, cerca del máximo). Así, en Shackleton y en la cresta de conexión el Sol va de 1,0° a 1,4° y de 0,6° a 1,8° y no llega a ponerse sobre un horizonte plano; en Malapert y Nobile, a unos 4° del polo, oscila unos ±4–4,7° y se pone alrededor de un 40 % del mes (unos 12 días seguidos). El horizonte de cada panel se calcula sobre los 6,4 km del recorte: las montañas más lejanas, que en la realidad tapan el Sol algunos días, no están incluidas.
 
 ## 2. Modelos simplificados
 
@@ -67,6 +76,12 @@ Por debajo de esa resolución el juego añade rugosidad generada (≤ 1,7 m), qu
 
 **Expediciones.** El objetivo lejano de cada misión se coloca a 980–1 060 m de la base, en la dirección con la ruta recta más suave (la pendiente máxima del trayecto queda por debajo de 25°). Con la reserva del traje a paso normal (540 s a 3,1 m/s, unos 1 670 m) no se puede ir y volver a pie; en el róver el comandante gasta el traje al ritmo de reposo. Es la misma lógica que llevó a usar el LRV en las tres últimas misiones Apolo: alcance a cambio de consumibles.
 
+**Retraso de radio y Control de misión.** Cada misión tiene un retraso de ida: 1,28 s desde la Luna; 11,4 min en *Jezero: Sol 0* (la fecha de Perseverance), 20 min en *Septiembre de 2017* (Marte acababa de pasar la conjunción solar del 27 de julio), 16 min en la misión larga y 12 min (el valor medio) en el modo libre; en los retos del día y en el editor, entre 3 y 22 min. Pedir ayuda en una emergencia exige antena; la respuesta llega tras la ida y vuelta más 15 min de análisis (un valor nuestro), y seguir su procedimiento acorta un 40 % el parche o la reparación: es la idea de los equipos de tierra que prueban un arreglo en una réplica del equipo, como el adaptador de filtros de CO₂ del Apolo 13. En Marte el ánimo objetivo baja 3 + 0,15 puntos por minuto de retraso: sin conversaciones en directo con casa, solo mensajes.
+
+**Salud a largo plazo.** Hueso y músculo empiezan en el 100 % de su valor en la Tierra. Sin ejercicio se pierde un 1,5 % de densidad ósea y un 10 % de fuerza al mes en ingravidez, multiplicado por (1 − g/9,81): 0,835 en la Luna y 0,62 en Marte. Que la pérdida sea proporcional a la gravedad que falta es una suposición nuestra; nadie ha medido todavía el efecto de vivir meses con un sexto o un tercio de g. Una hora de ejercicio diario evita el 60 % de la pérdida ósea y el 70 % de la muscular; dos horas, el 85 % y el 95 %, y permiten recuperar fuerza poco a poco. Cada hora de ejercicio sale de la jornada de trabajo. Por debajo del 90 % de fuerza, el trabajo útil baja en proporción (hasta un mínimo del 60 %). La estimación de rehabilitación supone que el hueso tarda 2,5 veces más en recuperarse que en perderse. La monotonía resta hasta 8 puntos de ánimo objetivo a razón de 2 por mes, y hacer ejercicio suma 3.
+
+**Planificador de rutas EVA.** El coste de una ruta usa el mismo modelo que la EVA del juego: 540 s de traje a 345 W, caminando a 3,1 m/s; 265 W en cada parada (15 s, es decir, 15 min de misión) y 160 W sentado en el róver. Subir cuesta, además, el trabajo de elevar 165 kg (persona y traje) con una eficiencia muscular del 25 %; el juego aplica ese mismo término al caminar cuesta arriba, para que la estimación y la realidad coincidan. Tramos de más de 15° se señalan como empinados y de más de 25° como peligrosos. La batería del róver se estima con la resistencia a la rodadura (6 %), la subida y 120 W de electrónica a 4 m/s. El límite de regreso a pie comprueba, para cada punto, que el traje gastado en llegar en róver más el necesario para volver andando en línea recta deja al menos un 15 % de reserva.
+
 **Esfuerzo en EVA.** La potencia metabólica se estima con un ajuste sencillo (≈ 125 W en reposo, ≈ 190 W a paso lento, ≈ 345 W al paso largo del juego y ≈ 660 W corriendo), del orden de lo medido en las EVA del Apolo (medias de 230–300 W, picos por encima de 500 W). La reserva del traje se consume en proporción a ella: dura lo previsto caminando, más si te quedas quieto y casi la mitad si corres. Es una regla de juego, no un modelo fisiológico.
 
 ## 3. Ajustes de jugabilidad
@@ -74,7 +89,7 @@ Por debajo de esa resolución el juego añade rugosidad generada (≤ 1,7 m), qu
 | Ajuste | Realidad | Motivo |
 | --- | --- | --- |
 | Los cultivos completan su ciclo en la mitad de tiempo | Lechuga ≈ 30 días, papa ≈ 100 días | Que una cosecha quepa en una misión. El rendimiento **por día** se mantiene realista, de modo que la lección (hacen falta decenas de m² por persona) no cambia. |
-| Elevación del Sol en el polo lunar ≈ 3,5–5,7° | ≤ 1,5° más la ventaja de la altitud | Sombras legibles y un mapa de iluminación con zonas útiles. |
+| Elevación del Sol en las bases lunares diseñadas ≈ 3,5–5,7° | ≤ 1,5° más la ventaja de la altitud | Sombras legibles y un mapa de iluminación con zonas útiles. En los cuatro sitios con relieve real se usa la trayectoria real (ver arriba). |
 | Montar un módulo lleva horas de tripulación | Días de trabajo y EVAs | Ritmo de juego. |
 | Reabastecimiento a mitad de misión en Marte | Las ventanas de lanzamiento distan 26 meses | Se justifica como carga preposicionada en órbita. |
 | Un solo valor de dosis por tripulante | Dosis por órgano, calidad de la radiación | Sencillez. |
@@ -88,7 +103,7 @@ Por debajo de esa resolución el juego añade rugosidad generada (≤ 1,7 m), qu
 
 ## 4. Cómo comprobarlo
 
-Las pruebas de `tests/vehicle.test.ts` comprueban la suspensión, la tracción y la distancia de frenado del róver. Las pruebas de `tests/physics.test.ts` comparan el motor de física con las fórmulas (caída libre, velocidad terminal, alcance, deriva por viento). Las pruebas de `tests/sim.test.ts` verifican que el simulador cumple lo que este documento afirma: tasas de consumo, efecto del reciclaje, prioridades de carga, atenuación por polvo, diferencia entre blindaje para protones y para rayos cósmicos, dosis por cercanía del reactor y misiones completas.
+Las pruebas de `tests/sites.test.ts` comprueban las latitudes, la elevación del Sol en cada sitio y el sentido de su giro; `tests/comms.test.ts`, los retrasos y la respuesta de Control; `tests/health.test.ts`, la pérdida de hueso y músculo con y sin ejercicio; `tests/route.test.ts`, que el planificador da el mismo coste que el juego y aplica el límite de regreso a pie. Las pruebas de `tests/vehicle.test.ts` comprueban la suspensión, la tracción y la distancia de frenado del róver. Las pruebas de `tests/physics.test.ts` comparan el motor de física con las fórmulas (caída libre, velocidad terminal, alcance, deriva por viento). Las pruebas de `tests/sim.test.ts` verifican que el simulador cumple lo que este documento afirma: tasas de consumo, efecto del reciclaje, prioridades de carga, atenuación por polvo, diferencia entre blindaje para protones y para rayos cósmicos, dosis por cercanía del reactor y misiones completas.
 
 ```bash
 npm test

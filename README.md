@@ -20,7 +20,7 @@ No hay una solución correcta. Hay disyuntivas de ingeniería reales —masa, en
 
 *El róver: cuatro ruedas con suspensión independiente, batería propia y panel solar. Pesa menos que en la Tierra, pero tiene la misma masa: agarra poco y tarda en frenar.*
 
-*(English summary at the end.)*
+*(English version: [README.en.md](README.en.md).)*
 
 ---
 
@@ -56,6 +56,7 @@ Requiere un navegador con WebGL 2 (Chrome, Edge o Firefox recientes). Está pens
 | --- | --- |
 | `npm start` / `npm run dev` | Servidor de desarrollo |
 | `npm run build` | Comprueba tipos, compila `dist/index.html` (un solo archivo) y actualiza `helios-outpost.html` |
+| `npm run build:web` | Además genera `dist-web/helios-outpost.html`, una versión para publicar como página dentro de otro sitio (por ejemplo, claude.ai) |
 | `npm run preview` | Sirve la compilación de producción |
 | `npm test` | Pruebas unitarias de la simulación |
 | `npm run app` / `npm run app:windowed` | Programa de escritorio (pantalla completa / en ventana) |
@@ -67,11 +68,19 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 
 ## Cómo se juega
 
-1. **Elige misión.** Entrenamiento de 8 días en la Luna, 30 días en la cresta Shackleton, 60 o 180 soles en Marte, o modo libre. Dos misiones reviven **tormentas solares reales** (Luna, agosto de 1972; Marte, septiembre de 2017). Dos de los modos libres usan **relieve real medido por sondas de la NASA**: el borde del cráter Shackleton (altímetro láser LOLA) y el punto de Jezero donde aterrizó Perseverance (cámara CTX).
+1. **Elige misión.** Entrenamiento de 8 días en la Luna, 30 días en la cresta Shackleton, 60 o 180 soles en Marte, o modo libre. Dos misiones reviven **tormentas solares reales** (Luna, agosto de 1972; Marte, septiembre de 2017). Cinco lugares usan **relieve real medido por sondas de la NASA**: cuatro del polo sur lunar (borde de Shackleton, cresta de conexión, macizo de Malapert y borde de Nobile, medidos por el altímetro láser LOLA) y el punto de Jezero donde aterrizó Perseverance (cámara CTX). En los sitios lunares reales **el Sol se mueve como de verdad lo hace allí**, calculado a partir de la latitud de cada lugar: en las crestas junto al polo nunca llega a ponerse, y a 4–5° del polo hay noches de casi dos semanas.
 2. **Planifica la carga.** Tienes un límite de masa. ¿Agua para todo el viaje o una máquina que la recicla? ¿Paneles o reactor? ¿Refugio o excavadora? ORBI, tu dron asistente, te avisa de lo que falta.
 3. **Construye la base** desde la consola de mando: los módulos se conectan solos a la red de servicios y la tripulación los monta.
 4. **Sal a la superficie (EVA).** Camina y salta con la gravedad real de cada mundo, escanea el terreno en busca de hielo y muestras, repara averías, limpia el polvo de los paneles. Conduce el róver para llegar más lejos gastando menos traje: cada misión tiene una **expedición** a un kilómetro de la base, más lejos de lo que un traje permite ir y volver a pie. Suelta un martillo y una pluma como en el Apolo 15, o lanza una roca y compara con lo que habría pasado en la Tierra. Correr gasta la reserva del traje más deprisa, y una caída dura lo daña.
 5. **Sobrevive a los eventos** y completa los objetivos. Hay **emergencias con cuenta atrás**: una fuga de presión, la perforación de un micrometeorito o un fallo del soporte vital te dan unos minutos para elegir entre dos respuestas con consecuencias distintas; si no decides, la tripulación actúa sola y se pierde más. Al final, un informe con telemetría explica qué decisiones marcaron la misión, cuatro preguntas de comprensión comprueban lo aprendido y un botón descarga un **informe para el docente**.
+
+**La campaña** (*Programa Helios*) ordena nueve misiones para que cada una enseñe una idea, de una primera noche en el módulo de descenso a una estancia larga en Marte. Cada capítulo se abre al completar el anterior y da medalla de bronce, plata u oro según la puntuación. Todas las misiones siguen abiertas en *Nueva misión*.
+
+**La Tierra está lejos.** Cada misión tiene su retraso de radio: 1,3 s desde la Luna; desde Marte, entre 3 y 22 minutos según dónde estén los dos planetas (11,4 min el día que aterrizó Perseverance; 20 min en septiembre de 2017, justo después de la conjunción). En una emergencia se puede **pedir ayuda a Control**: la respuesta trae un procedimiento probado que acelera el arreglo, pero tarda la ida y vuelta de la señal más el análisis, y mientras tanto el problema sigue. En Marte, además, la distancia pesa en el ánimo: no hay conversaciones con casa, solo mensajes.
+
+**Salud a largo plazo.** En baja gravedad se pierde hueso (1–1,5 % al mes en la ISS) y músculo. En la pestaña *Tripulación* se elige cuánto ejercicio hace cada día la tripulación (nada, 1 h o 2 h como en la ISS): protege el cuerpo y el ánimo, pero resta horas de trabajo. El informe final estima los meses de rehabilitación que necesitaría la tripulación al volver.
+
+**Planificador de rutas EVA.** En la vista de mando, *Ruta EVA → Planificar* y clic en el terreno para marcar hasta doce puntos de paso. El planificador calcula distancia, desnivel, pendiente máxima, cuánto traje se gasta a pie y en róver, cuánta batería y si se cumple el **límite de regreso a pie** de las misiones Apolo: el róver nunca debía alejarse más de lo que los astronautas podrían volver andando. Durante la EVA, el siguiente punto aparece marcado y se va tachando al llegar.
 
 **El combustible de vuelta** se fabrica allí: la planta de propelente convierte agua (del extractor de hielo) en hidrógeno y oxígeno en la Luna, y en metano y oxígeno en Marte, donde el CO₂ del aire aporta más de la mitad de la masa. Las misiones largas piden llenar los tanques del vehículo de ascenso; es la cadena de recursos más larga de la base y compite por energía y agua con todo lo demás.
 
@@ -83,9 +92,12 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 
 **Accesibilidad.** En Ajustes: tamaño del texto (90–150 %), paleta para daltonismo rojo-verde (azul, amarillo y naranja de la paleta Okabe–Ito; los estados también llevan símbolos ▲ y ■, no solo color), lectura en voz alta de los avisos de ORBI y de la radio con la voz del sistema, y mando de consola estándar para mover, conducir, mirar y usar herramientas.
 
-**Reto del día y logros.** Cada día hay un reto corto cuyo mundo, sucesos y dos condiciones especiales salen de la fecha: todo el que juegue el mismo código (por ejemplo, `20261114`) tiene exactamente la misma misión, así que una clase entera —o dos clases de colegios distintos— pueden comparar puntuaciones. Se puede escribir el código de otro día para repetirlo. Además hay 18 logros (como Galileo, brazo lunar, sangre fría, billete de vuelta…) que se guardan en el propio ordenador.
+**Reto del día y logros.** Cada día hay un reto corto cuyo mundo, sucesos y dos condiciones especiales salen de la fecha: todo el que juegue el mismo código (por ejemplo, `20261114`) tiene exactamente la misma misión, así que una clase entera —o dos clases de colegios distintos— pueden comparar puntuaciones. Se puede escribir el código de otro día para repetirlo. Además hay 20 logros (como Galileo, brazo lunar, sangre fría, billete de vuelta o Programa Helios…) que se guardan en el propio ordenador.
 
-**En el aula:** hay tres niveles por edad (Junior 8–11, Cadete 12–14, Experto 15+) que cambian las averías y las preguntas, un glosario de veinte términos en la bitácora científica y una [guía para docentes](docs/GUIA-DOCENTE.md) con tres sesiones de 45 minutos y preguntas para el debate.
+**En el aula:** hay tres niveles por edad (Junior 8–11, Cadete 12–14, Experto 15+) que cambian las averías y las preguntas, un glosario de veinte términos en la bitácora científica y una [guía para docentes](docs/GUIA-DOCENTE.md) con cuatro sesiones de 45 minutos y preguntas para el debate.
+
+- **Editor de misiones para docentes** (en *Nueva misión*): destino, duración, tripulación, carga, objetivo de ciencia, límite de dosis, tormentas solares y de polvo, emergencias, retraso de radio, combustible, reabastecimientos y terreno real. Todo cabe en un **código de 15 caracteres** (por ejemplo `H0022-EA4QK-BM0DN`) que se escribe en la pizarra: quien lo teclee en *Código de tu docente* juega exactamente esa misión, con los mismos sucesos. El último carácter es de control, así que un código mal copiado se detecta.
+- **Modo por equipos**: de 2 a 5 estudiantes comparten un ordenador. Cada cual cuida uno o dos puestos (energía, soporte vital, salud y radiación, ciencia, mantenimiento) y los mandos rotan por turnos de 12 h, un día o tres. En cada cambio de turno el juego se para: qué objetivos cumplió cada puesto, quién toma los mandos y los objetivos del siguiente turno. Los avisos llevan el nombre de quien debe reaccionar («Lucía → batería baja»), y el informe final incluye una tabla del equipo.
 
 ### Controles
 
@@ -94,6 +106,7 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 | `W A S D` / arrastrar | Mover la cámara |
 | Rueda · botón derecho | Zoom · girar |
 | Clic | Seleccionar módulo / colocar |
+| *Ruta EVA* → clic en el terreno · clic derecho | Añadir punto de paso · quitar el último |
 | `R` · `Esc` | Rotar · cancelar construcción |
 | `1` `2` `3` · `Espacio` | Velocidad del tiempo · pausa |
 | `M` | Cambiar mapa (luz solar / hielo) |
@@ -127,6 +140,10 @@ Tras cambiar el código, ejecuta `npm run build` para que `helios-outpost.html` 
 | **Trabajar o ponerse a cubierto** | Durante una tormenta solar, refugiarse evita más del 90 % de la dosis… y detiene la ciencia, el cultivo y el montaje. |
 | **Ritmo de trabajo** | El ritmo intenso rinde más durante un tiempo; luego cae el ánimo y con él la productividad. |
 | **Conducir en baja gravedad** | El róver pesa una sexta parte en la Luna, pero su masa es la misma: las ruedas agarran menos y frenar lleva mucha más distancia |
+| **Esperar a Control o actuar ya** | Desde Marte una pregunta tarda media hora o más en tener respuesta. El procedimiento de la Tierra acelera el arreglo, pero mientras tanto la fuga sigue. |
+| **Ejercicio o trabajo** | Dos horas diarias de ejercicio frenan casi toda la pérdida de hueso y músculo… y son dos horas menos de montaje, ciencia y mantenimiento. |
+| **A pie o en róver** | Andando, el traje da para unos 1,7 km de ida y vuelta en llano, menos cuesta arriba. El róver llega más lejos, pero solo hasta donde se podría volver a pie si se averiara. |
+| **Polo o latitudes medias** | En las crestas junto al polo el Sol casi no se pone, pero roza el horizonte. A 120 km del polo sube más… y se pone durante casi dos semanas. |
 
 ## Rigor científico
 
@@ -143,6 +160,10 @@ src/
     environment.ts  posición del Sol, polvo, temperatura, tormentas de partículas
     missions.ts     escenarios, calendario de eventos, puntuación
     advisor.ts      consejos de ORBI y lecciones del informe final
+    custom.ts       códigos del editor de misiones (base 32 de Crockford con dígito de control)
+    team.ts         modo por equipos: puestos, turnos y objetivos
+    sites.ts        sitios con relieve real: latitud y trayectoria del Sol
+    route.ts        planificador de rutas EVA y límite de regreso a pie
   world/      Terreno analítico (cráteres, macizos, dunas), quadtree LOD, cielo, atmósfera, rocas
   render/     Canal HDR (MSAA → oclusión ambiental → bloom → ACES), reflejos del entorno, materiales, partículas en GPU
   entities/   Modelos procedurales: 16 módulos, astronauta con traje EVA articulado, dron ORBI
@@ -166,7 +187,7 @@ Detalles técnicos que sostienen el diseño:
 - **Reflejos de la escena real** (calidades alta y ultra): una cámara cúbica fotografía el entorno desde el casco del comandante y ese mapa, filtrado, es lo que reflejan el visor, el metal y los paneles. Además tiñe las piezas con el color del suelo que tienen debajo.
 - **Luz volumétrica en Marte** (alta y ultra): el polvo del aire se ilumina paso a paso a lo largo de cada línea de visión, consultando el mapa de sombras del Sol y el relieve. La sombra del módulo de descenso o de un borde de cráter se ve en el propio aire, y las tormentas levantan una capa de polvo que se mueve con el viento. En la Luna no se aplica: no hay aire que iluminar.
 - **Iluminación global de un rebote** (media, alta y ultra): dos pasadas en la GPU sobre el mapa de alturas calculan dónde cae el Sol y, para cada punto, cuánto cielo deja libre el relieve y cuánto suelo iluminado tiene a la vista. Con eso el fondo de los cráteres recibe menos luz de cielo y las sombras junto a terreno soleado se rellenan con la luz que este devuelve.
-- **Relieve real** (`src/world/realTerrain.ts`): dos modelos de elevación públicos recortados a 6,4 × 6,4 km, comprimidos dentro del propio juego (unos 380 kB) e interpolados con splines cúbicas. Por debajo de la resolución de los datos (5 m en la Luna, 20 m en Marte) se añade una rugosidad generada, porque ninguna sonda ha medido detalle más fino. El script `scripts/real-terrain.py` reproduce el proceso desde los archivos originales.
+- **Relieve real** (`src/world/realTerrain.ts`): cinco recortes de 6,4 × 6,4 km de modelos de elevación públicos, comprimidos dentro del propio juego (unos 900 kB en total) e interpolados con splines cúbicas. Por debajo de la resolución de los datos (5 m en la Luna, 20 m en Marte) se añade una rugosidad generada, porque ninguna sonda ha medido detalle más fino. El script `scripts/real-terrain.py` reproduce el proceso desde los archivos originales: elige en cada modelo el punto alto y llano donde aterrizar y lee su latitud de la proyección estereográfica polar del archivo, que es lo que fija la trayectoria del Sol en ese sitio (`src/sim/sites.ts`).
 - **Motor de física propio** (`src/game/physics.ts`, sin gráficos y con pruebas): gravedad de cada mundo, arrastre aerodinámico ½·ρ·Cd·A·v², viento, rebote con restitución, fricción de Coulomb y la energía que absorbe el suelo suelto. Mueve las rocas lanzadas y el experimento del martillo y la pluma.
 - **Simulación determinista y serializable**: una semilla reproduce una misión; el estado es JSON, lo que hace triviales el guardado y las pruebas.
 - **Polvo según la física**: en la Luna cada grano sigue una parábola; en Marte el aire lo frena y lo deja flotando.
@@ -178,29 +199,17 @@ Detalles técnicos que sostienen el diseño:
 
 ## Pruebas
 
-`npm test` ejecuta 66 pruebas. Veinticuatro cubren la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, misiones completas con la carga recomendada y los dos escenarios históricos (refugiarse a tiempo mantiene la dosis bajo el límite; no hacerlo, no). Seis comprueban las emergencias: aislar para la fuga al momento, parchear mantiene el módulo pero cuesta más aire, no decidir sale caro, y los cartuchos de LiOH solo se pueden usar una vez. Tres comprueban que el objetivo de la expedición queda fuera del alcance a pie pero al alcance del róver, y que vale más ciencia. Doce cubren el motor de física frente a las fórmulas: tiempo de caída √(2h/g), velocidad terminal, alcance de un proyectil, deriva por el viento, pérdida de energía en los rebotes y deslizamiento en pendientes. Diez cubren el róver: hundimiento estático de la suspensión y carga por rueda en ambos mundos, velocidad máxima, giro, tracción, distancia de frenado frente a v²/(2·μ·g), pendientes, obstáculos y terreno irregular.
+`npm test` ejecuta 103 pruebas en 16 archivos. Veinticuatro cubren la simulación: tasas de consumo frente a los valores de referencia de NASA, prioridades de la red eléctrica, efecto del polvo y del blindaje, dosis con y sin refugio, cosechas, misiones completas con la carga recomendada y los dos escenarios históricos (refugiarse a tiempo mantiene la dosis bajo el límite; no hacerlo, no). Seis comprueban las emergencias: aislar para la fuga al momento, parchear mantiene el módulo pero cuesta más aire, no decidir sale caro, y los cartuchos de LiOH solo se pueden usar una vez. Tres comprueban que el objetivo de la expedición queda fuera del alcance a pie pero al alcance del róver, y que vale más ciencia. Doce cubren el motor de física frente a las fórmulas: tiempo de caída √(2h/g), velocidad terminal, alcance de un proyectil, deriva por el viento, pérdida de energía en los rebotes y deslizamiento en pendientes. Diez cubren el róver: hundimiento estático de la suspensión y carga por rueda en ambos mundos, velocidad máxima, giro, tracción, distancia de frenado frente a v²/(2·μ·g), pendientes, obstáculos y terreno irregular. El resto cubre lo añadido después: códigos del editor (ida y vuelta, detección de erratas, misiones que caben en el presupuesto y se pueden ganar), retraso de radio (1,3 s desde la Luna, 11,4 min en la fecha de Perseverance, la respuesta llega tras la ida y vuelta, esperar cuesta aire), modo por equipos (rotación, objetivos juzgados una vez, el reloj espera al relevo), sitios reales (latitudes, el Sol nunca se pone en las crestas y se pone ~40 % del mes a 4–5° del polo, se mueve hacia el oeste, las tres misiones nuevas se pueden ganar), salud (la Luna desgasta más que Marte, el ejercicio protege pero cuesta horas), campaña (desbloqueos y medallas), planificador de rutas (el coste en traje coincide con el del juego, la subida cuesta el trabajo de elevar 165 kg, pendientes peligrosas y límite de regreso a pie), propelente, reto del día y preguntas.
 
 ## Créditos y licencias
 
 - Motor gráfico: [three.js](https://threejs.org/) (MIT). Tipografías: B612 y B612 Mono, diseñadas para cabinas de avión (SIL Open Font License), vía Fontsource. Programa de escritorio: [Electron](https://www.electronjs.org/) (MIT).
 - Datos y hechos científicos: NASA y publicaciones citadas en `docs/SCIENCE.md`.
-- Relieve real: modelo LOLA de 5 m/px del borde de Shackleton (NASA GSFC, Barker et al., 2021, doi:10.1016/j.pss.2020.105119) y mosaico CTX de Jezero de 20 m/px de la misión Mars 2020 (USGS Astrogeology, Fergason et al., 2020, doi:10.5066/P906QQT8). Datos de dominio público. Este proyecto no está afiliado a NASA ni cuenta con su respaldo.
+- Relieve real: modelos LOLA de 5 m/px de los sitios 01 (cresta de conexión), 04 (borde de Shackleton), 06 (borde de Nobile) y 23 (macizo de Malapert) (NASA GSFC, Barker et al., 2021, doi:10.1016/j.pss.2020.105119) y mosaico CTX de Jezero de 20 m/px de la misión Mars 2020 (USGS Astrogeology, Fergason et al., 2020, doi:10.5066/P906QQT8). Datos de dominio público. Este proyecto no está afiliado a NASA ni cuenta con su respaldo.
 - **Uso de IA:** el código, los textos y el diseño se desarrollaron con la asistencia de un modelo de IA (Claude, de Anthropic) bajo la dirección del equipo de manera muy parcial (aprox. 15% del total). No se usaron imágenes, modelos 3D ni audio generados por IA: todos los recursos se crean por código en tiempo de ejecución.
 
 ---
 
 ## English summary
 
-**Helios Outpost** is a browser-based 3D mission trainer for young students. You command an outpost at the lunar south pole or in a Martian crater: plan the cargo within a mass budget, place modules on procedurally generated terrain, allocate crew time, walk the surface on EVA, drive a rover on sprung wheels, and ride out long lunar nights, Martian dust storms and solar particle events. A debrief with telemetry explains which engineering trade-offs decided the mission.
-
-Human consumables, measured surface radiation, gravity, solar irradiance and dose limits are real figures; simplifications are listed with sources in [`docs/SCIENCE.md`](docs/SCIENCE.md). The interface is fully bilingual (Spanish / English). Everything — terrain, models, textures, sound — is generated by code at run time.
-
-It runs as a desktop program (`npm run app`, or the Windows / macOS / Linux builds produced by the *Desktop app* workflow under Actions → Artifacts) or straight from disk: download the repository and double-click `helios-outpost.html` (the whole game in one self-contained file).
-
-```bash
-npm install && npm start       # develop at http://localhost:5173
-npm test                       # simulation unit tests
-npm run build                  # single-file build in dist/ and helios-outpost.html
-npm run app                    # desktop program in its own full-screen window
-npm run dist                   # packaged desktop build in release/
-```
+**Helios Outpost** is a 3D mission trainer for young students: command an outpost at the lunar south pole or in a Martian crater, plan the cargo within a mass budget, build the base, manage power, life support and radiation, walk and drive the surface, and ride out lunar nights, dust storms and solar storms. It includes a nine-chapter campaign, a mission editor for teachers with shareable codes, a team mode for the classroom, five sites on real NASA terrain with the Sun where it really is, the light-time delay to Earth, long-term health in low gravity and an EVA route planner. The full English documentation is in **[README.en.md](README.en.md)**, with a [teacher guide](docs/TEACHER-GUIDE.md) and the [science notes](docs/SCIENCE.en.md).
