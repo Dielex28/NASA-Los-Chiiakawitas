@@ -255,6 +255,7 @@ export function createMission(
       fuelGoalKg: mission.fuelGoalKg ?? 0,
       commsDelayMin: commsDelay(mission),
       sun: siteSun(siteOf(mission), mission.sunSouthDeg),
+      conjunctionH: mission.conjunction && mission.world === 'mars' ? [mission.conjunction[0] * w.solH, mission.conjunction[1] * w.solH] : undefined,
       level: opts.level ?? 2,
       hazard: [0.5, 1, 1.35][(opts.level ?? 2) - 1],
     },
@@ -368,6 +369,17 @@ export function askMissionControl(s: SimState): boolean {
 /** Months in the same few rooms with the same faces wear morale down (capped). */
 export function monotony(s: SimState): number {
   return Math.min(8, (s.timeH / 24 / 30) * 2);
+}
+
+/** Mars solar conjunction: the Sun is between Earth and Mars and no radio gets through. */
+export function inConjunction(s: SimState): boolean {
+  const c = s.cfg.conjunctionH;
+  return !!c && s.timeH >= c[0] && s.timeH < c[1];
+}
+
+/** A radio link with Earth right now: an antenna, and no Sun in the way. */
+export function earthLink(s: SimState): boolean {
+  return s.flows.comms && !inConjunction(s);
 }
 
 export function isolation(s: SimState): number {
@@ -1101,7 +1113,7 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
   let moraleTarget =
     68 +
     f.freshFood +
-    (comms ? 8 : -8) -
+    (comms && !inConjunction(s) ? 8 : -8) -
     isolation(s) -
     monotony(s) +
     ((s.exercise ?? 0) > 0 ? 3 : 0) +
@@ -1299,7 +1311,17 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
 
 function processEvents(s: SimState): void {
   const w = WORLDS[s.world];
-  const comms = s.flows.comms;
+  // warnings of solar and dust storms come from Earth's watch on the Sun: none during conjunction
+  const comms = earthLink(s);
+  const c = s.cfg.conjunctionH;
+  if (c && !s.flags.conjStart && s.timeH >= c[0]) {
+    s.flags.conjStart = 1;
+    pushLog(s, 'log.conjunction.start', 'warn', { days: Math.round((c[1] - c[0]) / WORLDS[s.world].solH) });
+  }
+  if (c && !s.flags.conjEnd && s.timeH >= c[1]) {
+    s.flags.conjEnd = 1;
+    pushLog(s, 'log.conjunction.end', 'good');
+  }
   for (const ev of s.schedule) {
     if (ev.ended) continue;
     if (ev.kind === 'spe') {

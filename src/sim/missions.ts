@@ -31,6 +31,11 @@ export interface MissionDef {
   commsDelayMin?: number;
   /** Designed by a teacher in the mission editor (the code that rebuilds it). */
   custom?: CustomSpec;
+  /**
+   * Mars solar conjunction (window in sols): the Sun sits between Earth and Mars and the radio
+   * link is lost for about two weeks, as happens every 26 months.
+   */
+  conjunction?: [number, number];
   /** Scripted crises at a fixed mission hour (historical scenarios). */
   crises?: Array<{ h: number; kind: CrisisKind }>;
   /** Emergencies that will happen in this mission (window in sols), besides random ones. */
@@ -144,6 +149,8 @@ export const MISSIONS: MissionDef[] = [
     id: 'mars-long',
     // a typical delay for a long stay
     commsDelayMin: 16,
+    // halfway through, Mars passes behind the Sun: two weeks without Earth
+    conjunction: [88, 102],
     world: 'mars',
     durationSols: 180,
     crew: 6,
@@ -530,6 +537,7 @@ export function customMission(spec: CustomSpec): MissionDef {
     realSite: spec.terrain ? (moon ? (['shackleton', 'ridge', 'nobile', 'malapert'] as const)[spec.terrain - 1] : true) : undefined,
     fuelGoalKg: spec.fuelKg > 0 ? spec.fuelKg : undefined,
     commsDelayMin: moon ? undefined : spec.delayMin || 12,
+    conjunction: !moon && spec.conjunction && d >= 20 ? [Math.round(d * 0.45), Math.round(d * 0.45) + 14] : undefined,
     custom: spec,
     seed: 0xc0de0000 + spec.variant,
     recommended: rec,

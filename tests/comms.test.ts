@@ -2,8 +2,9 @@ import { describe, expect, it } from 'vitest';
 import { Rng } from '../src/core/rng';
 import { CONTROL_ANALYSIS_H, controlRoundTripH, triggerEmergency } from '../src/sim/emergency';
 import { commsDelay, dailyMission, missionById } from '../src/sim/missions';
-import { askMissionControl, decideEmergency, isolation, pushLog } from '../src/sim/sim';
+import { askMissionControl, decideEmergency, earthLink, inConjunction, isolation, pushLog } from '../src/sim/sim';
 import type { SimState } from '../src/sim/types';
+import { WORLDS } from '../src/sim/worlds';
 import { deployAll, run } from './helpers';
 
 /** A base with everything built, no scripted events and no random breakdowns. */
@@ -81,5 +82,30 @@ describe('radio delay to Earth', () => {
     expect(isolation(quiet('moon-base'))).toBe(0);
     const mars = quiet('mars-2017');
     expect(isolation(mars)).toBeGreaterThan(5);
+  });
+});
+
+describe('Mars solar conjunction', () => {
+  it('for two weeks there is no Control, no storm warning from Earth, and morale suffers', () => {
+    const s = deployAll('mars-long', undefined, undefined, (m) => ({ ...m, spe: [], storms: [], emergencies: [], conjunction: [12, 26] }));
+    for (let h = 0; h < 400 && !s.flows.comms; h += 2) run(s, 2);
+    expect(earthLink(s)).toBe(true);
+    run(s, Math.max(0, 12.2 * WORLDS.mars.solH - s.timeH));
+    expect(inConjunction(s)).toBe(true);
+    expect(earthLink(s)).toBe(false);
+    expect(s.log.some((l) => l.key === 'log.conjunction.start')).toBe(true);
+    const hab = s.modules.find((m) => m.type === 'hab')!;
+    expect(triggerEmergency(s, 'leak', new Rng(2), pushLog, hab)).toBe(true);
+    expect(askMissionControl(s)).toBe(false);
+    expect(s.log.some((l) => l.key === 'log.control.conjunction')).toBe(true);
+    decideEmergency(s, 'isolate');
+    run(s, 15 * WORLDS.mars.solH);
+    expect(inConjunction(s)).toBe(false);
+    expect(s.log.some((l) => l.key === 'log.conjunction.end')).toBe(true);
+  });
+
+  it('mars-long passes through one, halfway', () => {
+    const c = missionById('mars-long').conjunction!;
+    expect(c[1] - c[0]).toBe(14);
   });
 });

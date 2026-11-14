@@ -340,6 +340,8 @@ export interface MissionConfig {
   commsDelayMin?: number;
   /** The Sun at a real lunar site (absent: the designed site's Sun). */
   sun?: SiteSun;
+  /** Mars solar conjunction: mission hours during which the Sun blocks the radio link to Earth. */
+  conjunctionH?: [number, number];
 }
 
 export interface SimState {

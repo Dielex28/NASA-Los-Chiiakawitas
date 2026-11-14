@@ -20,6 +20,7 @@ const extreme: CustomSpec = {
   fuelKg: 4000,
   resupply: 2,
   terrain: 1,
+  conjunction: 1,
   delayMin: 22,
   variant: 4095,
 };
@@ -53,6 +54,15 @@ describe('teacher mission editor', () => {
       expect(customMission(spec).realSite).toBe([undefined, 'shackleton', 'ridge', 'nobile', 'malapert'][terrain]);
     }
     expect(decodeCustom(encodeCustom({ ...DEFAULT_CUSTOM.mars, terrain: 4 }))!.terrain).toBe(1);
+  });
+
+  it('codes made before the conjunction option still open the same mission', () => {
+    // encoded with the field list as it was: the new field is the most significant, so 0 changes nothing
+    const spec = { ...DEFAULT_CUSTOM.mars };
+    const code = encodeCustom(spec);
+    expect(decodeCustom(code)!.conjunction).toBe(0);
+    expect(encodeCustom({ ...spec, conjunction: 1 })).not.toBe(code);
+    expect(customMission({ ...spec, conjunction: 1 }).conjunction).toEqual([18, 32]);
   });
 
   it('the Moon has no dust storms or radio delay, whatever the code says', () => {

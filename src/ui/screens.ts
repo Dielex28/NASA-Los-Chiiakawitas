@@ -262,6 +262,7 @@ export function editorScreen(app: App, spec: CustomSpec): HTMLElement {
     !moon && sp.storms ? seg(t('edit.intensity'), levels('storm'), sp.stormLevel, (v) => set({ stormLevel: v })) : null,
     slider('emergencies', t('edit.emergencies'), count),
     moon ? null : slider('delayMin', t('edit.delay'), (v) => `${v} min`, 3),
+    moon ? null : seg<number>(t('edit.conj'), [[0, t('set.off')], [1, t('set.on')]], sp.conjunction ?? 0, (v) => set({ conjunction: v })),
     h('h4.edsec', t('edit.extras')),
     slider('fuelKg', t('edit.fuel'), (v) => (v ? kg(v) : t('edit.none'))),
     slider('resupply', t('edit.resupply'), count),

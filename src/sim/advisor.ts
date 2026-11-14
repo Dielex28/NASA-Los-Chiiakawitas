@@ -204,6 +204,8 @@ export function lessons(s: SimState): Array<{ key: string; good: boolean; params
     else add('controlWait', false, { min });
   }
   if (delay >= 1) add('delayMars', true, { d: delay.toFixed(0), rt: Math.round(2 * delay + 15) });
+  const conj = s.cfg.conjunctionH;
+  if (conj && s.timeH > conj[0]) add('conjunction', true, { sols: Math.round((conj[1] - conj[0]) / WORLDS[s.world].solH) });
   else if ((st.emergencies ?? 0) > 0 && s.world === 'moon') add('delayMoon', true);
   // what low gravity did to the crew's bodies
   const bone = s.crew.reduce((a, c) => a + (c.bone ?? 100), 0) / Math.max(1, s.crew.length);

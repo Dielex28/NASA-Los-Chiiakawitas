@@ -130,6 +130,10 @@ function ensureCustomStrings(id: string): void {
     es.push(`radio con ${m.commsDelayMin} min de retraso`);
     en.push(`${m.commsDelayMin}-minute radio delay`);
   }
+  if (!moon && c.conjunction && c.days >= 20) {
+    es.push('dos semanas de conjunción solar');
+    en.push('a two-week solar conjunction');
+  }
   if (c.fuelKg) {
     es.push(`${c.fuelKg} kg de combustible que fabricar`);
     en.push(`${c.fuelKg} kg of fuel to make`);

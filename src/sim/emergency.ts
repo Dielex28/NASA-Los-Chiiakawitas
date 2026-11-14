@@ -132,6 +132,11 @@ export function askControl(s: SimState, log: Log): boolean {
     log(s, 'log.control.nolink', 'warn');
     return false;
   }
+  const c = s.cfg.conjunctionH;
+  if (c && s.timeH >= c[0] && s.timeH < c[1]) {
+    log(s, 'log.control.conjunction', 'warn');
+    return false;
+  }
   e.askedH = s.timeH;
   e.answerH = s.timeH + controlRoundTripH(s);
   s.stats.controlAsks = (s.stats.controlAsks ?? 0) + 1;

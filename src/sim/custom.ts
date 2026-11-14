@@ -29,6 +29,8 @@ export interface CustomSpec {
   delayMin: number;
   /** Picks when events happen: two codes that differ only here are the same mission, reshuffled. */
   variant: number;
+  /** Mars only: a two-week solar conjunction halfway through (0 no, 1 yes). Optional in older specs. */
+  conjunction?: number;
 }
 
 /** Each field as a range of whole steps, in the order they are packed. */
@@ -48,6 +50,8 @@ const FIELDS: Array<{ key: keyof CustomSpec; min: number; max: number; step: num
   { key: 'delayMin', min: 0, max: 22, step: 1 },
   { key: 'variant', min: 0, max: 4095, step: 1 },
   { key: 'terrain', min: 0, max: 4, step: 1 },
+  // added last: a code made before it existed decodes with conjunction 0
+  { key: 'conjunction', min: 0, max: 1, step: 1 },
 ];
 
 export const CUSTOM_LIMITS: Record<string, { min: number; max: number; step: number }> = Object.fromEntries(FIELDS.map((f) => [f.key, f]));
@@ -68,6 +72,7 @@ export const DEFAULT_CUSTOM: Record<WorldId, CustomSpec> = {
     fuelKg: 0,
     resupply: 1,
     terrain: 0,
+    conjunction: 0,
     delayMin: 0,
     variant: 1,
   },
@@ -86,6 +91,7 @@ export const DEFAULT_CUSTOM: Record<WorldId, CustomSpec> = {
     fuelKg: 0,
     resupply: 1,
     terrain: 0,
+    conjunction: 0,
     delayMin: 12,
     variant: 1,
   },
@@ -109,6 +115,7 @@ export function clampSpec(s: CustomSpec): CustomSpec {
   if (out.world === 'moon') {
     out.storms = 0;
     out.delayMin = 0;
+    out.conjunction = 0;
   } else {
     out.terrain = Math.min(out.terrain, 1);
   }

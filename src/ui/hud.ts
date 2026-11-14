@@ -24,6 +24,7 @@ import {
   totalDose,
   propTank,
   deconditioning,
+  inConjunction,
 } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
 import type { Allocation, CargoItem, CrewMember, LogEntry, ModuleState, ModuleType, Priority, SimState } from '../sim/types';
@@ -1138,8 +1139,9 @@ export class Hud {
     const g = this.game;
     const ck = clockText(s);
     const d = s.cfg.commsDelayMin ?? 0;
-    setText(this.linkEl, !s.flows.comms ? t('link.none') : d < 1 ? t('link.sec', { s: fmt(d * 60, 1) }) : t('link.min', { m: fmt(d, d < 10 ? 1 : 0) }));
-    this.linkEl.className = s.flows.comms ? '' : 'warn';
+    const conj = inConjunction(s);
+    setText(this.linkEl, conj ? t('link.conj') : !s.flows.comms ? t('link.none') : d < 1 ? t('link.sec', { s: fmt(d * 60, 1) }) : t('link.min', { m: fmt(d, d < 10 ? 1 : 0) }));
+    this.linkEl.className = s.flows.comms && !conj ? '' : 'warn';
     if (s.team) {
       const tm = s.team;
       const left = Math.max(0, tm.endH - s.timeH);
@@ -1296,7 +1298,9 @@ export class Hud {
       const mins = Math.ceil(left * 60);
       key = `emg:${emg.kind}:${emg.choice ?? ''}:${emergencyOptions(s).join(',')}:${emg.askedH ?? ''}:${emg.advice ?? ''}`;
       const ctlText = (): string =>
-        emg.advice
+        inConjunction(s) && emg.askedH === undefined
+          ? t('emg.ctl.conj')
+          : emg.advice
           ? t('emg.ctl.advice', { opt: t(`emg.opt.${emg.advice}`) })
           : emg.answerH !== undefined
             ? t('emg.ctl.wait', { min: Math.max(1, Math.ceil((emg.answerH - s.timeH) * 60)), late: emg.answerH > emg.decideByH ? t('emg.ctl.late') : '' })
@@ -1312,7 +1316,7 @@ export class Hud {
               t(`emg.opt.${c}`),
             ),
           );
-          if (emg.askedH === undefined) opts.push(h('button.btn.small.ghost', { onclick: () => g.askControl(), title: t('emg.ctl.ask.d') }, icon('antenna', 14), t('emg.ctl.ask')));
+          if (emg.askedH === undefined && !inConjunction(s)) opts.push(h('button.btn.small.ghost', { onclick: () => g.askControl(), title: t('emg.ctl.ask.d') }, icon('antenna', 14), t('emg.ctl.ask')));
           set('', emg.kind === 'eclss' ? 'air' : 'warn', t(`emg.${emg.kind}.title`, { what }), t(`emg.${emg.kind}.body`, { min: mins }), opts);
           this.alert.querySelector('.grow')?.append(h('p.ctl', ctlText()));
           const bar = h('div.emgbar', h('i'));
