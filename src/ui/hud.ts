@@ -1,3 +1,4 @@
+import { avatarSvg, ROLE_COLOR } from './avatar';
 import { emergencyOptions } from '../sim/emergency';
 import { clamp01 } from '../core/math';
 import type { Game } from '../game/game';
@@ -19,7 +20,7 @@ import {
   totalDose,
 } from '../sim/sim';
 import { WORLDS } from '../sim/worlds';
-import type { Allocation, CargoItem, LogEntry, ModuleState, ModuleType, Priority, SimState } from '../sim/types';
+import type { Allocation, CargoItem, CrewMember, LogEntry, ModuleState, ModuleType, Priority, SimState } from '../sim/types';
 import type { App } from './app';
 import { clear, fmt, h, icon, setText } from './dom';
 import { MOD_ICON, cargoIcon, cargoName, unitDays } from './screens';
@@ -52,6 +53,27 @@ function setSev(el: HTMLElement, sev: Sev): void {
 }
 
 /** Translate a log entry, resolving module and crop names. */
+/** Which crew speciality answers which event on the radio, in order of preference. */
+const RADIO: Record<string, CrewMember['role'][]> = {
+  'log.spe.warn': ['medic', 'engineer'],
+  'log.spe.end': ['medic', 'engineer'],
+  'log.storm.warn': ['engineer', 'pilot'],
+  'log.emg.leak': ['engineer'],
+  'log.emg.meteor': ['engineer'],
+  'log.emg.eclss': ['medic', 'engineer'],
+  'log.emg.over': ['engineer'],
+  'log.failure': ['engineer'],
+  'log.repaired': ['engineer'],
+  'log.harvest': ['botanist'],
+  'log.croplost': ['botanist'],
+  'log.sample': ['geologist'],
+  'log.expedition': ['geologist'],
+  'log.resupply.arrived': ['pilot', 'engineer'],
+  'log.co2': ['medic'],
+  'log.blackout': ['engineer'],
+  'log.cold': ['medic'],
+};
+
 export function logText(e: LogEntry): string {
   const p: Record<string, string | number> = { ...(e.params ?? {}) };
   if (typeof p.type === 'string' && has(`mod.${p.type}`)) p.type = t(`mod.${p.type}`);
@@ -144,6 +166,8 @@ export class Hud {
   private roverVal = h('span.vl', '');
   private hintKey = '';
   private leftEl: HTMLElement | null = null;
+  private radio = h('div.radio.panel.hidden');
+  private radioTimer = 0;
   private geiger = h('div.geiger', h('span.muted', ''), h('span', ''));
   private lockMsg = h('div.eva-lock', t('eva.clickToLook'));
   private evaHint = h('div.eva-hint', t('eva.hint'));
@@ -254,7 +278,7 @@ export class Hud {
       tabs.append(b);
     }
     this.inspectorEl = h('section.inspector.panel', tabs, this.tabBody);
-    this.right = h('div.hud-right', this.inspectorEl, this.orbi);
+    this.right = h('div.hud-right', this.inspectorEl, this.orbi, this.radio);
     this.el.append(this.right);
   }
 
@@ -566,7 +590,10 @@ export class Hud {
       const mf = h('i');
       const dose = h('span.dose', '');
       const loc = h('div.rl', '');
-      list.append(h('div.crewrow', h('div', h('div.nm', c.name), loc), h('div.bar.ok', { title: t('hud.health') }, hf), h('div.bar.violet', { title: t('hud.morale') }, mf), dose));
+      const face = h('div.av');
+      face.innerHTML = avatarSvg(c, 34);
+      list.append(h('div.crewrow', face, h('div', h('div.nm', c.name), loc), h('div.bar.ok', { title: t('hud.health') }, hf), h('div.bar.violet', { title: t('hud.morale') }, mf), dose));
+      if (!c.isPlayer) list.append(h('div.spec', { style: { borderColor: ROLE_COLOR[c.role] } }, t(`spec.${c.role}`)));
       return { hf, mf, dose, loc };
     });
     this.tabUpdate = () => {
@@ -824,6 +851,7 @@ export class Hud {
       g.events.on('log', (e) => {
         if (e.key === 'log.shelter.on') this.tutorial.shelter = true;
         if (e.key === 'log.experiment' && e.params?.kind === 'drop') this.tutorial.drop = true;
+        this.radioCall(e);
         this.toast(logText(e), e.sev);
       }),
       g.events.on('toast', (e) => this.toast(t(e.key, e.params), e.sev)),
@@ -860,6 +888,27 @@ export class Hud {
     this.corner.classList.toggle('hidden', evaMode);
     setText(this.evaBtn.lastElementChild!, evaMode ? t('hud.evaBack') : t('hud.eva'));
     this.evaBtn.classList.toggle('on', evaMode);
+  }
+
+  /** A crew member comments on the radio — the one whose job the event is. */
+  private radioCall(e: LogEntry): void {
+    const who = RADIO[e.key];
+    if (!who) return;
+    const crew = this.sim.crew.filter((c) => !c.isPlayer && c.health > 5);
+    const c = who.map((r) => crew.find((x) => x.role === r)).find(Boolean) ?? crew[0];
+    if (!c) return;
+    const p: Record<string, string | number> = { ...(e.params ?? {}) };
+    if (typeof p.type === 'string' && has(`mod.${p.type}`)) p.type = t(`mod.${p.type}`);
+    if (typeof p.crop === 'string' && has(`crop.${p.crop}`)) p.crop = t(`crop.${p.crop}`);
+    clear(this.radio);
+    const face = h('div.av');
+    face.innerHTML = avatarSvg(c, 44);
+    this.radio.append(face, h('div.grow', h('div.who', h('b', c.name), ' · ', t(`role.${c.role}`)), h('div.say', t(`radio.${e.key.slice(4)}`, p))));
+    this.radio.style.setProperty('--role', ROLE_COLOR[c.role]);
+    this.radio.classList.remove('hidden');
+    this.game.audio.radio();
+    window.clearTimeout(this.radioTimer);
+    this.radioTimer = window.setTimeout(() => this.radio.classList.add('hidden'), 9000);
   }
 
   toast(text: string, sev: 'info' | 'good' | 'warn' | 'bad'): void {

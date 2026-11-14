@@ -325,6 +325,15 @@ export class Kit {
     }
   }
 
+  /** A painted surface of any colour (crew speciality stripes), shaded like the rest of the hardware. */
+  paint(color: number): THREE.MeshStandardMaterial {
+    const m = patchWorldMaterial(new THREE.MeshStandardMaterial({ color, roughness: 0.5, metalness: 0.1 }), this.uniforms);
+    m.envMap = this.envTexture;
+    m.envMapIntensity = 0.4;
+    this.reflective.push([m, 0.4]);
+    return m;
+  }
+
   /** A solar-cell material instance whose colour can be dulled by dust independently of other arrays. */
   solarInstance(): THREE.MeshStandardMaterial {
     const m = patchWorldMaterial(

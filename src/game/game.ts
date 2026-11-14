@@ -40,6 +40,7 @@ import { Input } from './input';
 import { AIR_DENSITY, metabolicWatts, type PhysEnv } from './physics';
 import { Player } from './player';
 import { Props } from './props';
+import { Crewmates } from './crewmates';
 import { DOCK_RANGE, RoverUnit } from './rover';
 import type { VehicleEnv, VehicleInput } from './vehicle';
 import type { EmergencyChoice } from '../sim/emergency';
@@ -111,6 +112,8 @@ interface Stage {
   rover: RoverUnit;
   /** One-bounce light solution on the terrain (absent on the lowest preset). */
   bounce: BounceMap | null;
+  /** Crew members working outside. */
+  crewmates: Crewmates;
 }
 
 interface SaveFile {
@@ -280,9 +283,11 @@ export class Game {
         prints,
         props: this.makeProps(world, kit, dust),
         rover: this.makeRover(world, kit),
+        crewmates: new Crewmates(kit),
         bounce: this.renderer.quality.bounce ? new BounceMap(world.uniforms, this.renderer.quality.level === 'medium' ? 192 : 256) : null,
       };
       world.atmosphere.bounce = !!st.bounce;
+      world.scene.add(st.crewmates.group);
       this.stages[key] = st;
     }
     this.stage = st;
@@ -373,6 +378,7 @@ export class Game {
     st.cargo.sync(sim, false);
     st.prints.clear();
     st.props.clear();
+    st.crewmates.clear();
     this.driving = false;
     st.player.astronaut.seated = false;
     const parked = this.pendingRover;
@@ -694,6 +700,7 @@ export class Game {
     const env = sim.env;
 
     // ---- player / camera
+    st.crewmates.update(dt, this.phase === 'playing' ? sim : null, st.world, st.base.colliders, st.world.atmosphere.darkness, this.time);
     // the rover moves first, so the driver is drawn on this frame's seat
     this.updateRover(dt, st, sim, rate * dt, playing && this.mode === 'eva' && allowInput);
     if (playing && this.mode === 'eva') this.updateEva(dt, st, sim, allowInput);

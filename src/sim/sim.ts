@@ -48,6 +48,19 @@ const CREW_ROSTER: Array<Pick<CrewMember, 'name' | 'role'>> = [
   { name: 'Ravi Menon', role: 'pilot' },
 ];
 
+/**
+ * What each specialist adds to the base while fit for work (health above 50): an engineer
+ * repairs faster, a botanist grows crops faster, a geologist gets more out of samples, a medic
+ * helps everyone recover, a pilot speeds up assembly (cranes and cargo handling).
+ */
+export const SPECIALIST_BONUS: Partial<Record<CrewMember['role'], number>> = { engineer: 0.3, botanist: 0.2, geologist: 0.3, medic: 0.6, pilot: 0.25 };
+
+/** 1 + the bonus of a fit crew member with this role, or 1 if there is none. */
+export function specialist(s: SimState, role: CrewMember['role']): number {
+  const c = s.crew.find((x) => x.role === role && x.health > 50);
+  return 1 + (c ? (SPECIALIST_BONUS[role] ?? 0) : 0);
+}
+
 const emptyStats = (): Stats => ({
   blackoutH: 0,
   brownoutH: 0,
@@ -800,7 +813,7 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
         waterPlants += waterNeed;
         m.cropHealth = Math.min(1, m.cropHealth + dtSol * 0.05);
       } else m.cropHealth = Math.max(0, m.cropHealth - dtSol * 0.25);
-      m.growth += (dtSol / crop.cycleSols) * care * conditionEff(m) * (watered ? 1 : 0.2);
+      m.growth += (dtSol / crop.cycleSols) * care * conditionEff(m) * (watered ? 1 : 0.2) * specialist(s, 'botanist');
       o2Plants += crop.o2PerSol * canopy * dtSol;
       co2Plants += crop.co2PerSol * canopy * dtSol;
       fresh += crop.morale * (0.4 + 0.6 * m.growth) * m.cropHealth;
@@ -924,7 +937,7 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
   // ---- science
   let sciRate = hours.science * TUNE.sciencePerHour * (labUp ? 1 : TUNE.scienceNoLab);
   if (labUp && s.samples > 0 && hours.science > 0) {
-    sciRate *= TUNE.sampleBonus;
+    sciRate *= 1 + (TUNE.sampleBonus - 1) * specialist(s, 'geologist');
     s.samples = Math.max(0, s.samples - (hours.science * dtD) / TUNE.sampleHours);
   }
   s.science += sciRate * dtD;
@@ -1020,6 +1033,7 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     (recentDiscovery ? 4 : 0);
 
   let moraleAvg = 0;
+  const medic = specialist(s, 'medic');
   for (const c of s.crew) {
     let eva = evaShare;
     if (c.isPlayer) eva = s.playerOutside ? 1 : s.shelterOrder ? 0 : eva * 0.5;
@@ -1032,7 +1046,8 @@ function lifeSupport(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'],
     c.doseReactor += dReactor;
     c.acute = c.acute * Math.exp(-dtH / 72) + dSpe + dReactor;
 
-    let d = 4;
+    // a medic speeds recovery, not the harm
+    let d = 4 * medic;
     if (hypoxia > 0) d -= 70 * hypoxia;
     if (mmHg > 6) d -= (mmHg - 6) * 2.5;
     if (mmHg > 15) d -= 40;
@@ -1089,7 +1104,7 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
   const dtD = dtH / 24;
 
   // ---- construction
-  let build = hours.build * dtD;
+  let build = hours.build * dtD * specialist(s, 'pilot');
   for (const m of s.modules) {
     if (build <= 0) break;
     if (isBuilt(m)) continue;
@@ -1170,7 +1185,7 @@ function upkeep(s: SimState, dtH: number, hours: FlowSnapshot['crewHours'], rng:
     dustiest.dust = Math.max(0, dustiest.dust - t * 0.05);
     maint -= t;
   }
-  let points = maint * TUNE.repairPerHour;
+  let points = maint * TUNE.repairPerHour * specialist(s, 'engineer');
   const worst = s.modules.filter((m) => isBuilt(m) && m.condition < 97).sort((a, b) => a.condition - b.condition);
   for (const m of worst) {
     if (points <= 0) break;

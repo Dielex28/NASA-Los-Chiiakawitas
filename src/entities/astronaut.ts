@@ -38,7 +38,9 @@ export class Astronaut {
   /** −1…1: how far the hand controller is pushed to one side (seated only). */
   steer = 0;
 
-  constructor(k: Kit) {
+  /** `tag` is the name on the chest; `accent` colours the bands (each speciality has its own). */
+  constructor(k: Kit, opts: { tag?: string; accent?: THREE.Material } = {}) {
+    const accent = opts.accent ?? k.accent;
     const g = this.group;
     g.name = 'astronaut';
     g.add(this.body);
@@ -89,13 +91,13 @@ export class Astronaut {
       knob.rotation.x = Math.PI / 2;
       t.add(knob);
     }
-    t.add(k.box(0.1, 0.03, 0.012, k.accent, 0.07, 0.345, 0.268));
+    t.add(k.box(0.1, 0.03, 0.012, accent, 0.07, 0.345, 0.268));
     const gauge = k.cyl(0.024, 0.024, 0.012, k.metal, -0.085, 0.335, 0.268, 14);
     gauge.rotation.x = Math.PI / 2;
     t.add(gauge);
     const tag = new THREE.Mesh(
       new THREE.PlaneGeometry(0.12, 0.03),
-      new THREE.MeshStandardMaterial({ map: labelTexture([{ text: 'V. CRUZ', size: 40, color: '#ffffff' }], '#a8361c', 256, 64), roughness: 0.9 }),
+      new THREE.MeshStandardMaterial({ map: labelTexture([{ text: opts.tag ?? 'V. CRUZ', size: 40, color: '#ffffff' }], '#a8361c', 256, 64), roughness: 0.9 }),
     );
     tag.position.set(0, 0.56, 0.213);
     tag.rotation.x = -0.32;
@@ -111,7 +113,7 @@ export class Astronaut {
     const packTop = k.cyl(0.115, 0.115, 0.5, k.shell, 0, 0.35, 0, 16);
     packTop.rotation.z = Math.PI / 2;
     pack.add(packTop);
-    pack.add(k.box(0.52, 0.07, 0.25, k.accent, 0, 0.24, 0));
+    pack.add(k.box(0.52, 0.07, 0.25, accent, 0, 0.24, 0));
     pack.add(k.box(0.42, 0.13, 0.19, k.hullDark, 0, -0.3, -0.03));
     for (const sd of [-1, 1]) {
       pack.add(k.cyl(0.055, 0.055, 0.5, k.metal, sd * 0.19, -0.05, -0.135, 12));
@@ -143,7 +145,7 @@ export class Astronaut {
     placard.rotation.y = Math.PI;
     pack.add(placard);
     pack.add(k.strut(V(0.2, 0.4, -0.05), V(0.2, 0.74, -0.05), 0.008, k.metal, 5));
-    pack.add(k.sphere(0.014, k.accent, 0.2, 0.75, -0.05, 8, 6));
+    pack.add(k.sphere(0.014, accent, 0.2, 0.75, -0.05, 8, 6));
 
     /* ----------------------------------------------------------- helmet */
     const hd = this.head;
@@ -185,7 +187,7 @@ export class Astronaut {
       t.add(root);
       root.add(k.sphere(0.107, k.suit, 0, 0, 0, 16, 12));
       root.add(tapered(0.092, 0.082, 0.24, k.suit, -0.17));
-      root.add(tapered(0.095, 0.095, 0.045, k.accent, -0.1)); // commander's red band
+      root.add(tapered(0.095, 0.095, 0.045, accent, -0.1)); // commander's red band
       // elbow: convoluted bellows let a pressurised sleeve bend
       root.add(ring(0.084, 0.013, k.suit, 'y', 0, -0.285, 0));
       root.add(k.sphere(0.086, k.suit, 0, -0.33, 0, 14, 10));
@@ -221,7 +223,7 @@ export class Astronaut {
       this.body.add(root);
       root.add(k.sphere(0.126, k.suit, 0, -0.02, 0, 16, 12));
       root.add(tapered(0.122, 0.104, 0.34, k.suit, -0.22));
-      root.add(tapered(0.125, 0.123, 0.045, k.accent, -0.13));
+      root.add(tapered(0.125, 0.123, 0.045, accent, -0.13));
       root.add(ring(0.106, 0.014, k.suit, 'y', 0, -0.385, 0));
       root.add(k.sphere(0.108, k.suit, 0, -0.44, 0, 14, 10));
       root.add(ring(0.104, 0.014, k.suitDust, 'y', 0, -0.495, 0));
