@@ -1,6 +1,24 @@
 import * as THREE from 'three';
 import { clamp01, damp, lerp } from '../core/math';
 import { labelTexture, type Kit } from './kit';
+import { loadAstronautModel } from '../render/models';
+import { buildSkinTemplate, createSkin, SKIN_MOUNTS, type SkinInstance, type SkinTemplate } from './astronautSkin';
+
+/** The team's astronaut model, rigged once and shared by every suit in the scene. */
+let skinTemplate: Promise<SkinTemplate | null> | null = null;
+/** Start loading and rigging the model early (the title screen is a good moment). */
+export function preloadAstronautSkin(): void {
+  if (typeof window !== 'undefined') void sharedSkin();
+}
+function sharedSkin(): Promise<SkinTemplate | null> {
+  skinTemplate ??= loadAstronautModel()
+    .then((g) => (g ? buildSkinTemplate(g) : null))
+    .catch((e: unknown) => {
+      console.warn('[astronaut] model not used', e);
+      return null;
+    });
+  return skinTemplate;
+}
 
 /**
  * Procedural astronaut in a surface suit, built joint by joint so every part can move:
@@ -37,6 +55,8 @@ export class Astronaut {
   seated = false;
   /** −1…1: how far the hand controller is pushed to one side (seated only). */
   steer = 0;
+  /** The modelled suit, once loaded: the joints below drive its bones. */
+  private skin: SkinInstance | null = null;
 
   /** `tag` is the name on the chest; `accent` colours the bands (each speciality has its own). */
   constructor(k: Kit, opts: { tag?: string; accent?: THREE.Material } = {}) {
@@ -262,6 +282,65 @@ export class Astronaut {
         m.receiveShadow = true;
       }
     });
+    // swap in the modelled suit as soon as it is ready; until then (or if it fails) the
+    // procedural one above is what you see
+    if (typeof window !== 'undefined') void sharedSkin().then((t) => t && this.applySkin(t, accent));
+  }
+
+  /** Hide the procedural suit and dress the same skeleton in the modelled one. */
+  private applySkin(t: SkinTemplate, accent: THREE.Material): void {
+    if (this.skin) return;
+    const skin = createSkin(t);
+    const keep = new Set<THREE.Object3D>(this.nozzles);
+    this.body.traverse((o) => {
+      if ((o as THREE.Mesh).isMesh && !keep.has(o)) o.visible = false;
+    });
+    this.group.add(skin.mesh);
+    const b = skin.bones;
+    b.head.add(this.lamp, this.lampTarget);
+    this.lamp.position.copy(SKIN_MOUNTS.lamp);
+    b.torso.add(this.glow);
+    this.glow.position.copy(SKIN_MOUNTS.glow);
+    this.nozzles.forEach((f, i) => {
+      const sd = i === 0 ? -1 : 1;
+      b.torso.add(f);
+      f.position.set(sd * SKIN_MOUNTS.nozzle.x, SKIN_MOUNTS.nozzle.y - 0.25, SKIN_MOUNTS.nozzle.z);
+    });
+    // each speciality keeps its colour: bands on the upper arms and thighs, as on the procedural suit
+    const armBand = new THREE.CylinderGeometry(0.104, 0.104, 0.045, 22, 1, true);
+    const legBand = new THREE.CylinderGeometry(0.136, 0.136, 0.05, 22, 1, true);
+    for (const [arm, leg, sd] of [['armL', 'legL', -1], ['armR', 'legR', 1]] as const) {
+      const a = new THREE.Mesh(armBand, accent);
+      a.position.set(Math.abs(SKIN_MOUNTS.armBand.x) * sd, SKIN_MOUNTS.armBand.y, SKIN_MOUNTS.armBand.z);
+      a.rotation.z = sd * 0.245;
+      b[arm].add(a);
+      const l = new THREE.Mesh(legBand, accent);
+      l.position.set(Math.abs(SKIN_MOUNTS.legBand.x) * sd, SKIN_MOUNTS.legBand.y, SKIN_MOUNTS.legBand.z);
+      b[leg].add(l);
+      a.castShadow = l.castShadow = true;
+    }
+    this.skin = skin;
+    this.syncSkin();
+  }
+
+  /** Copy the procedural joint angles onto the model's bones (minus the procedural rest pose). */
+  private syncSkin(): void {
+    const s = this.skin;
+    if (!s) return;
+    const b = s.bones;
+    b.legL.rotation.copy(this.legL.rotation);
+    b.legR.rotation.copy(this.legR.rotation);
+    b.shinL.rotation.set(this.shinL.rotation.x - 0.05, 0, 0);
+    b.shinR.rotation.set(this.shinR.rotation.x - 0.05, 0, 0);
+    b.armL.rotation.set(this.armL.rotation.x, this.armL.rotation.y, this.armL.rotation.z + 0.2);
+    b.armR.rotation.set(this.armR.rotation.x, this.armR.rotation.y, this.armR.rotation.z - 0.2);
+    b.foreL.rotation.set(this.foreL.rotation.x + 0.35, 0, 0);
+    b.foreR.rotation.set(this.foreR.rotation.x + 0.35, 0, 0);
+    b.torso.rotation.set(this.torso.rotation.x - 0.04, this.torso.rotation.y, 0);
+    b.head.rotation.copy(this.head.rotation);
+    // the model's hips are lower than the procedural ones: lift them onto the rover seat
+    const seat = this.seated ? 0.97 - s.rest.y : 0;
+    b.body.position.set(s.rest.x, s.rest.y + (this.body.position.y - 0.98) + seat, s.rest.z);
   }
 
   /** Let the helmet lamp cast shadows: at night every rock throws a long one away from the commander. */
@@ -353,6 +432,7 @@ export class Astronaut {
     this.glow.intensity = 5 * clamp01((darkness - 0.15) / 0.5);
     // the chest display is self-lit: it stands out more in the dark
     this.screenMat.color.setScalar(1.1 + 1.2 * darkness);
+    this.syncSkin();
   }
 }
 

@@ -2,6 +2,8 @@ import { QUALITY_LEVELS, type QualityLevel } from './render/renderer';
 import { missionById } from './sim/missions';
 import { step } from './sim/sim';
 import { App, fatal } from './ui/app';
+import { preloadAstronautSkin } from './entities/astronaut';
+import { loadCuriosityModel } from './render/models';
 
 // tells the boot script in index.html that the game code really loaded
 (window as any).__heliosStarted = true;
@@ -26,6 +28,9 @@ async function main(): Promise<void> {
   }
   const q = params.get('q') as QualityLevel | null;
   const app = new App(canvas, root, q && QUALITY_LEVELS.includes(q) ? q : undefined);
+  // the 3D models decode in the background while the title screen is up
+  preloadAstronautSkin();
+  void loadCuriosityModel();
   // the styled loading screen takes over from the plain boot message
   document.getElementById('boot')?.remove();
   // handles for automated play-testing

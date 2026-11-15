@@ -39,6 +39,7 @@ export const CODEX: CodexEntry[] = [
   { id: 'crew', group: 'crew', icon: 'crew' },
   { id: 'bones', group: 'crew', icon: 'jump' },
   { id: 'spares', group: 'crew', icon: 'gear' },
+  { id: 'scout', group: 'crew', icon: 'rover' },
   { id: 'honesty', group: 'crew', icon: 'info' },
 ];
 

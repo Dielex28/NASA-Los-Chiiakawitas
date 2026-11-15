@@ -412,4 +412,29 @@ export const MECH: Record<string, Four> = {
     'Houve {n} ferido(s). Depois de uma catástrofe, uma tripulação ferida trabalha menos justo quando mais se precisa.',
     'Il y a eu {n} blessé(s). Après une catastrophe, un équipage blessé travaille moins juste quand on en a le plus besoin.',
   ],
+
+  /* --------------------------------------------- the robotic scout (Mars) */
+  'prompt.scout': ['{what}', '{what}', '{what}', '{what}'],
+  'scout.ready': ['E · Descargar los datos del explorador', 'E · Download the scout’s data', 'E · Baixar os dados do explorador', 'E · Télécharger les données de l’explorateur'],
+  'scout.done': ['Explorador: los datos de este sol ya están descargados', 'Scout: this sol’s data is already downloaded', 'Explorador: os dados deste sol já foram baixados', 'Explorateur : les données de ce sol sont déjà téléchargées'],
+  'log.scout.download': ['Datos del explorador robótico descargados: +{sci} de ciencia.', 'Robotic scout data downloaded: +{sci} science.', 'Dados do explorador robótico baixados: +{sci} de ciência.', 'Données de l’explorateur robotique téléchargées : +{sci} de science.'],
+  'log.scout.first': [
+    'El explorador tiene el diseño de Curiosity, en Marte desde 2012. Funciona con energía nuclear: siguió trabajando durante la tormenta de polvo global de 2018.',
+    'The scout is built like Curiosity, on Mars since 2012. It runs on nuclear power: it kept working through the global dust storm of 2018.',
+    'O explorador tem o projeto do Curiosity, em Marte desde 2012. Funciona com energia nuclear: continuou trabalhando durante a tempestade de poeira global de 2018.',
+    'L’explorateur est conçu comme Curiosity, sur Mars depuis 2012. Il fonctionne à l’énergie nucléaire : il a continué à travailler pendant la tempête de poussière globale de 2018.',
+  ],
+  'codex.scout.t': ['Exploradores robóticos', 'Robotic scouts', 'Exploradores robóticos', 'Explorateurs robotiques'],
+  'codex.scout.b': [
+    'Antes que las personas llegan los robots. Curiosity aterrizó en el cráter Gale en 2012, y Perseverance, con el mismo diseño, en el cráter Jezero en 2021. Pesan alrededor de una tonelada, tienen seis ruedas y funcionan con un generador que convierte en electricidad el calor del plutonio: por eso Curiosity siguió trabajando durante la tormenta de polvo global de 2018, que dejó sin luz los paneles del róver Opportunity. Su instrumento ChemCam dispara un láser invisible que vaporiza un punto de roca a varios metros y analiza la luz de la chispa para saber de qué está hecha.',
+    'Robots get there before people do. Curiosity landed in Gale crater in 2012, and Perseverance, built to the same design, in Jezero crater in 2021. They weigh about a tonne, run on six wheels and are powered by a generator that turns the heat of plutonium into electricity: that is why Curiosity kept working through the global dust storm of 2018, which left the panels of the Opportunity rover without light. Its ChemCam instrument fires an invisible laser that vaporises a speck of rock several metres away and reads the light of the spark to tell what the rock is made of.',
+    'Antes das pessoas chegam os robôs. O Curiosity pousou na cratera Gale em 2012, e o Perseverance, com o mesmo projeto, na cratera Jezero em 2021. Pesam cerca de uma tonelada, têm seis rodas e funcionam com um gerador que transforma em eletricidade o calor do plutônio: por isso o Curiosity continuou trabalhando durante a tempestade de poeira global de 2018, que deixou sem luz os painéis do rover Opportunity. Seu instrumento ChemCam dispara um laser invisível que vaporiza um ponto de rocha a vários metros e analisa a luz da faísca para saber do que ela é feita.',
+    'Les robots arrivent avant les humains. Curiosity s’est posé dans le cratère Gale en 2012, et Perseverance, de même conception, dans le cratère Jezero en 2021. Ils pèsent environ une tonne, roulent sur six roues et fonctionnent avec un générateur qui transforme en électricité la chaleur du plutonium : c’est pour cela que Curiosity a continué à travailler pendant la tempête de poussière globale de 2018, qui a privé de lumière les panneaux du rover Opportunity. Son instrument ChemCam tire un laser invisible qui vaporise un point de roche à plusieurs mètres et analyse la lumière de l’étincelle pour savoir de quoi elle est faite.',
+  ],
+  'codex.scout.g': [
+    'En las misiones a Marte, un explorador con el diseño de Curiosity recorre los alrededores de la base. Acércate en EVA y pulsa E para descargar sus datos: +1 de ciencia, una vez por sol. Su velocidad máxima real es de unos 4 cm/s; aquí va más deprisa para que lo veas moverse.',
+    'On the Mars missions a scout built like Curiosity roams around the base. Walk up to it on EVA and press E to download its data: +1 science, once a sol. Its real top speed is about 4 cm/s; here it drives faster so that you can see it move.',
+    'Nas missões a Marte, um explorador com o projeto do Curiosity percorre os arredores da base. Aproxime-se em EVA e aperte E para baixar os dados: +1 de ciência, uma vez por sol. Sua velocidade máxima real é de uns 4 cm/s; aqui ele anda mais rápido para que você o veja se mover.',
+    'Dans les missions sur Mars, un explorateur conçu comme Curiosity parcourt les environs de la base. Approche-toi en EVA et appuie sur E pour télécharger ses données : +1 de science, une fois par sol. Sa vitesse maximale réelle est d’environ 4 cm/s ; ici il roule plus vite pour que tu le voies bouger.',
+  ],
 };

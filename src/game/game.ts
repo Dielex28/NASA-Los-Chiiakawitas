@@ -49,6 +49,8 @@ import { Player } from './player';
 import { Props } from './props';
 import { saveFile } from '../ui/save';
 import { Crewmates } from './crewmates';
+import { Scout, SCOUT_REACH } from './scout';
+import { downloadScout, hasScout, scoutReady } from '../sim/scout';
 import { DOCK_RANGE, RoverUnit } from './rover';
 import type { VehicleEnv, VehicleInput } from './vehicle';
 import type { EmergencyChoice } from '../sim/emergency';
@@ -61,7 +63,7 @@ import { SUIT_GAIN, hasUpgrade } from '../sim/upgrades';
 
 export type GamePhase = 'boot' | 'menu' | 'loading' | 'playing' | 'ended';
 export type GameMode = 'command' | 'eva';
-export type PromptKind = 'assemble' | 'repair' | 'clean' | 'enter' | 'sample' | 'drive' | 'fault' | 'task' | 'request';
+export type PromptKind = 'assemble' | 'repair' | 'clean' | 'enter' | 'sample' | 'drive' | 'fault' | 'task' | 'request' | 'scout';
 
 export interface Prompt {
   kind: PromptKind;
@@ -138,6 +140,8 @@ interface Stage {
   crewmates: Crewmates;
   /** Damage, craters and instruments. */
   hazards: HazardView;
+  /** Mars only: the robotic scout (NASA's Curiosity model). */
+  scout: Scout | null;
 }
 
 interface SaveFile {
@@ -329,10 +333,12 @@ export class Game {
         rover: this.makeRover(world, kit),
         crewmates: new Crewmates(kit),
         hazards: new HazardView(world, kit),
+        scout: id === 'mars' ? new Scout(TERRAIN_SEED[id] ^ 0x5c07, (x, z) => world.ground(x, z)) : null,
         bounce: this.renderer.quality.bounce ? new BounceMap(world.uniforms, this.renderer.quality.level === 'medium' ? 192 : 256) : null,
       };
       world.atmosphere.bounce = !!st.bounce;
       world.scene.add(st.crewmates.group);
+      if (st.scout) world.scene.add(st.scout.group);
       this.stages[key] = st;
     }
     this.stage = st;
@@ -434,6 +440,7 @@ export class Game {
     st.prints.clear();
     st.props.clear();
     st.crewmates.clear();
+    st.scout?.reset();
     st.world.scene.add(this.routeView.group);
     if (fresh) this.route = [];
     this.routeEdit = false;
@@ -945,6 +952,7 @@ export class Game {
 
     // ---- player / camera
     st.crewmates.update(dt, this.phase === 'playing' ? sim : null, st.world, st.base.colliders, st.world.atmosphere.darkness, this.time);
+    st.scout?.update(dt, st.base.colliders, this.mode === 'eva' ? st.player.pos : null, this.time);
     if (this.photo) this.updatePhoto(dt, st);
     else {
       // the rover moves first, so the driver is drawn on this frame's seat
@@ -1783,6 +1791,20 @@ export class Game {
       if (allowInput && this.input.hit('KeyE')) {
         p.faceTarget = this.tmpV.set(found.x, found.y, found.z);
         this.events.emit('action', { kind: found.kind, id: found.id });
+      }
+      return;
+    }
+
+    // Mars: the robotic scout, whose data can be downloaded once a sol
+    if (st.scout && hasScout(sim) && st.scout.distanceTo(p.pos) < SCOUT_REACH && (!best || best.kind === 'enter' || best.kind === 'sample')) {
+      const ready = scoutReady(sim);
+      this.holdProgress = 0;
+      p.working = damp(p.working, 0, 10, dt);
+      this.setTool(false);
+      this.prompt = { kind: 'scout', subject: ready ? 'scout.ready' : 'scout.done', hold: false, progress: 0 };
+      if (allowInput && ready && this.input.hit('KeyE')) {
+        p.faceTarget = this.tmpV.copy(st.scout.pos);
+        downloadScout(sim, pushLog);
       }
       return;
     }

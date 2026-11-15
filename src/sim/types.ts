@@ -430,6 +430,8 @@ export interface SimState {
   tasks?: TaskState;
   /** Mission Control's requests and the instruments deployed for them. */
   requests?: RequestState;
+  /** Mars only: the robotic scout's downloads (see sim/scout.ts). */
+  scout?: { lastSol: number; downloads: number };
 }
 
 /** Terrain knowledge the simulation needs, supplied by the world layer. */
